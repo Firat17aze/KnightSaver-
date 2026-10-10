@@ -34,7 +34,10 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    profileHeader
+                    VStack(alignment: .leading, spacing: 12) {
+                        KnightSaverBrandBar()
+                        profileHeader
+                    }
 
                     VStack(alignment: .leading, spacing: 12) {
                         ProfileSectionHeader(
@@ -111,7 +114,6 @@ struct ProfileView: View {
                 .foregroundStyle(KnightTheme.ink)
 
             Spacer(minLength: 12)
-            KnightMark()
         }
     }
 

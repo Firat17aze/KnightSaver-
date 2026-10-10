@@ -9,6 +9,7 @@
 		A10000000000000000000001 /* KnightSaverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* KnightSaverApp.swift */; };
 		A10000000000000000000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* RootView.swift */; };
 		A10000000000000000000003 /* KnightTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* KnightTheme.swift */; };
+		A10000000000000000000C01 /* KnightSaverBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C01 /* KnightSaverBrand.swift */; };
 		A10000000000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* Models.swift */; };
 		A10000000000000000000005 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* ExploreView.swift */; };
 		A10000000000000000000006 /* ExploreComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* ExploreComponents.swift */; };
@@ -30,6 +31,7 @@
 		B10000000000000000000001 /* KnightSaverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnightSaverApp.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* KnightTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnightTheme.swift; sourceTree = "<group>"; };
+		B10000000000000000000C01 /* KnightSaverBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnightSaverBrand.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B10000000000000000000005 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		B10000000000000000000006 /* ExploreComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreComponents.swift; sourceTree = "<group>"; };
@@ -89,7 +91,7 @@
 		};
 		D10000000000000000000004 /* DesignSystem */ = {
 			isa = PBXGroup;
-			children = (B10000000000000000000003 /* KnightTheme.swift */,);
+			children = (B10000000000000000000003 /* KnightTheme.swift */, B10000000000000000000C01 /* KnightSaverBrand.swift */,);
 			path = DesignSystem;
 			sourceTree = "<group>";
 		};
@@ -206,6 +208,7 @@
 				A10000000000000000000001 /* KnightSaverApp.swift in Sources */,
 				A10000000000000000000002 /* RootView.swift in Sources */,
 				A10000000000000000000003 /* KnightTheme.swift in Sources */,
+				A10000000000000000000C01 /* KnightSaverBrand.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* ExploreView.swift in Sources */,
 				A10000000000000000000006 /* ExploreComponents.swift in Sources */,

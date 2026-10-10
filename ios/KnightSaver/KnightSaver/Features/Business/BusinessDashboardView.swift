@@ -43,19 +43,17 @@ struct BusinessDashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 12) {
-                HStack(spacing: 12) {
-                    BrandMark(brand: store.profile.brand, size: 50)
-                    Text("Restaurant")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                }
-                .accessibilityElement(children: .combine)
-
-                Spacer(minLength: 0)
-
+            KnightSaverBrandBar {
                 darkModeButton
             }
+
+            HStack(spacing: 12) {
+                BrandMark(brand: store.profile.brand, size: 50)
+                Text("Restaurant")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+            }
+            .accessibilityElement(children: .combine)
 
             ScanKnightPassButton {
                 sheet = .scan(expected: nil)
