@@ -48,15 +48,9 @@ struct BusinessDashboardView: View {
                     .frame(width: 50, height: 50)
                     .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.isDemo ? "BUSINESS · DEMO VIEW" : "BUSINESS")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.goldDeep)
-                    Text("Restaurant")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                }
+                Text("Restaurant")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
@@ -318,27 +312,6 @@ struct SurpriseBagListingCard: View {
                            + (waitlistCount > 0 ? " · \(waitlistCount) on waitlist" : ""))
             }
 
-            let packingLines = listing.staffPackingLines
-            if !packingLines.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("STAFF ONLY", systemImage: "lock.fill")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .tracking(0.9)
-                        .foregroundStyle(KnightTheme.muted)
-                    ForEach(Array(packingLines.enumerated()), id: \.offset) { _, line in
-                        Text(line)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(KnightTheme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(KnightTheme.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Staff only. " + packingLines.joined(separator: ". "))
-            }
-
             if isOpen {
                 HStack(spacing: 10) {
                     Button(action: onEdit) {
@@ -474,7 +447,7 @@ struct ReservedPickupCard: View {
 
 // MARK: - Today's total
 
-/// One row with today's verified total. Tapping it shows each verified pickup's price.
+/// One "Total" row for today's verified pickups. Tapping it shows each pickup's price.
 struct TodaysTotalCard: View {
     let rescues: [BusinessReservation]
     let total: Double
@@ -490,12 +463,12 @@ struct TodaysTotalCard: View {
                 }
             } label: {
                 HStack(spacing: 12) {
-                    Text("Today's total")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                    Text("Total")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
                     Spacer(minLength: 8)
                     Text(PickupTime.money(total))
-                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(KnightTheme.ink)
                     Image(systemName: "chevron.right")
@@ -508,7 +481,7 @@ struct TodaysTotalCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Today's total, \(PickupTime.money(total))")
+            .accessibilityLabel("Total, \(PickupTime.money(total))")
             .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             .accessibilityHint(isExpanded ? "Hides the individual pickups" : "Shows the price of each verified pickup")
             .accessibilityAddTraits(.isButton)
@@ -527,11 +500,12 @@ struct TodaysTotalCard: View {
                             Divider().overlay(KnightTheme.line)
                             HStack {
                                 Text(rescue.verifiedAt.map { PickupTime.time($0) } ?? "")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 14, weight: .regular))
+                                    .monospacedDigit()
                                     .foregroundStyle(KnightTheme.muted)
                                 Spacer()
                                 Text(PickupTime.money(rescue.total))
-                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 15, weight: .medium))
                                     .monospacedDigit()
                                     .foregroundStyle(KnightTheme.ink)
                             }
@@ -559,14 +533,16 @@ struct BusinessImpactSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             BizSectionHeader(title: "Impact report", subtitle: "Updates only after a verified pickup")
+                .padding(.bottom, 2)
+
+            // 5 tiles: the headline number spans the full width, the other four form a 2×2 grid,
+            // so no tile sits alone on the last row.
+            BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
 
             LazyVGrid(columns: columns, spacing: 12) {
-                BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
                 BizStatTile(title: "Revenue recovered", value: PickupTime.money(impact.revenueRecovered))
-                BizStatTile(title: "Measured weight", value: kg(impact.measuredWeightKg))
-                BizStatTile(title: "Estimated weight", value: kg(impact.estimatedWeightKg), isEstimate: true)
                 BizStatTile(title: "CO₂e avoided", value: kg(impact.estimatedCO2eKg), isEstimate: true)
                 BizStatTile(title: "Pickup completion", value: percent(impact.pickupCompletionRate))
                 BizStatTile(title: "Average rating", value: rating(impact.averageRating))

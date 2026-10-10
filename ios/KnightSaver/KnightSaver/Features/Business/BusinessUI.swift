@@ -208,29 +208,31 @@ struct BizStatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text(title.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(0.8)
+                Text(title)
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(KnightTheme.muted)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.85)
                 if isEstimate {
-                    Text("EST.")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
+                    Text("Est.")
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(KnightTheme.goldDeep)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(KnightTheme.gold.opacity(0.22), in: Capsule())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(KnightTheme.gold.opacity(0.18), in: Capsule())
+                        .accessibilityLabel("estimate")
                 }
             }
             Text(value)
-                .font(.system(size: 22, weight: .black, design: .rounded))
+                .font(.system(size: 20, weight: .semibold))
+                .monospacedDigit()
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.7)
         }
-        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
-        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 14)
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
