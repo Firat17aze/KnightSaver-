@@ -4,7 +4,8 @@ enum AppTab: String, CaseIterable, Identifiable {
     case explore = "Explore"
     case map = "Map"
     case impact = "Impact"
-    case business = "Business"
+    /// Shown as "Kitchen" in the tab bar: where restaurant staff list their surplus.
+    case business = "Kitchen"
     case profile = "Profile"
 
     var id: String { rawValue }
@@ -129,6 +130,29 @@ struct RootView: View {
     }
 }
 
+/// The tab bar icon. Kitchen uses the custom Sprout Storefront glyph (vector assets
+/// "TabKitchen" / "TabKitchenFill"); the Impact leaf is drawn a little larger.
+private struct TabGlyph: View {
+    let tab: AppTab
+    let isSelected: Bool
+
+    var body: some View {
+        if tab == .business {
+            Image(isSelected ? "TabKitchenFill" : "TabKitchen")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: isSelected ? tab.selectedIcon : tab.icon)
+                .font(.system(size: tab == .impact ? 22 : 18, weight: .semibold))
+                .frame(height: 22)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
 private struct KnightTabBar: View {
     @Binding var selection: AppTab
     let tabs: [AppTab]
@@ -144,8 +168,7 @@ private struct KnightTabBar: View {
                     }
                 } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: selection == tab ? tab.selectedIcon : tab.icon)
-                            .font(.system(size: 18, weight: .semibold))
+                        TabGlyph(tab: tab, isSelected: selection == tab)
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold, design: .rounded))
                     }

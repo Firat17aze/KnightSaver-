@@ -305,9 +305,7 @@ struct AuthenticationView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                KnightMark()
-                Spacer()
+            KnightSaverBrandBar {
                 Text("PICKUP ONLY")
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .tracking(1.4)
