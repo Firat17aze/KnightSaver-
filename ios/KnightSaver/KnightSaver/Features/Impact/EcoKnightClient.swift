@@ -66,7 +66,7 @@ struct EcoIdentification: Codable {
     var note: String?
 }
 
-// MARK: - Claude Messages API client
+// MARK: - AI Messages API client
 
 enum EcoKnightError: LocalizedError {
     case noKey
@@ -75,14 +75,14 @@ enum EcoKnightError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noKey: return "Add a Claude API key to use live AI."
-        case .http(let code, let message): return "Claude API error \(code): \(message)"
+        case .noKey: return "Add an AI API key to use live AI."
+        case .http(let code, let message): return "AI API error \(code): \(message)"
         case .unreadable: return "EcoKnight couldn't read the answer."
         }
     }
 }
 
-/// Talks to Claude for EcoKnight AI. The API key lives only in this device's Keychain
+/// Talks to the live AI provider for EcoKnight. The API key lives only in this device's Keychain
 /// (never in the repo). Without a key, or when a call fails, the views fall back to
 /// `EcoKnightOffline` so the demo never breaks.
 struct EcoKnightClient {
@@ -338,7 +338,7 @@ enum EcoKnightOffline {
 
 // MARK: - Keychain
 
-/// Stores the Claude API key on this device only.
+/// Stores the AI API key on this device only.
 enum APIKeyStore {
     private static let service = "knightsaver.ecoknight"
     private static let account = "anthropic-api-key"

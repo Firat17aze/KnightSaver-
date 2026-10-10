@@ -103,7 +103,7 @@ struct EcoKnightView: View {
             Circle()
                 .fill(hasKey ? KnightTheme.green : KnightTheme.goldDeep)
                 .frame(width: 8, height: 8)
-            Text(hasKey ? "Live AI · Claude" : "Offline mode · add a key for live AI")
+            Text(hasKey ? "Live AI" : "Offline mode · add a key for live AI")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(KnightTheme.muted)
             Spacer()
@@ -601,7 +601,7 @@ private struct TintedIconLabelStyle: LabelStyle {
 
 // MARK: - API key
 
-/// Paste a Claude API key once on this device. It goes to the Keychain, never to the repo.
+/// Paste an AI API key once on this device. It goes to the Keychain, never to the repo.
 private struct APIKeySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
@@ -611,7 +611,7 @@ private struct APIKeySheet: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("sk-ant-…", text: $key)
+                    SecureField("api-key-…", text: $key)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     if hasKey {
@@ -621,9 +621,9 @@ private struct APIKeySheet: View {
                         }
                     }
                 } header: {
-                    Text(hasKey ? "A key is saved" : "Claude API key")
+                    Text(hasKey ? "A key is saved" : "AI API key")
                 } footer: {
-                    Text("Create one at console.anthropic.com. It's stored only in this iPhone's Keychain. Never put it in the code or commit it to GitHub. Without a key, EcoKnight uses offline ideas.")
+                    Text("Create one in your AI provider console. It's stored only in this iPhone's Keychain. Never put it in the code or commit it to GitHub. Without a key, EcoKnight uses offline ideas.")
                 }
             }
             .scrollContentBackground(.hidden)
