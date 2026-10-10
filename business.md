@@ -87,38 +87,78 @@ Tapping **+ List surplus** gives staff two choices:
 
 ### Speak with AI
 
-Staff may say:
+Staff describe the actual surplus inventory they have and any known pickup constraints. They do not need to decide the number of Surprise Bags first.
 
-> “Create five Surprise Bags for $5.99, pickup from 7:00 to 7:30 PM.”
+Example:
 
-AI turns the voice description into an editable draft containing:
+> “We have 12 bagels, 6 pastries, and 4 sandwiches left. Pickup can be from 7:00 to 7:30 PM.”
 
-- Quantity
-- Price
-- Pickup start time
-- Pickup end time
-- Optional general description
-- Default business location
+AI processes the input in two visible stages.
 
-Staff must review and approve the draft before publication.
+#### Stage 1: What AI understood
+
+Before proposing a listing, show the staff a structured summary:
+
+- Surplus items AI heard
+- Quantity of each item
+- Pickup start and end time
+- Any price or other constraint mentioned
+- Any missing or uncertain information
+
+Example:
+
+> **What I understood**  
+> 12 bagels  
+> 6 pastries  
+> 4 sandwiches  
+> Pickup 7:00–7:30 PM
+
+Staff can correct the interpreted inventory before continuing.
+
+#### Stage 2: Proposed Surprise Bag plan
+
+Using only the confirmed staff input and approved business rules, AI proposes:
+
+- Number of Surprise Bags to publish
+- Suggested distribution of the entered surplus across those bags
+- Proposed price
+- Pickup interval
+- Public-facing general description
+- Default pickup location
+- Total inventory accounted for and any items not allocated
+
+Example:
+
+> **Proposed listing**  
+> 7 Surprise Bags  
+> $5.99 each  
+> Pickup 7:00–7:30 PM  
+> Public description: “A mix of today's surplus items.”
+
+Staff can edit every field. Nothing is published until staff taps **Approve and publish**.
+
+The internal inventory summary helps staff review the proposal. Students still see a Surprise Bag and do not receive a guarantee of exact contents.
 
 AI must not:
 
 - Publish without staff confirmation
-- Invent exact bag contents
+- Add inventory that staff did not report
+- Allocate more items than staff confirmed
+- Hide unallocated inventory from the review
 - Invent allergens or dietary claims
 - Approve food safety
 - Change the business location without confirmation
 
 ### Enter manually
 
-The short manual form contains:
+The manual fallback first records the actual surplus inventory and then lets staff define:
 
-- Quantity
+- Surplus item names and quantities for internal planning
+- Number of Surprise Bags
 - Price
 - Pickup start time
 - Pickup end time
-- Optional general description
+- Optional public general description
 - Location confirmation
 
 The restaurant logo comes from the business profile unless staff explicitly replaces it.
@@ -256,17 +296,20 @@ The business side does not need to build routing or directions.
 
 1. Staff taps **+ List surplus**.
 2. Staff chooses voice AI or manual entry.
-3. Staff reviews the Surprise Bag draft.
-4. Staff publishes it.
-5. The listing appears in Explore and KnightMap.
-6. A student authorizes payment and reserves.
-7. The reservation appears in Reserved pickups.
-8. Cancellation releases the authorization and triggers the waitlist when relevant.
-9. Staff verifies the final student's QR pickup pass.
-10. Payment is captured.
-11. The pickup moves into Today's verified rescues.
-12. Verified impact and leaderboard state update.
-13. EcoKnight AI and Past Reveal submission unlock for the student.
+3. Staff describes or enters the actual surplus inventory.
+4. AI shows what it understood.
+5. Staff corrects or confirms the interpreted inventory.
+6. AI proposes the number of Surprise Bags and related listing details.
+7. Staff edits, approves, and publishes the plan.
+8. The listing appears in Explore and KnightMap.
+9. A student authorizes payment and reserves.
+10. The reservation appears in Reserved pickups.
+11. Cancellation releases the authorization and triggers the waitlist when relevant.
+12. Staff verifies the final student's QR pickup pass.
+13. Payment is captured.
+14. The pickup moves into Today's verified rescues.
+15. Verified impact and leaderboard state update.
+16. EcoKnight AI and Past Reveal submission unlock for the student.
 
 ## Two-to-three-minute demo responsibility
 
@@ -274,11 +317,12 @@ The business-side portion of the demo should take approximately 20–35 seconds:
 
 1. Open Business.
 2. Tap **+ List surplus**.
-3. Say: “Create five Surprise Bags for $5.99, pickup from 7:00 to 7:30 PM.”
-4. Show the editable AI draft.
-5. Approve and publish.
-6. Later, scan or verify the student's QR pickup pass.
-7. Show the listing move into Today's verified rescues.
+3. Describe the actual surplus, for example: “We have 12 bagels, 6 pastries, and 4 sandwiches left. Pickup can be from 7:00 to 7:30.”
+4. Show the **What I understood** inventory summary.
+5. Show AI's proposed number of Surprise Bags and listing details.
+6. Correct the draft if needed, then tap **Approve and publish**.
+7. Later, scan or verify the student's QR pickup pass.
+8. Show the listing move into Today's verified rescues.
 
 The student demo then shows KnightMap, reservation, EcoKnight AI, Past Surprise Reveals, verified impact, and the Campus Rescue League.
 
@@ -287,6 +331,8 @@ The student demo then shows KnightMap, reservation, EcoKnight AI, Past Surprise 
 The two developers must agree on these shared objects:
 
 - Business
+- Staff surplus inventory input
+- AI interpretation and proposed bag plan
 - Surprise Bag listing
 - Reservation
 - Waitlist entry
@@ -299,6 +345,8 @@ The two developers must agree on these shared objects:
 
 The most important integration events are:
 
+- **Surplus inventory confirmed**
+- **AI bag plan approved**
 - **Listing published**
 - **Listing updated**
 - **Reservation created**
