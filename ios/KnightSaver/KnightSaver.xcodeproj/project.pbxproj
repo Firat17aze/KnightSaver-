@@ -6,6 +6,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000D01 /* ImpactModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D01 /* ImpactModels.swift */; };
+		A10000000000000000000D02 /* ImpactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D02 /* ImpactView.swift */; };
+		A10000000000000000000D03 /* EcoKnightClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D03 /* EcoKnightClient.swift */; };
+		A10000000000000000000D04 /* EcoKnightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D04 /* EcoKnightView.swift */; };
+		A10000000000000000000D05 /* RevealFeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D05 /* RevealFeedbackView.swift */; };
 		A10000000000000000000001 /* KnightSaverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* KnightSaverApp.swift */; };
 		A10000000000000000000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* RootView.swift */; };
 		A10000000000000000000003 /* KnightTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* KnightTheme.swift */; };
@@ -29,6 +34,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B10000000000000000000D01 /* ImpactModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000D02 /* ImpactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactView.swift; sourceTree = "<group>"; };
+		B10000000000000000000D03 /* EcoKnightClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EcoKnightClient.swift; sourceTree = "<group>"; };
+		B10000000000000000000D04 /* EcoKnightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EcoKnightView.swift; sourceTree = "<group>"; };
+		B10000000000000000000D05 /* RevealFeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealFeedbackView.swift; sourceTree = "<group>"; };
 		B10000000000000000000001 /* KnightSaverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnightSaverApp.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* KnightTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnightTheme.swift; sourceTree = "<group>"; };
@@ -110,6 +120,7 @@
 				D10000000000000000000008 /* Explore */,
 				D10000000000000000000009 /* Profile */,
 				D10000000000000000000B01 /* Business */,
+				D10000000000000000000D01 /* Impact */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -150,6 +161,18 @@
 				B10000000000000000000B09 /* VoiceDictation.swift */,
 			);
 			path = Business;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000D01 /* Impact */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000D01 /* ImpactModels.swift */,
+				B10000000000000000000D02 /* ImpactView.swift */,
+				B10000000000000000000D03 /* EcoKnightClient.swift */,
+				B10000000000000000000D04 /* EcoKnightView.swift */,
+				B10000000000000000000D05 /* RevealFeedbackView.swift */,
+			);
+			path = Impact;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -227,6 +250,11 @@
 				A10000000000000000000B07 /* PassScannerView.swift in Sources */,
 				A10000000000000000000B08 /* SurplusAssistant.swift in Sources */,
 				A10000000000000000000B09 /* VoiceDictation.swift in Sources */,
+				A10000000000000000000D01 /* ImpactModels.swift in Sources */,
+				A10000000000000000000D02 /* ImpactView.swift in Sources */,
+				A10000000000000000000D03 /* EcoKnightClient.swift in Sources */,
+				A10000000000000000000D04 /* EcoKnightView.swift in Sources */,
+				A10000000000000000000D05 /* RevealFeedbackView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
