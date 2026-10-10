@@ -13,7 +13,7 @@ For the hackathon, Business may remain visible as a clearly labeled demo view. I
 KnightSaver uses five bottom-navigation destinations:
 
 1. **Explore**
-2. **Rescues**
+2. **Map** (opens **KnightMap**)
 3. **Impact**
 4. **Business**
 5. **Profile**
@@ -28,6 +28,8 @@ The Business page is one focused, scrollable dashboard. Keep **+ List surplus** 
 - Listings are **Surprise Bags** with unknown exact contents.
 - Businesses set the price, available quantity, pickup location, and exact pickup interval.
 - Student Explore uses restaurant logos or branded banners, not promised food photography.
+- The student's next active reservation appears as a standalone card at the top of Explore.
+- KnightMap is a dedicated second navigation destination rather than a toggle inside Explore.
 - Do not require an exact food name or category.
 - Do not promise ingredients, allergens, dietary suitability, freshness, or specific contents.
 - Do not provide original-price or student-savings fields for Explore.
