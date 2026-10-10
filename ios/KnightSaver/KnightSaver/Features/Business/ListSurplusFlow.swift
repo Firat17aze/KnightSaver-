@@ -45,7 +45,7 @@ struct ListSurplusFlow: View {
                     understoodView
                 case .plan:
                     if let binding = Binding($plan) {
-                        BagPlanEditor(plan: binding, pickupAddress: store.profile.pickupAddress) {
+                        BagPlanEditor(plan: binding) {
                             if let plan {
                                 store.publish(plan)
                             }
@@ -304,14 +304,12 @@ struct ListSurplusFlow: View {
 
 struct BagPlanEditor: View {
     @Binding var plan: BagPlan
-    let pickupAddress: String
     let onPublish: () -> Void
 
     @State private var isPublishing = false
 
-    init(plan: Binding<BagPlan>, pickupAddress: String, onPublish: @escaping () -> Void) {
+    init(plan: Binding<BagPlan>, onPublish: @escaping () -> Void) {
         _plan = plan
-        self.pickupAddress = pickupAddress
         self.onPublish = onPublish
     }
 
@@ -357,12 +355,11 @@ struct BagPlanEditor: View {
             }
 
             Section {
-                LabeledContent("Pickup location", value: pickupAddress)
-                Toggle("Location confirmed", isOn: $plan.locationConfirmed)
+                PickupLocationPicker(selection: $plan.pickupLocation)
             } header: {
                 Text("Pickup location")
             } footer: {
-                Text("From your business profile, with its map coordinates for KnightMap.")
+                Text("Students see this spot on KnightMap and in the bag details.")
             }
 
             Section {
@@ -416,6 +413,28 @@ struct BagPlanEditor: View {
         }
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+/// All campus pickup spots as a tappable checklist, so long names never get cut off.
+struct PickupLocationPicker: View {
+    @Binding var selection: PickupLocation
+
+    var body: some View {
+        Picker("Pickup location", selection: $selection) {
+            ForEach(PickupLocation.campusSpots) { spot in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(spot.name)
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(spot.detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+                .tag(spot)
+            }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 

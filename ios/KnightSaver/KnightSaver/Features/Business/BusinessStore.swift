@@ -281,9 +281,9 @@ final class BusinessStore: ObservableObject {
             pickupStart: plan.pickupStart,
             pickupEnd: plan.pickupEnd,
             publicDescription: plan.publicDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-            pickupAddress: profile.pickupAddress,
-            latitude: profile.latitude,
-            longitude: profile.longitude,
+            pickupAddress: plan.pickupLocation.address,
+            latitude: plan.pickupLocation.latitude,
+            longitude: plan.pickupLocation.longitude,
             inventory: inventory,
             bagSplit: allocation.bags,
             unallocated: allocation.leftover,
@@ -300,9 +300,16 @@ final class BusinessStore: ObservableObject {
 
     // MARK: - Editing
 
-    func applyEdit(listingID: UUID, remaining: Int?, price: Double?, pickupStart: Date?, pickupEnd: Date?, description: String? = nil) {
+    func applyEdit(listingID: UUID, remaining: Int?, price: Double?, pickupStart: Date?, pickupEnd: Date?,
+                   description: String? = nil, location: PickupLocation? = nil) {
         guard let index = listings.firstIndex(where: { $0.id == listingID }) else { return }
         var listing = listings[index]
+
+        if let location = location {
+            listing.pickupAddress = location.address
+            listing.latitude = location.latitude
+            listing.longitude = location.longitude
+        }
 
         if let remaining = remaining {
             let delta = max(0, remaining) - listing.remainingQuantity
