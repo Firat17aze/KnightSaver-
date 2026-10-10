@@ -9,7 +9,7 @@ KnightSaver is one app with four bottom-navigation sections:
 3. **Impact**
 4. **Business**
 
-The business dashboard is the fourth section. It is not a separate app. The business-side teammate builds the content for this section and connects it to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
+The business dashboard is the fourth section. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
 
 For a real deployment, the **Business** section requires an authorized staff or manager account. During the hackathon, it may be shown as a clearly labeled demo business view.
 
@@ -17,79 +17,97 @@ For a real deployment, the **Business** section requires an authorized staff or 
 
 **+ List surplus**
 
-This button remains immediately above the shared four-item bottom-navigation bar while the **Business** section is selected.
+This button remains immediately above the shared four-item navigation while the **Business** section is selected.
 
-When tapped, it opens three options:
+When tapped, staff choose one of two methods:
 
-- **Speak listing** — AI converts a voice note into a draft.
-- **Quick form** — Staff enters listing details manually.
-- **Use template** — Staff repeats a previous listing.
+- **Speak with AI** — Staff describe the food, quantity, price, and pickup time. AI creates an editable draft.
+- **Enter manually** — Staff complete the short listing form themselves.
 
-The business section does not add another navigation bar. All business operations stay on one scrollable page.
+Staff always review and confirm a listing before it is published. AI cannot invent allergens or approve food safety.
 
-## Everything else on the same page
+## Simplified business page
 
-1. **Location and status**
-   - Current business location.
-   - Pickup service open/closed.
-   - Closing time.
-2. **Right now**
-   - Portions available.
-   - Portions reserved.
-   - Students arriving.
-   - Portions collected.
-3. **Live listings**
-   - Food name.
-   - Remaining quantity.
-   - Price.
-   - Pickup deadline.
-   - Available, fully reserved, or closed status.
-4. **Pickup queue**
-   - Student name.
-   - Reserved item.
-   - Payment status.
-   - Contextual **Verify pickup** button.
-5. **Waitlist**
-   - Number of students waiting.
-   - Active offers.
-   - Released portions after cancellations.
-6. **Today’s verified impact**
-   - Portions rescued.
-   - Food weight.
-   - Revenue recovered.
-   - Student savings.
-   - Pickup completion rate.
-7. **Recent activity**
-   - Listing published.
-   - Reservation created.
-   - Payment authorized.
-   - Student cancellation.
-   - Payment released.
-   - Pickup verified.
-   - Payment captured.
+The business page contains only four important sections.
 
-## Contextual business actions
+### 1. Current listings
 
-These controls appear beside the record they affect and do not become additional navigation sections:
+Shows food currently available to students:
 
-- **Verify pickup**
-- **Edit listing**
-- **Pause listing**
-- **Close listing**
-- **View waitlist**
-- **Release or refund**
-- **Record final disposition**
-- **View impact details**
+- Food name.
+- Remaining quantity.
+- Price.
+- Pickup deadline.
+- Available, fully reserved, paused, or closed status.
+- **Edit listing** action.
 
-## Connection to the student sections
+Staff can edit an existing listing in two ways:
 
-1. Business publishes a listing.
-2. The listing appears in **Explore**.
-3. Student authorizes payment and reserves.
-4. The business dashboard shows reduced inventory, expected pickup, and authorized payment.
-5. Student cancellation releases the authorization and portion.
-6. The business dashboard shows the waitlist offer.
-7. The next student accepts and authorizes payment.
-8. Business verifies the student's QR pass.
+- **Edit with voice** — For example: “Change the bagels to six portions and move pickup to 7:30.”
+- **Edit manually** — Change the quantity, price, food details, or pickup deadline in a form.
+
+AI converts voice instructions into proposed changes. Staff see the changes and approve them before the live listing updates.
+
+### 2. Reserved spots
+
+Shows upcoming student pickups:
+
+- Student name.
+- Reserved item and quantity.
+- Pickup deadline.
+- Authorized payment status.
+- Waitlist status when relevant.
+- **Verify pickup** action.
+
+When the student cancels, the authorized payment is released and the portion is offered to the next waitlisted student.
+
+### 3. Today’s rescues
+
+Shows completed, staff-verified pickups from today:
+
+- Student or reservation identifier.
+- Food and quantity collected.
+- Pickup time.
+- Payment captured status.
+- Verified rescue status.
+
+A reservation appears here only after staff verifies the QR pickup pass.
+
+### 4. Impact report
+
+Shows only the most useful proof for judges:
+
+- Verified portions rescued.
+- Measured or estimated food weight.
+- Revenue recovered.
+- Student savings.
+- Pickup completion rate.
+
+Impact updates only after a verified pickup. Measured and estimated food weight must remain clearly labeled.
+
+## Essential business flow
+
+1. Staff taps **+ List surplus**.
+2. Staff creates the listing by AI voice or manual entry.
+3. Staff reviews and publishes the listing.
+4. The listing appears in the student **Explore** section.
+5. Student authorizes payment and reserves.
+6. The reservation appears in **Reserved spots**.
+7. If the student cancels, payment is released and the waitlist is triggered.
+8. Staff verifies the final student's QR pickup pass.
 9. Payment is captured.
-10. Student **Impact** and business verified impact update together.
+10. The pickup moves into **Today’s rescues**.
+11. The **Impact report** updates.
+
+## Features intentionally excluded from the hackathon page
+
+To keep the business experience reliable, do not prioritize:
+
+- Multiple business locations.
+- Detailed historical analytics.
+- Complex charts.
+- Staff scheduling.
+- Customer messaging.
+- Full accounting or payout reconciliation.
+- Advanced AI forecasting.
+- Separate pages for listings, reservations, and reports.
