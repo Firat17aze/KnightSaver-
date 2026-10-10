@@ -18,9 +18,20 @@ struct ExploreView: View {
     @State private var selectedBag: SurpriseBag?
     @State private var showLocationPicker = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Shared with Business: bags published there appear here right away.
+    @EnvironmentObject var businessStore: BusinessStore
+
+    /// Signed-in student. Demo account until authentication is added.
+    private var student: KnightPass { KnightPass.sample }
+
+    /// Live bags from Business first, then the sample restaurants (minus the business that is live).
+    private var allBags: [SurpriseBag] {
+        businessStore.surpriseBagsForExplore
+            + SurpriseBag.samples.filter { $0.business != businessStore.profile.name }
+    }
 
     private var visibleBags: [SurpriseBag] {
-        var bags = SurpriseBag.samples.filter { bag in
+        var bags = allBags.filter { bag in
             let matchesSearch = searchText.isEmpty ||
                 bag.business.localizedCaseInsensitiveContains(searchText) ||
                 "Surprise Bag".localizedCaseInsensitiveContains(searchText)
@@ -82,18 +93,18 @@ struct ExploreView: View {
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
             .sheet(item: $selectedBag) { bag in
-                BagDetailView(bag: bag) {
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                        activeReservations.append(ActiveReservation(
-                            bag: bag,
-                            status: .confirmed,
-                            paymentStatus: "Payment authorized",
-                            attentionMessage: "Your pickup is ready"
-                        ))
-                    }
+                // Always show the latest version of a live bag (quantity, price, pickup time).
+                BagDetailView(bag: businessStore.liveBag(id: bag.id) ?? bag) {
+                    reserve(bag)
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+            }
+            .onChange(of: businessStore.listings) { _, _ in
+                // Close the details if Business paused, closed or cancelled this bag.
+                if let bag = selectedBag, businessStore.isLiveBag(bag), businessStore.liveBag(id: bag.id) == nil {
+                    selectedBag = nil
+                }
             }
             .sheet(isPresented: $showLocationPicker) {
                 LocationPickerView()
@@ -139,6 +150,27 @@ struct ExploreView: View {
                 Spacer()
 
                 KnightMark()
+            }
+        }
+    }
+
+    /// Live bags reserve through the shared store, so the reservation shows up in Business
+    /// and in Profile. Sample restaurants keep the local demo behaviour.
+    private func reserve(_ bag: SurpriseBag) {
+        if businessStore.isLiveBag(bag) {
+            businessStore.reserve(
+                bagID: bag.id,
+                studentName: student.displayName,
+                passToken: student.verificationToken
+            )
+        } else if bag.availableCount > 0 {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
+                activeReservations.append(ActiveReservation(
+                    bag: bag,
+                    status: .confirmed,
+                    paymentStatus: "Payment authorized",
+                    attentionMessage: "Your pickup is ready"
+                ))
             }
         }
     }
