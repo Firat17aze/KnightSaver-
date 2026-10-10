@@ -22,11 +22,11 @@ KnightSaver is one shared app with five bottom-navigation destinations:
 
 | Position | Label | Purpose |
 |---|---|---|
-| 1 | **Explore** | Browse Surprise Bag cards and manage the next active reservation |
+| 1 | **Explore** | Discover and reserve available Surprise Bags |
 | 2 | **Map** | Open the dedicated KnightMap of the whole campus |
 | 3 | **Impact** | Open EcoKnight AI, view verified impact, and join the Campus Rescue League |
 | 4 | **Business** | Open the authorized business dashboard and AI listing tools |
-| 5 | **Profile** | Manage account, location, leaderboard privacy, notifications, and support |
+| 5 | **Profile** | Open the reusable Knight Pass and manage account settings |
 
 The visible second-tab label is **Map** so it fits comfortably in the five-item mobile navbar. The screen title is **KnightMap**.
 
@@ -39,7 +39,7 @@ KnightMap is the dedicated second navigation destination. The remaining features
 - EcoKnight AI is opened from a verified rescue and from Impact.
 - Past Surprise Reveals appear in Surprise Bag details.
 - Campus Rescue League and Knight of the Week live inside Impact.
-- Reservation management opens from the standalone active-reservation card at the top of Explore.
+- The reusable Knight Pass lives in Profile and identifies the student at any participating business.
 
 ## Bottom-navigation visual direction
 
@@ -67,7 +67,7 @@ Show only the action that matches the student's current state:
 - **Join waitlist**
 - **Accept waitlist offer**
 - **Manage reservation**
-- **View pickup pass**
+- **Open Knight Pass** from Profile
 - **Open EcoKnight AI** after verified pickup
 
 These actions are not navigation destinations.
@@ -102,33 +102,11 @@ The top of Explore shows:
 
 If location permission is unavailable, allow the student to choose a campus area manually.
 
-### 2. Standalone active-reservation card
+### 2. Reservation status
 
-When the student has an active reservation, waitlist offer, or urgent pickup state, show one visually distinct full-width card above the discovery cards. It must not look like another available Surprise Bag.
+Explore remains focused on discovery. Reservation confirmation, pickup timing, directions, cancellation, waitlist offers, and payment status belong in the reservation flow and account history rather than a permanent card above the Explore feed.
 
-The card shows the next reservation requiring attention:
-
-- Restaurant logo and name
-- Reservation or waitlist status
-- Pickup interval
-- Distance
-- Payment status
-- Time-sensitive message when relevant
-- **Manage reservation**
-
-Tapping the card opens the reservation-management view with:
-
-- Pickup address and directions
-- Single-use QR pickup pass
-- Payment authorization or capture status
-- Cancellation action
-- Waitlist-offer acceptance
-- Refund status when relevant
-- Pickup instructions
-
-If several reservations exist, the top card shows the next pickup and indicates the additional count. The management view lists all active reservations and waitlist offers. When there is no active reservation or offer, hide the standalone card rather than showing an empty placeholder.
-
-After staff verifies pickup, remove the reservation from the active card and make its completed-rescue actions available from Impact:
+After staff verifies pickup, make the completed-rescue actions available from Impact:
 
 - **Open EcoKnight AI**
 - **Share a Past Reveal**
@@ -235,7 +213,7 @@ After successful Apple Pay authorization:
 
 - Show **Reservation confirmed**.
 - Explain that payment is authorized and captured after staff verifies pickup.
-- Show the new reservation in the standalone card at the top of Explore.
+- Show the confirmed reservation and explain that the reusable Knight Pass is available in Profile.
 - Reduce live availability in Explore, KnightMap, and Business.
 - Provide **Manage reservation** and **Continue exploring**.
 
@@ -246,7 +224,7 @@ Explore must handle:
 1. Bags available
 2. Only a few bags remaining
 3. Fully reserved with waitlist available
-4. Active reservation pinned above the discovery cards
+4. Active reservation confirmation and management
 5. Time-limited waitlist offer requiring attention
 6. No matching businesses or bags
 7. Location permission unavailable
@@ -260,7 +238,7 @@ Explore must handle:
 Build first:
 
 - Campus location context
-- Standalone active-reservation card and management view
+- Reservation confirmation and management view
 - Search by business
 - Distance, pickup-time, rating, and availability filters
 - Surprise Bag cards
@@ -315,7 +293,7 @@ These calculations use only current time, location, walking-route data, and the 
 
 ### Reservation awareness
 
-If the student has an active reservation, visually identify its business marker and allow the student to open reservation management from the selected-marker sheet. Explore remains the primary location for the standalone active-reservation card.
+If the student has an active reservation, visually identify its business marker and allow the student to open reservation management from the selected-marker sheet.
 
 ### KnightMap states
 
@@ -393,7 +371,7 @@ Rules:
 - Participation is optional.
 - Students may use a nickname.
 - Full names are not shown by default.
-- Only staff-verified QR pickups count.
+- Only staff-verified Knight Pass pickups count.
 - Cancelled reservations, missed pickups, and unverified claims earn no points.
 - To discourage hoarding, no more than one rescue per student per day contributes leaderboard points.
 - Measured and estimated impact remain clearly labeled.
@@ -410,6 +388,18 @@ At the weekly reset, the eligible leader receives:
 The reward must not silently remove normal Surprise Bag inventory or leave the participating business uncompensated. A real launch requires sponsor approval and published competition terms. The hackathon may use clearly labeled demo reward data.
 
 ## Profile
+
+### Reusable Knight Pass
+
+The Profile screen owns one permanent Knight Pass for the student. The pass is not tied to a single reservation, so students add at most one KnightSaver pass to Apple Wallet.
+
+- The front shows KnightSaver branding, the student's name, and the approved knight mark.
+- Tapping the card flips it to a QR code; tapping outside the focused card or using the close control exits.
+- The QR represents an opaque, short-lived signed token. It must not expose a raw student identifier or reservation details.
+- Staff scans the pass at the current business location. The server finds that student's valid pickup reservations for that business and pickup window.
+- No match returns **No valid pickup**. One match can be verified directly. Multiple matches require staff to select the exact reservation before verification.
+- Verification is idempotent so repeated scans cannot capture payment or award impact twice.
+- Apple Wallet uses the same renewable pass. Reservation changes update pass relevance; they do not create additional Wallet cards.
 
 ### Account
 
@@ -473,7 +463,7 @@ From the student side, Business must support:
 - Pickup address and map coordinates
 - Logo or branded banner
 - Reservation and waitlist updates
-- QR pickup verification
+- Knight Pass pickup verification
 - Verified impact updates
 
 Changes made in Business must immediately update the Explore feed and KnightMap.
@@ -488,8 +478,8 @@ The verified chain is:
 2. The bag appears in Explore and KnightMap.
 3. Student authorizes payment and reserves.
 4. Availability decreases for both sides.
-5. Student opens the QR pickup pass.
-6. Staff verifies the QR code.
+5. Student opens the reusable Knight Pass from Profile.
+6. Staff scans it and selects the matching reservation when necessary.
 7. Payment is captured.
 8. The rescue moves to completed status.
 9. Verified impact and leaderboard points update.
@@ -505,8 +495,8 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 4. The listing appears immediately in Explore and on the dedicated KnightMap tab.
 5. Student opens KnightMap and sees the restaurant logo, rating, distance, availability, and pickup interval.
 6. Student opens the bag details and reserves with Apple Pay.
-7. The reservation appears as the standalone card at the top of Explore.
-8. Business verifies the student's QR pickup pass.
+7. The reservation confirmation points the student to the reusable Knight Pass in Profile.
+8. Business scans the Knight Pass and verifies the matching pickup.
 9. Impact and the Campus Rescue League update.
 10. Student opens EcoKnight AI and confirms the received items.
 11. AI suggests a dorm-friendly way to use the food.
@@ -517,7 +507,7 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 ### Student-side developer
 
 - Build the shared five-item bottom navigation.
-- Build Explore, the standalone reservation card and management view, KnightMap, Impact, Profile, EcoKnight AI entry points, Past Reveals, and the Campus Rescue League.
+- Build Explore, reservation management, KnightMap, Impact, Profile with the reusable Knight Pass, EcoKnight AI entry points, Past Reveals, and the Campus Rescue League.
 - Provide the route where the Business dashboard is mounted.
 - Use shared listing, reservation, waitlist, payment, pickup, review, impact, and leaderboard states.
 - Confirm that business actions update the student experience.
@@ -532,7 +522,7 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 - Support manual listing as a fallback.
 - Publish the logo, approved price, approved quantity, pickup interval, and map location required by Explore.
 - Manage reservations and waitlists.
-- Verify QR pickup passes.
+- Scan the Knight Pass and verify the matching reservation.
 - Trigger payment capture, verified impact, leaderboard credit, EcoKnight AI access, and feedback eligibility.
 - Confirm that student actions update Business.
 
