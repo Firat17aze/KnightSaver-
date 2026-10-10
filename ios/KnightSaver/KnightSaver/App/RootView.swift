@@ -55,6 +55,7 @@ struct RootView: View {
                     case .profile:
                         ProfileView(
                             pass: knightPass,
+                            activeReservations: $activeReservations,
                             action: { showKnightPass = true }
                         )
                     }
@@ -79,38 +80,6 @@ struct RootView: View {
         }
         .tint(KnightTheme.ink)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
-    }
-}
-
-private struct ProfileView: View {
-    let pass: KnightPass
-    let action: () -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Profile")
-                            .font(.system(size: 32, weight: .black, design: .rounded))
-                            .foregroundStyle(KnightTheme.ink)
-                        Text(pass.campusName)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(KnightTheme.muted)
-                    }
-
-                    Spacer()
-                    KnightMark()
-                }
-
-                KnightPassButton(pass: pass, action: action)
-            }
-            .padding(.horizontal, KnightTheme.screenPadding)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
-        }
-        .scrollIndicators(.hidden)
-        .background(KnightTheme.paper)
     }
 }
 
