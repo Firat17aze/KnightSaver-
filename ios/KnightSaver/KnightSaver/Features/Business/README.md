@@ -9,10 +9,10 @@ It is already added to `KnightSaver.xcodeproj` and shown from `RootView` with `B
 One scrollable dashboard:
 
 - **Header**: "Restaurant", the **Scan Knight Pass** button (styled like the Knight Pass card), and a full-width gold **List surplus** button under it.
-- **Current Surprise Bags**: status, bags left, price, pickup interval, and a staff-only packing note from the AI bag split ("Each bag: 2 bagels, 1 pastry, 1 sandwich", or "Bag 1: …" when bags differ). Also **Edit listing** (voice or manual), **Pause/Resume** and close/cancel.
+- **Current Surprise Bags**: status, bags left, price and pickup interval, with **Edit listing** (voice or manual), **Pause/Resume** and close/cancel. The AI bag split is still saved on each listing (`bagSplit`, `staffPackingLines`) but isn't shown on the card.
 - **Reserved pickups**: authorized, waitlisted and offer-sent reservations, with **Verify pickup**.
-- **Today's verified rescues**: one "Today's total" row. Tap it to see each verified pickup's price.
-- **Impact report**: bags collected, revenue, measured weight, estimated weight, estimated CO₂e, completion rate and average rating. Estimates are tagged EST.
+- **Today's verified rescues**: one "Total" row. Tap it to see each verified pickup's price.
+- **Impact report**: bags collected (full width), then revenue, estimated CO₂e (tagged Est.), pickup completion and average rating in a 2×2 grid.
 
 ## Flows
 
