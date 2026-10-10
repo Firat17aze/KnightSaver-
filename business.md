@@ -1,135 +1,327 @@
 # KnightSaver Business Experience
 
+## Business-side purpose
+
+The Business section lets authorized staff turn uncertain surplus into live pickup-only Surprise Bags, manage expected pickups, verify collection, and produce credible impact records.
+
+The business-side developer owns the content inside the fourth **Business** navigation destination. The student-side developer owns the shared navigation shell and the other four destinations.
+
+For the hackathon, Business may remain visible as a clearly labeled demo view. In a real deployment, it must require an authorized staff or manager account.
+
 ## Position inside the shared app
 
-KnightSaver is one app with five bottom-navigation sections:
+KnightSaver uses five bottom-navigation destinations:
 
 1. **Explore**
-2. **Rescues** (opens **My Rescues**)
+2. **Rescues**
 3. **Impact**
 4. **Business**
 5. **Profile**
 
-The business dashboard occupies only the fourth button in the shared navigation. The fifth button opens the user's profile and settings. The business dashboard is the fourth section. The shared navigation uses the same floating rounded, icon-over-label style documented in `student.md`. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
+Business remains the fourth destination. Do not create a second business navigation bar or a separate business app.
 
-For a real deployment, the **Business** section requires an authorized staff or manager account. During the hackathon, it may be shown as a clearly labeled demo business view.
+The Business page is one focused, scrollable dashboard. Keep **+ List surplus** immediately above the shared bottom navigation while Business is selected.
 
-## Shared visual references
+## Shared product rules
 
-The two developers should follow the same design decisions.
+- KnightSaver is pickup only.
+- Listings are **Surprise Bags** with unknown exact contents.
+- Businesses set the price, available quantity, pickup location, and exact pickup interval.
+- Student Explore uses restaurant logos or branded banners, not promised food photography.
+- Do not require an exact food name or category.
+- Do not promise ingredients, allergens, dietary suitability, freshness, or specific contents.
+- Do not provide original-price or student-savings fields for Explore.
+- Business updates must immediately update the student feed and KnightMap.
 
-### Bottom navigation
+## Business data required by Explore and KnightMap
 
-- Use the Rakuten-inspired floating rounded capsule documented in `student.md`.
-- Keep five equal destinations with an icon above each visible label.
-- Use a soft KnightSaver-colored highlight for the active destination.
-- Business remains the fourth navigation button.
-- Do not add a second business navigation bar.
-- Place **+ List surplus** immediately above the shared navigation.
+Each published Surprise Bag needs:
 
-### Explore page
+- Business identifier
+- Business name
+- Restaurant logo or branded banner
+- Business rating, derived from verified student feedback
+- **Surprise Bag** listing label
+- Current price
+- Total and remaining bag quantity
+- Pickup start time
+- Pickup end time
+- Pickup address
+- Latitude and longitude for KnightMap
+- Optional general description that does not guarantee exact contents
+- Listing status
+- Created and updated timestamps
 
-- The student Explore page uses an Uber Eats-inspired food-browsing hierarchy.
-- It starts with campus pickup context, a prominent search field, horizontal filters, and large food listing cards.
-- It uses KnightSaver branding and pickup-specific information rather than delivery tracking, ratings, or restaurant promotions.
-- Business listings must provide the information needed by those cards: image, food name, price, quantity, pickup deadline, location, and confirmed dietary details.
-- Changes made from the Business section should update the Explore feed immediately.
+The business profile may provide the logo, address, and map coordinates so staff do not need to re-enter them for every listing.
+
+Recommended listing statuses:
+
+- **Draft**
+- **Available**
+- **Fully reserved**
+- **Paused**
+- **Closed**
+- **Cancelled**
+
+Recommended reservation statuses:
+
+- **Authorized**
+- **Waitlisted**
+- **Offer sent**
+- **Cancelled**
+- **Pickup verified**
+- **Payment captured**
+- **Refunded**
+- **Missed**
+
+Both developers must use the same status values.
 
 ## Main business action
 
-**+ List surplus**
+### + List surplus
 
-This button remains immediately above the shared five-item navigation while the **Business** section is selected.
+Tapping **+ List surplus** gives staff two choices:
 
-When tapped, staff choose one of two methods:
+- **Speak with AI**
+- **Enter manually**
 
-- **Speak with AI** — Staff describe the food, quantity, price, and pickup time. AI creates an editable draft.
-- **Enter manually** — Staff complete the short listing form themselves.
+### Speak with AI
 
-Staff always review and confirm a listing before it is published. AI cannot invent allergens or approve food safety.
+Staff may say:
 
-## Simplified business page
+> “Create five Surprise Bags for $5.99, pickup from 7:00 to 7:30 PM.”
 
-The business page contains only four important sections and does not add any internal bottom-navigation buttons.
+AI turns the voice description into an editable draft containing:
 
-### 1. Current listings
+- Quantity
+- Price
+- Pickup start time
+- Pickup end time
+- Optional general description
+- Default business location
 
-Shows food currently available to students:
+Staff must review and approve the draft before publication.
 
-- Food name.
-- Remaining quantity.
-- Price.
-- Pickup deadline.
-- Available, fully reserved, paused, or closed status.
-- **Edit listing** action.
+AI must not:
 
-Staff can edit an existing listing in two ways:
+- Publish without staff confirmation
+- Invent exact bag contents
+- Invent allergens or dietary claims
+- Approve food safety
+- Change the business location without confirmation
 
-- **Edit with voice** — For example: “Change the bagels to six portions and move pickup to 7:30.”
-- **Edit manually** — Change the quantity, price, food details, or pickup deadline in a form.
+### Enter manually
 
-AI converts voice instructions into proposed changes. Staff see the changes and approve them before the live listing updates.
+The short manual form contains:
 
-### 2. Reserved spots
+- Quantity
+- Price
+- Pickup start time
+- Pickup end time
+- Optional general description
+- Location confirmation
 
-Shows upcoming student pickups:
+The restaurant logo comes from the business profile unless staff explicitly replaces it.
 
-- Student name.
-- Reserved item and quantity.
-- Pickup deadline.
-- Authorized payment status.
-- Waitlist status when relevant.
-- **Verify pickup** action.
+## Simplified business dashboard
 
-When the student cancels, the authorized payment is released and the portion is offered to the next waitlisted student.
+The hackathon dashboard contains four primary sections.
 
-### 3. Today’s rescues
+### 1. Current Surprise Bags
 
-Shows completed, staff-verified pickups from today:
+Show every active or recently changed listing with:
 
-- Student or reservation identifier.
-- Food and quantity collected.
-- Pickup time.
-- Payment captured status.
-- Verified rescue status.
+- Surprise Bag label
+- Remaining and total quantity
+- Price
+- Pickup interval
+- Available, fully reserved, paused, closed, or cancelled status
+- **Edit listing**
+- **Pause** or **Resume**
+- Optional rating and feedback summary
 
-A reservation appears here only after staff verifies the QR pickup pass.
+Staff may edit through:
 
-### 4. Impact report
+- **Edit with voice**
+- **Edit manually**
 
-Shows only the most useful proof for judges:
+Example voice edit:
 
-- Verified portions rescued.
-- Measured or estimated food weight.
-- Revenue recovered.
-- Student savings.
-- Pickup completion rate.
+> “Change the quantity to six bags and move pickup to 7:15–7:45 PM.”
 
-Impact updates only after a verified pickup. Measured and estimated food weight must remain clearly labeled.
+AI presents proposed changes. Staff approve them before live data changes.
+
+Publishing or editing a listing must update:
+
+- Explore feed
+- KnightMap marker
+- Available quantity
+- Pickup interval
+- Student detail view
+
+### 2. Reserved pickups
+
+Show upcoming student pickups:
+
+- Student display name or reservation identifier
+- Surprise Bag quantity
+- Pickup interval
+- Reservation status
+- Authorized payment status
+- Waitlist status when relevant
+- **Verify pickup**
+
+If a student cancels:
+
+- Release the payment authorization according to the payment policy.
+- Increase availability or offer the bag to the next waitlisted student.
+- Update Explore and KnightMap immediately.
+- Do not create impact or leaderboard credit.
+
+### 3. Today's verified rescues
+
+Show completed pickups from today:
+
+- Student display name or reservation identifier
+- Surprise Bag quantity
+- Verified pickup time
+- Payment-captured status
+- Verified rescue status
+
+A reservation appears here only after staff verifies the student's single-use QR pickup pass.
+
+QR verification triggers:
+
+1. Reservation becomes **Pickup verified**.
+2. Payment capture begins.
+3. The rescue enters today's verified rescues.
+4. Verified student and campus impact update.
+5. Campus Rescue League receives the eligible point.
+6. EcoKnight AI becomes available for that rescue.
+7. The student becomes eligible to submit a rating, comment, and Past Surprise Reveal.
+
+The verification action must be protected against accidental double scanning.
+
+### 4. Business impact report
+
+Show concise proof for judges:
+
+- Verified Surprise Bags collected
+- Measured food weight
+- Estimated food weight, separately labeled
+- Estimated environmental impact
+- Revenue recovered
+- Pickup completion rate
+- Average verified rating
+
+Impact updates only after verified pickup. Never present estimated weight or carbon impact as measured data.
+
+The Campus Rescue League and Knight of the Week are student-facing features. The business dashboard does not need to manage the competition. A sponsoring business may be represented by demo configuration outside the dashboard.
+
+## Student feedback and Past Surprise Reveals
+
+Only verified pickups can create feedback.
+
+The business side needs read access to:
+
+- Overall rating
+- Portion rating
+- Surprise-quality rating
+- Pickup-experience rating
+- Written comment
+- Optional Past Reveal photo
+- **Would you reserve again?**
+
+For the hackathon, a compact rating summary and recent comments may appear inside Current Surprise Bags or the business profile. A separate feedback page is not required.
+
+Past Reveal photos show historical student experiences and never guarantee the next bag's contents.
+
+## Business relationship to KnightMap
+
+KnightMap is owned by the student-side developer, but Business supplies the live data.
+
+Business must ensure that each listing has:
+
+- A valid pickup address
+- Valid map coordinates
+- An exact pickup start and end time
+- Current remaining quantity
+- Current status
+
+If a listing is paused, closed, cancelled, or fully reserved, the map marker and student actions must update immediately.
+
+The business side does not need to build routing or directions.
 
 ## Essential business flow
 
 1. Staff taps **+ List surplus**.
-2. Staff creates the listing by AI voice or manual entry.
-3. Staff reviews and publishes the listing.
-4. The listing appears in the student **Explore** section.
-5. Student authorizes payment and reserves.
-6. The reservation appears in **Reserved spots**.
-7. If the student cancels, payment is released and the waitlist is triggered.
-8. Staff verifies the final student's QR pickup pass.
-9. Payment is captured.
-10. The pickup moves into **Today’s rescues**.
-11. The **Impact report** updates.
+2. Staff chooses voice AI or manual entry.
+3. Staff reviews the Surprise Bag draft.
+4. Staff publishes it.
+5. The listing appears in Explore and KnightMap.
+6. A student authorizes payment and reserves.
+7. The reservation appears in Reserved pickups.
+8. Cancellation releases the authorization and triggers the waitlist when relevant.
+9. Staff verifies the final student's QR pickup pass.
+10. Payment is captured.
+11. The pickup moves into Today's verified rescues.
+12. Verified impact and leaderboard state update.
+13. EcoKnight AI and Past Reveal submission unlock for the student.
 
-## Features intentionally excluded from the hackathon page
+## Two-to-three-minute demo responsibility
 
-To keep the business experience reliable, do not prioritize:
+The business-side portion of the demo should take approximately 20–35 seconds:
 
-- Multiple business locations.
-- Detailed historical analytics.
-- Complex charts.
-- Staff scheduling.
-- Customer messaging.
-- Full accounting or payout reconciliation.
-- Advanced AI forecasting.
-- Separate pages for listings, reservations, and reports.
+1. Open Business.
+2. Tap **+ List surplus**.
+3. Say: “Create five Surprise Bags for $5.99, pickup from 7:00 to 7:30 PM.”
+4. Show the editable AI draft.
+5. Approve and publish.
+6. Later, scan or verify the student's QR pickup pass.
+7. Show the listing move into Today's verified rescues.
+
+The student demo then shows KnightMap, reservation, EcoKnight AI, Past Surprise Reveals, verified impact, and the Campus Rescue League.
+
+## Shared integration contract
+
+The two developers must agree on these shared objects:
+
+- Business
+- Surprise Bag listing
+- Reservation
+- Waitlist entry
+- Payment state
+- Pickup verification
+- Review
+- Past Surprise Reveal
+- Impact record
+- Leaderboard event
+
+The most important integration events are:
+
+- **Listing published**
+- **Listing updated**
+- **Reservation created**
+- **Reservation cancelled**
+- **Waitlist offer created**
+- **Pickup verified**
+- **Payment captured**
+- **Impact recorded**
+- **Leaderboard credited**
+- **Feedback submitted**
+
+## Features intentionally excluded from the hackathon business page
+
+Do not prioritize:
+
+- Multiple business locations
+- Detailed historical analytics
+- Complex charts
+- Staff scheduling
+- Customer messaging
+- Full accounting or payout reconciliation
+- Advanced AI forecasting
+- Business management of the weekly competition
+- Separate pages for listings, reservations, reports, or feedback
+
+The goal is a reliable live loop between business publishing, student reservation, QR verification, and verified impact.
