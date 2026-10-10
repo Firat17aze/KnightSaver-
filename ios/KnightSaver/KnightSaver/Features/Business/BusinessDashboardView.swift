@@ -7,6 +7,8 @@ struct BusinessDashboardView: View {
     @ObservedObject var store: BusinessStore
     @State private var sheet: BusinessSheet?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// App-wide dark mode, read by KnightSaverApp.
+    @AppStorage("knightsaver.darkMode") private var darkMode = false
 
     init(store: BusinessStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -42,18 +44,18 @@ struct BusinessDashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "storefront.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(KnightTheme.goldDeep)
-                    .frame(width: 50, height: 50)
-                    .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    .accessibilityHidden(true)
-                Text("Restaurant")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
+                HStack(spacing: 12) {
+                    BrandMark(brand: store.profile.brand, size: 50)
+                    Text("Restaurant")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                }
+                .accessibilityElement(children: .combine)
+
                 Spacer(minLength: 0)
+
+                darkModeButton
             }
-            .accessibilityElement(children: .combine)
 
             ScanKnightPassButton {
                 sheet = .scan(expected: nil)
@@ -69,6 +71,29 @@ struct BusinessDashboardView: View {
             .accessibilityLabel("List surplus")
             .accessibilityHint("Publish new Surprise Bags with AI or manually")
         }
+    }
+
+    /// Crescent moon at the top right. Turns dark mode on or off for the whole app.
+    private var darkModeButton: some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                darkMode.toggle()
+            }
+        } label: {
+            Image(systemName: "moon.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(darkMode ? KnightTheme.onAccent : KnightTheme.ink)
+                .frame(width: 44, height: 44)
+                .background(darkMode ? KnightTheme.gold : KnightTheme.surface, in: Circle())
+                .overlay {
+                    Circle().stroke(KnightTheme.line, lineWidth: darkMode ? 0 : 1)
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Dark mode")
+        .accessibilityValue(darkMode ? "On" : "Off")
+        .accessibilityHint("Switches the whole app between light and dark")
     }
 
     // MARK: - 1. Current Surprise Bags
@@ -142,7 +167,7 @@ struct BusinessDashboardView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(KnightTheme.ink.opacity(0.92), in: Capsule())
+                .background(KnightTheme.night.opacity(0.92), in: Capsule())
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 6)
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -237,7 +262,7 @@ struct ScanKnightPassButton: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(KnightTheme.onAccent)
                     .frame(width: 38, height: 38)
                     .background(KnightTheme.gold, in: Circle())
                     .accessibilityHidden(true)
@@ -384,10 +409,7 @@ struct ReservedPickupCard: View {
                 BizChip(text: statusText, tint: reservation.status.tint)
             }
 
-            VStack(spacing: 9) {
-                BizMetaRow(icon: "clock.fill", text: "Pickup \(reservation.pickupWindowText)")
-                BizMetaRow(icon: "creditcard.fill", text: reservation.payment.rawValue)
-            }
+            BizMetaRow(icon: "clock.fill", text: "Pickup \(reservation.pickupWindowText)")
 
             HStack(spacing: 10) {
                 if reservation.status == .authorized {
@@ -397,7 +419,7 @@ struct ReservedPickupCard: View {
                             Text("Verify pickup")
                         }
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                        .foregroundStyle(KnightTheme.onAccent)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 44)
                         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

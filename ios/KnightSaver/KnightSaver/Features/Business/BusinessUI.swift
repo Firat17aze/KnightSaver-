@@ -131,7 +131,7 @@ struct BizPrimaryLabel: View {
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
         }
-        .foregroundStyle(KnightTheme.ink)
+        .foregroundStyle(KnightTheme.onAccent)
         .frame(maxWidth: .infinity)
         .frame(minHeight: 52)
         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
@@ -175,7 +175,7 @@ struct BizMethodButton: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: icon)
                     .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(KnightTheme.onAccent)
                     .frame(width: 46, height: 46)
                     .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {

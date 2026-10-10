@@ -80,7 +80,7 @@ struct PassScannerView: View {
 
         ZStack {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                .fill(KnightTheme.ink)
+                .fill(KnightTheme.night)
 
             switch camera {
             case .ready:

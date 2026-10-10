@@ -533,7 +533,7 @@ final class BusinessStore: ObservableObject {
 
 extension BusinessStore {
     /// One evening at Knightro's Kitchen. Times are relative to "now" so the demo always works.
-    /// Reserved pickups has exactly two students. Alex Knight's reservation uses the token in
+    /// Reserved pickups has three students. Alex Knight's reservation uses the token in
     /// KnightPass.sample, so scanning the Knight Pass from Profile verifies it.
     static func demo(now: Date = Date()) -> BusinessStore {
         let profile = BusinessProfile.demo
@@ -551,15 +551,15 @@ extension BusinessStore {
                         SurplusItem(name: "Sandwiches", quantity: 7)],
             createdAt: at(-120), updatedAt: at(-30)
         )
-        // Later pickup, nothing reserved yet. Bags differ, so the staff note lists each bag.
-        let later = BusinessListing(
-            price: 4.99, totalQuantity: 4, remainingQuantity: 4,
-            pickupStart: at(90), pickupEnd: at(120),
-            publicDescription: "A mix of tonight's surplus items from the grill.",
+        // Listed by staff with "We have 4 bagels and 6 cookies left" (List surplus example).
+        // 10 items -> 3 bags at the standard $5.99. One student reserved a bag: 2 of 3 left.
+        let bagelsAndCookies = BusinessListing(
+            price: BusinessRules.defaultBagPrice, totalQuantity: 3, remainingQuantity: 2,
+            pickupStart: at(5), pickupEnd: at(35),
+            publicDescription: BusinessRules.defaultPublicDescription,
             pickupAddress: profile.pickupAddress, latitude: profile.latitude, longitude: profile.longitude,
-            inventory: [SurplusItem(name: "Wraps", quantity: 6), SurplusItem(name: "Salads", quantity: 4),
-                        SurplusItem(name: "Cookies", quantity: 4)],
-            createdAt: at(-60), updatedAt: at(-60)
+            inventory: [SurplusItem(name: "Bagels", quantity: 4), SurplusItem(name: "Cookies", quantity: 6)],
+            createdAt: at(-15), updatedAt: at(-10)
         )
         // Earlier pickup, finished: 4 bags = 3 collected + 1 missed.
         let earlier = BusinessListing(
@@ -587,11 +587,13 @@ extension BusinessStore {
         }
 
         let reservations = [
-            // Reserved pickups: exactly these two.
+            // Reserved pickups: Alex and Jordan (tonight), Maya (bagels and cookies).
             reservation("KS-4821", KnightPass.sample.displayName, KnightPass.sample.verificationToken, tonight,
                         quantity: 1, status: .authorized, payment: .authorized),
             reservation("KS-3307", "Jordan P.", "demo-JORDAN-3307", tonight,
                         quantity: 2, status: .authorized, payment: .authorized),
+            reservation("KS-6402", "Maya R.", "demo-MAYA-6402", bagelsAndCookies,
+                        quantity: 1, status: .authorized, payment: .authorized),
             // Already collected today (Today's total and the impact report).
             reservation("KS-2018", "Sam W.", "demo-SAM-2018", tonight,
                         quantity: 1, status: .paymentCaptured, payment: .captured,
@@ -616,7 +618,7 @@ extension BusinessStore {
         return BusinessStore(
             profile: profile,
             isDemo: true,
-            listings: [tonight, later, earlier],
+            listings: [tonight, bagelsAndCookies, earlier],
             reservations: reservations,
             feedback: feedback
         )

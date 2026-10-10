@@ -452,7 +452,7 @@ private struct ReservationDetailsView: View {
                 } label: {
                     Label("Open directions", systemImage: "location.fill")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                        .foregroundStyle(KnightTheme.onAccent)
                         .frame(maxWidth: .infinity, minHeight: 52)
                         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
                 }
