@@ -29,6 +29,33 @@ struct BusinessProfile: Identifiable, Hashable {
     )
 }
 
+// MARK: - Pickup spots
+
+/// Where students collect a bag. Staff pick one when listing or editing.
+/// Coordinates are approximate campus points for KnightMap.
+struct PickupLocation: Identifiable, Hashable {
+    let name: String
+    let detail: String
+    let latitude: Double
+    let longitude: Double
+
+    var id: String { address }
+    var address: String { "\(name) · \(detail)" }
+
+    static let campusSpots: [PickupLocation] = [
+        PickupLocation(name: "Student Union", detail: "Level 1", latitude: 28.6016, longitude: -81.2005),
+        PickupLocation(name: "John C. Hitt Library", detail: "Front entrance", latitude: 28.6003, longitude: -81.2017),
+        PickupLocation(name: "Memory Mall", detail: "Reflecting pond", latitude: 28.6019, longitude: -81.1997),
+        PickupLocation(name: "Engineering Atrium", detail: "Ground floor", latitude: 28.6015, longitude: -81.1983),
+        PickupLocation(name: "Addition Financial Arena", detail: "Gate A", latitude: 28.6074, longitude: -81.1973),
+    ]
+
+    /// The spot that matches a saved address, or the first spot.
+    static func matching(_ address: String) -> PickupLocation {
+        campusSpots.first { $0.address == address } ?? campusSpots[0]
+    }
+}
+
 // MARK: - Rules the AI and the plan screen follow
 
 enum BusinessRules {

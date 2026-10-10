@@ -27,7 +27,8 @@ struct BagPlan: Hashable {
     var pickupStart: Date
     var pickupEnd: Date
     var publicDescription: String
-    var locationConfirmed: Bool = false
+    /// Chosen from the campus pickup spots.
+    var pickupLocation: PickupLocation = PickupLocation.campusSpots[0]
     /// On: contents stay a secret, even in the staff split. Off: a Rescue Bag with known contents.
     var isSurprise: Bool = true
     var createdByAI: Bool
@@ -49,7 +50,6 @@ struct BagPlan: Hashable {
         if totalItems > 0 && bagCount > totalItems { result.append("There are more bags than surplus items.") }
         if price < 0 { result.append("Price can't be negative.") }
         if pickupEnd <= pickupStart { result.append("Pickup must end after it starts.") }
-        if !locationConfirmed { result.append("Confirm the pickup location.") }
         return result
     }
 

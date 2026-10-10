@@ -21,6 +21,7 @@ struct EditListingFlow: View {
     @State private var pickupStart: Date
     @State private var pickupEnd: Date
     @State private var publicDescription: String
+    @State private var pickupLocation: PickupLocation
     @FocusState private var dictationFocused: Bool
 
     static let exampleInstruction = "Change the quantity to six bags and move pickup to 7:15–7:45 PM."
@@ -33,6 +34,7 @@ struct EditListingFlow: View {
         _pickupStart = State(initialValue: listing.pickupStart)
         _pickupEnd = State(initialValue: listing.pickupEnd)
         _publicDescription = State(initialValue: listing.publicDescription)
+        _pickupLocation = State(initialValue: PickupLocation.matching(listing.pickupAddress))
     }
 
     var body: some View {
@@ -270,6 +272,12 @@ struct EditListingFlow: View {
             }
 
             Section {
+                PickupLocationPicker(selection: $pickupLocation)
+            } header: {
+                Text("Pickup location")
+            }
+
+            Section {
                 TextField("General description", text: $publicDescription, axis: .vertical)
                     .lineLimit(1...3)
             } header: {
@@ -291,7 +299,8 @@ struct EditListingFlow: View {
                         price: price,
                         pickupStart: pickupStart,
                         pickupEnd: pickupEnd,
-                        description: publicDescription
+                        description: publicDescription,
+                        location: pickupLocation
                     )
                     dismiss()
                 } label: {
