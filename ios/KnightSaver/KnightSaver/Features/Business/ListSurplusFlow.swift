@@ -23,6 +23,7 @@ struct ListSurplusFlow: View {
     @State private var heardPrice: Double?
     @State private var plan: BagPlan?
     @FocusState private var dictationFocused: Bool
+    @StateObject private var dictation = VoiceDictation()
 
     static let exampleSentence = "We have 4 bagels and 6 cookies left. Pickup can be from 7:00 to 7:30 PM."
 
@@ -90,7 +91,9 @@ struct ListSurplusFlow: View {
     private func goBack() {
         switch step {
         case .choose: break
-        case .speak: step = .choose
+        case .speak:
+            dictation.stop()
+            step = .choose
         case .understood: step = usingAI ? .speak : .choose
         case .plan: step = .understood
         }
@@ -149,13 +152,13 @@ struct ListSurplusFlow: View {
                 Text("Tell me what's left")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
-                Label("Tap the box, then the microphone on the keyboard, and talk.", systemImage: "mic.circle.fill")
+                Text("Tap the mic and say what's left, when pickup is and the price if you have one. I'll write it down.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
 
-                BizDictationBox(prompt: "“\(Self.exampleSentence)”", text: $transcript, focus: $dictationFocused)
+                BizVoiceComposer(prompt: "“\(Self.exampleSentence)”", text: $transcript, focus: $dictationFocused, voice: dictation)
 
-                if store.isDemo && transcript.isEmpty {
+                if store.isDemo && transcript.isEmpty && !dictation.isListening {
                     Button {
                         transcript = Self.exampleSentence
                     } label: {
@@ -175,7 +178,6 @@ struct ListSurplusFlow: View {
             }
             .padding(KnightTheme.screenPadding)
         }
-        .onAppear { dictationFocused = true }
     }
 
     private var transcriptIsEmpty: Bool {
@@ -183,6 +185,7 @@ struct ListSurplusFlow: View {
     }
 
     private func understand() {
+        dictation.stop()
         let result = SurplusAssistant.interpret(transcript)
         inventory = result.inventory
         if let start = result.pickupStart { pickupStart = start }

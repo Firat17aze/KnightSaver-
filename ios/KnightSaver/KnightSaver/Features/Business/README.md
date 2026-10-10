@@ -16,12 +16,12 @@ One scrollable dashboard:
 
 ## Flows
 
-- **+ List surplus → Speak with AI**: staff dictate with the keyboard microphone. Then:
+- **+ List surplus → Speak with AI**: staff tap the big gold microphone and talk; words stream into the box live (Speech framework, `VoiceDictation`). Tap again to stop, or type to fix words. Then:
   1. **What I understood**: an editable list of items and quantities, the pickup interval, and any missing information.
   2. **Proposed listing**: number of bags, price, interval, public description, location confirmation, and how the items are split per bag, with anything unallocated shown.
   3. Nothing goes live until staff tap **Approve and publish**.
 - **+ List surplus → Enter manually**: same two screens without AI.
-- **Edit listing**: voice ("Change the quantity to six bags and move pickup to 7:15–7:45 PM") shows the proposed changes for approval, or staff edit manually.
+- **Edit listing**: voice, using the same microphone button ("Change the quantity to six bags and move pickup to 7:15–7:45 PM") shows the proposed changes for approval, or staff edit manually.
 - **Scan Knight Pass**: camera QR scan of the student's reusable pass (`knightsaver://verify-user/<token>`). The result is one of:
   - **No valid pickup**.
   - One match → confirm.
@@ -48,6 +48,7 @@ One scrollable dashboard:
 | `ListSurplusFlow.swift` | + List surplus: AI/manual, What I understood, Proposed listing |
 | `EditListingFlow.swift` | Edit with voice / Edit manually |
 | `PassScannerView.swift` | Knight Pass camera scanner and verification |
+| `VoiceDictation.swift` | Live speech-to-text and the microphone button (`BizVoiceComposer`) |
 | `SurplusAssistant.swift` | Speech-to-inventory parsing, bag plan and allocation, voice edits |
 | `BusinessStore.swift` | Data and actions (publish, edit, waitlist, scan, verify), plus demo data |
 | `BusinessModels.swift` | Listing, reservation, payment, feedback, impact and event types |
