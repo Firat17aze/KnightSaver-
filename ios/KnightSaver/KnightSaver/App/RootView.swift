@@ -51,7 +51,7 @@ struct RootView: View {
                     case .impact:
                         PlaceholderView(title: "Your impact", subtitle: "Verified rescues and EcoKnight AI live here.", icon: "leaf.fill")
                     case .business:
-                        PlaceholderView(title: "Business", subtitle: "Scan a Knight Pass to verify pickups for this location.", icon: "storefront.fill")
+                        BusinessDashboardView()
                     case .profile:
                         ProfileView(
                             pass: knightPass,
