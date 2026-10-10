@@ -37,12 +37,64 @@ For a real deployment, the **Business** section must require an authorized staff
 | Position | Label | Purpose |
 |---|---|---|
 | 1 | **Explore** | Find and reserve available food |
-| 2 | **My Rescues** | Manage reservations, waitlists, payments, and pickup passes |
+| 2 | **Rescues** | Open **My Rescues** to manage reservations, waitlists, payments, and pickup passes |
 | 3 | **Impact** | View verified personal savings and rescue history |
 | 4 | **Business** | Open the single-page business operations dashboard |
 | 5 | **Profile** | Manage account, preferences, notifications, payment settings, and support |
 
 The selected section should be visually clear. Switching sections must not erase active reservations, payment status, waitlist offers, profile settings, or live business updates because all five sections use the same shared backend and database.
+
+## Bottom-navigation visual direction
+
+Use a Rakuten-inspired navigation structure while keeping KnightSaver's own identity.
+
+### Overall shape
+
+- A floating white rounded capsule sits slightly above the bottom safe area.
+- The navigation has a soft shadow and subtle separation from the page content.
+- It contains five equal-width destinations.
+- Each destination uses an icon above a short text label.
+- Labels remain visible for both active and inactive destinations.
+- The navigation stays visible while switching between the five main sections.
+
+### Active destination
+
+- The active destination receives a soft KnightSaver accent background behind the icon and label.
+- Use KnightSaver gold or another approved brand accent instead of Rakuten purple.
+- The active icon and label use the strongest brand color.
+- The selected area is rounded and visibly larger than the icon alone, similar to a soft oval or circular segment.
+- Selection movement may use a short, restrained transition.
+- The active state must remain understandable without animation or color alone.
+
+### Inactive destinations
+
+- Use simple outline icons.
+- Use neutral dark labels with enough contrast.
+- Do not place every inactive tab inside its own visible container.
+- Avoid badges unless a time-sensitive reservation or waitlist offer genuinely needs attention.
+
+### Navigation labels and icons
+
+| Position | Visible label | Suggested icon | Destination |
+|---|---|---|---|
+| 1 | **Explore** | Search or compass | Food discovery |
+| 2 | **Rescues** | Ticket, bag, or check-circle | Page title remains **My Rescues** |
+| 3 | **Impact** | Leaf | Verified savings and rescue history |
+| 4 | **Business** | Storefront | Simplified business dashboard |
+| 5 | **Profile** | Person | Account and preferences |
+
+Use **Rescues** in the navigation instead of **My Rescues** if space is tight. The page itself can still be titled **My Rescues**.
+
+### Mobile behavior
+
+- Keep all five destinations on one row.
+- Preserve comfortable touch targets for every destination.
+- Respect the phone's bottom safe area.
+- Do not allow page content or the **+ List surplus** action to sit behind the navigation.
+- On the Business section, place **+ List surplus** immediately above the floating navigation capsule.
+- If a student action such as **Reserve with Apple Pay** is fixed near the bottom, place it above the navigation with clear spacing.
+
+This is a structural reference, not a direct copy: KnightSaver uses its own icons, labels, color system, spacing, and brand identity.
 
 ## Contextual student bottom action
 
