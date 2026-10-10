@@ -28,6 +28,8 @@ struct BagPlan: Hashable {
     var pickupEnd: Date
     var publicDescription: String
     var locationConfirmed: Bool = false
+    /// On: contents stay a secret, even in the staff split. Off: a Rescue Bag with known contents.
+    var isSurprise: Bool = true
     var createdByAI: Bool
 
     var validInventory: [SurplusItem] {

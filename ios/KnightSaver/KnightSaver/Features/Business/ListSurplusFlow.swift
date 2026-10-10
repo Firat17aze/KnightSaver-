@@ -366,16 +366,17 @@ struct BagPlanEditor: View {
             }
 
             Section {
-                LabeledContent("Inventory accounted for", value: "\(allocatedCount) of \(plan.totalItems) items")
-                ForEach(Array(allocation.bags.enumerated()), id: \.offset) { index, bag in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("Bag \(index + 1)")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .frame(width: 54, alignment: .leading)
-                        Text(bag.summaryText)
-                            .font(.system(size: 14, weight: .medium))
+                Toggle(isOn: $plan.isSurprise) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Surprise Bag")
+                        Text(plan.isSurprise ? "Contents stay a secret" : "Rescue Bag · students see what's inside")
+                            .font(.system(size: 13))
                             .foregroundStyle(KnightTheme.muted)
                     }
+                }
+                LabeledContent("Inventory accounted for", value: "\(allocatedCount) of \(plan.totalItems) items")
+                ForEach(Array(allocation.bags.enumerated()), id: \.offset) { index, bag in
+                    BagLineupRow(index: index, items: bag, isSurprise: plan.isSurprise)
                 }
                 if !allocation.leftover.isEmpty {
                     Label("Not allocated: \(allocation.leftover.summaryText)", systemImage: "exclamationmark.triangle.fill")
@@ -383,9 +384,11 @@ struct BagPlanEditor: View {
                         .foregroundStyle(KnightTheme.red)
                 }
             } header: {
-                Text("How the surplus is split · staff only")
+                Text("The lineup · staff only")
             } footer: {
-                Text("Uses only the items you confirmed. Students still see a Surprise Bag with no guaranteed contents.")
+                Text(plan.isSurprise
+                     ? "What's inside stays a surprise, even here. Pack the confirmed items across these bags."
+                     : "Not a surprise, so each bag's contents are shown here and to students.")
             }
 
             Section {
@@ -413,6 +416,41 @@ struct BagPlanEditor: View {
         }
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+/// One bag in the lineup: Roman numeral, a knight-themed name, and either a
+/// sealed "surprise" line or the contents (Rescue Bags only).
+struct BagLineupRow: View {
+    let index: Int
+    let items: [SurplusItem]
+    let isSurprise: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(BagName.numeral(index))
+                .font(.system(size: 13, weight: .bold, design: .serif))
+                .foregroundStyle(KnightTheme.goldDeep)
+                .frame(width: 34, height: 34)
+                .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(BagName.name(index, isSurprise: isSurprise))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+                if isSurprise {
+                    Label("\(items.totalUnits) item\(items.totalUnits == 1 ? "" : "s"), sealed", systemImage: "lock.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                } else {
+                    Text(items.isEmpty ? "Nothing assigned yet" : items.summaryText)
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

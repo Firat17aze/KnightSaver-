@@ -234,6 +234,16 @@ enum BusinessSheet: Identifiable, Hashable {
 struct ScanKnightPassButton: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isDark: Bool { colorScheme == .dark }
+
+    /// Dark mode: the Knight Pass card's black. Light mode: soft champagne gold that sits well on white.
+    private var gradientColors: [Color] {
+        isDark
+            ? [Color(red: 0.055, green: 0.053, blue: 0.05), Color(red: 0.14, green: 0.125, blue: 0.095)]
+            : [Color(red: 1.0, green: 0.968, blue: 0.875), Color(red: 0.965, green: 0.878, blue: 0.635)]
+    }
 
     var body: some View {
         Button(action: action) {
@@ -242,14 +252,14 @@ struct ScanKnightPassButton: View {
                     Text("KNIGHTSAVER")
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(2.2)
-                        .foregroundStyle(KnightTheme.gold)
+                        .foregroundStyle(isDark ? KnightTheme.gold : KnightTheme.goldDeep)
                         .padding(.bottom, 4)
                     Text("Scan Knight Pass")
                         .font(.system(size: 21, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(isDark ? Color.white : KnightTheme.onAccent)
                     Text("Verify a student's pickup")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(isDark ? Color.white.opacity(0.68) : KnightTheme.onAccent.opacity(0.62))
                 }
 
                 Spacer(minLength: 8)
@@ -262,9 +272,9 @@ struct ScanKnightPassButton: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(KnightTheme.onAccent)
+                    .foregroundStyle(isDark ? KnightTheme.onAccent : KnightTheme.gold)
                     .frame(width: 38, height: 38)
-                    .background(KnightTheme.gold, in: Circle())
+                    .background(isDark ? KnightTheme.gold : KnightTheme.night, in: Circle())
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 18)
@@ -273,16 +283,9 @@ struct ScanKnightPassButton: View {
             .background {
                 GeometryReader { proxy in
                     ZStack {
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.055, green: 0.053, blue: 0.05),
-                                Color(red: 0.14, green: 0.125, blue: 0.095)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
                         Circle()
-                            .stroke(KnightTheme.gold.opacity(0.14), lineWidth: 1)
+                            .stroke(isDark ? KnightTheme.gold.opacity(0.14) : KnightTheme.goldDeep.opacity(0.22), lineWidth: 1)
                             .frame(width: proxy.size.width * 0.62)
                             .offset(x: proxy.size.width * 0.38, y: -proxy.size.height * 0.62)
                     }
@@ -291,9 +294,9 @@ struct ScanKnightPassButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(.white.opacity(0.14), lineWidth: 1)
+                    .stroke(isDark ? Color.white.opacity(0.14) : Color.white.opacity(0.7), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.18), radius: 16, x: 0, y: 8)
+            .shadow(color: isDark ? .black.opacity(0.18) : KnightTheme.goldDeep.opacity(0.18), radius: 16, x: 0, y: 8)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
