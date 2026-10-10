@@ -747,6 +747,10 @@ struct SurpriseBagCard: View {
         VStack(alignment: .leading, spacing: 0) {
             BrandBanner(bag: bag)
                 .frame(height: 140)
+                .overlay(alignment: .topLeading) {
+                    AvailabilityChip(count: bag.availableCount, text: bag.availabilityText)
+                        .padding(12)
+                }
 
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -774,11 +778,6 @@ struct SurpriseBagCard: View {
                     MetadataItem(icon: "clock", text: bag.pickupWindow)
                     MetadataItem(icon: "figure.walk", text: String(format: "%.1f mi · %@", bag.distance, bag.location))
                 }
-
-                Divider()
-                    .overlay(KnightTheme.line)
-
-                AvailabilityLabel(count: bag.availableCount, text: bag.availabilityText)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -850,21 +849,28 @@ private struct MetadataItem: View {
     }
 }
 
-private struct AvailabilityLabel: View {
+/// Sits on the card photo, so it uses a solid fill; the fill color carries the stock level.
+private struct AvailabilityChip: View {
     let count: Int
     let text: String
 
+    private var fill: Color {
+        count == 0 ? KnightTheme.red : count <= 2 ? KnightTheme.gold : KnightTheme.night
+    }
+
+    private var textColor: Color {
+        count > 0 && count <= 2 ? KnightTheme.onAccent : .white
+    }
+
     var body: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(count == 0 ? KnightTheme.red : count <= 2 ? KnightTheme.goldDeep : KnightTheme.green)
-                .frame(width: 7, height: 7)
-            Text(text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .font(.system(size: 12, weight: .bold))
-        .foregroundStyle(KnightTheme.ink)
+        Text(text)
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundStyle(textColor)
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .frame(minHeight: 30)
+            .background(fill, in: Capsule())
+            .alwaysLight()
     }
 }
 
