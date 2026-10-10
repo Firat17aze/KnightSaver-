@@ -746,35 +746,42 @@ struct SurpriseBagCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             BrandBanner(bag: bag)
-                .frame(height: 138)
+                .frame(height: 140)
 
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(bag.business)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(bag.business)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
 
-                    Spacer(minLength: 8)
+                        Spacer(minLength: 8)
 
-                    Text(bag.formattedPrice)
-                        .font(.system(size: 17, weight: .black, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                        Text(bag.formattedPrice)
+                            .font(.system(size: 17, weight: .black, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+                            .fixedSize()
+                    }
+
+                    Text("Surprise Bag")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
                 }
 
-                Text("Surprise Bag")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(KnightTheme.muted)
-
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 7) {
                     MetadataItem(icon: "clock", text: bag.pickupWindow)
                     MetadataItem(icon: "figure.walk", text: String(format: "%.1f mi · %@", bag.distance, bag.location))
                 }
 
+                Divider()
+                    .overlay(KnightTheme.line)
+
                 AvailabilityLabel(count: bag.availableCount, text: bag.availabilityText)
             }
-            .padding(15)
-            .frame(maxWidth: .infinity, minHeight: 152, alignment: .topLeading)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
@@ -789,23 +796,27 @@ struct BrandBanner: View {
     let bag: SurpriseBag
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Image(bag.bannerAssetName)
-                .resizable()
-                .interpolation(.medium)
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-
-            Label(String(format: "%.1f", bag.rating), systemImage: "star.fill")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 32)
-                .background(.white.opacity(0.94), in: Capsule())
-                .padding(12)
-        }
-        .accessibilityHidden(true)
+        // The photo fills the space it is given; it never sets the width itself,
+        // so cards keep the width their shelf assigns.
+        Color.clear
+            .overlay {
+                Image(bag.bannerAssetName)
+                    .resizable()
+                    .interpolation(.medium)
+                    .scaledToFill()
+            }
+            .clipped()
+            .overlay(alignment: .topTrailing) {
+                Label(String(format: "%.1f", bag.rating), systemImage: "star.fill")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 30)
+                    .background(.white.opacity(0.94), in: Capsule())
+                    .alwaysLight()
+                    .padding(12)
+            }
+            .accessibilityHidden(true)
     }
 }
 
@@ -875,12 +886,14 @@ struct EmptyExploreState: View {
                 .font(.system(size: 14))
                 .foregroundStyle(KnightTheme.muted)
                 .multilineTextAlignment(.center)
-            Button("Clear search", action: reset)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.onAccent)
-                .padding(.horizontal, 18)
-                .frame(minHeight: 46)
-                .background(KnightTheme.gold, in: Capsule())
+            if !searchText.isEmpty {
+                Button("Clear search", action: reset)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.onAccent)
+                    .padding(.horizontal, 18)
+                    .frame(minHeight: 46)
+                    .background(KnightTheme.gold, in: Capsule())
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 42)
