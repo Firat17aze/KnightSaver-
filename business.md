@@ -5,12 +5,12 @@
 KnightSaver is one app with five bottom-navigation sections:
 
 1. **Explore**
-2. **My Rescues**
+2. **Rescues** (opens **My Rescues**)
 3. **Impact**
 4. **Business**
 5. **Profile**
 
-The business dashboard occupies only the fourth button in the shared navigation. The fifth button opens the user's profile and settings. The business dashboard is the fourth section. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
+The business dashboard occupies only the fourth button in the shared navigation. The fifth button opens the user's profile and settings. The business dashboard is the fourth section. The shared navigation uses the same floating rounded, icon-over-label style documented in `student.md`. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
 
 For a real deployment, the **Business** section requires an authorized staff or manager account. During the hackathon, it may be shown as a clearly labeled demo business view.
 
