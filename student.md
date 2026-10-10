@@ -444,7 +444,10 @@ The fourth navigation destination loads the business-side teammate's single-page
 
 From the student side, Business must support:
 
-- AI voice or manual Surprise Bag creation
+- AI voice intake that turns staff-described surplus inventory into a proposed Surprise Bag plan
+- A review screen showing what AI understood, the proposed number of bags, and the proposed listing details
+- Staff approval before any AI-generated listing is published
+- Manual Surprise Bag creation as a fallback
 - Live quantity and price
 - Exact pickup start and end time
 - Pickup address and map coordinates
@@ -476,16 +479,17 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 
 ## Two-to-three-minute demonstration flow
 
-1. Business uses voice AI to draft several Surprise Bags with a price and pickup interval.
-2. Staff reviews and publishes.
-3. The listing appears immediately on KnightMap.
-4. Student sees the restaurant logo, rating, distance, availability, and pickup interval.
-5. Student reserves with Apple Pay.
-6. Business verifies the student's QR pickup pass.
-7. Impact and the Campus Rescue League update.
-8. Student opens EcoKnight AI and confirms the received items.
-9. AI suggests a dorm-friendly way to use the food.
-10. Show a Past Reveal and the Knight of the Week reward.
+1. Business staff describes the real surplus inventory and pickup constraints to voice AI.
+2. AI shows what it understood and proposes the number of Surprise Bags, price, pickup interval, and public description.
+3. Staff corrects the draft if needed, approves it, and publishes.
+4. The listing appears immediately on KnightMap.
+5. Student sees the restaurant logo, rating, distance, availability, and pickup interval.
+6. Student reserves with Apple Pay.
+7. Business verifies the student's QR pickup pass.
+8. Impact and the Campus Rescue League update.
+9. Student opens EcoKnight AI and confirms the received items.
+10. AI suggests a dorm-friendly way to use the food.
+11. Show a Past Reveal and the Knight of the Week reward.
 
 ## Integration responsibilities
 
@@ -500,8 +504,12 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 ### Business-side developer
 
 - Build the single-page Business dashboard described in business.md.
-- Support AI voice and manual listing.
-- Publish the logo, price, quantity, pickup interval, and map location required by Explore.
+- Accept a voice description of the real surplus inventory and pickup constraints.
+- Show staff what AI understood before proposing a listing.
+- Let AI propose the number of Surprise Bags and related listing details from that inventory.
+- Require staff review and approval before publication.
+- Support manual listing as a fallback.
+- Publish the logo, approved price, approved quantity, pickup interval, and map location required by Explore.
 - Manage reservations and waitlists.
 - Verify QR pickup passes.
 - Trigger payment capture, verified impact, leaderboard credit, EcoKnight AI access, and feedback eligibility.
