@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreLocation
+import UIKit
 
 private enum ProfileRoute: Hashable {
     case reservation(UUID)
@@ -616,35 +618,243 @@ private struct NotificationSettingsView: View {
     }
 }
 
+private final class ProfileLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published private(set) var authorizationStatus: CLAuthorizationStatus
+    @Published private(set) var isLocating = false
+    @Published var errorMessage: String?
+
+    private let manager = CLLocationManager()
+    private var hasPendingRequest = false
+
+    override init() {
+        authorizationStatus = manager.authorizationStatus
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    func requestCurrentLocation() {
+        errorMessage = nil
+        hasPendingRequest = true
+
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedAlways, .authorizedWhenInUse:
+            requestLocationUpdate()
+        case .denied:
+            hasPendingRequest = false
+            errorMessage = "Location access is turned off. Enable it in Settings to use your current location."
+        case .restricted:
+            hasPendingRequest = false
+            errorMessage = "Location access is restricted on this device. Choose a UCF campus instead."
+        @unknown default:
+            hasPendingRequest = false
+            errorMessage = "Your location is unavailable right now. Choose a UCF campus instead."
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        authorizationStatus = manager.authorizationStatus
+
+        guard hasPendingRequest else { return }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            requestLocationUpdate()
+        case .denied:
+            hasPendingRequest = false
+            errorMessage = "Location access is turned off. Enable it in Settings to use your current location."
+        case .restricted:
+            hasPendingRequest = false
+            errorMessage = "Location access is restricted on this device. Choose a UCF campus instead."
+        case .notDetermined:
+            break
+        @unknown default:
+            hasPendingRequest = false
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        hasPendingRequest = false
+        isLocating = false
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        hasPendingRequest = false
+        isLocating = false
+
+        if (error as? CLError)?.code != .denied {
+            errorMessage = "We couldn’t find your location. Try again or choose a UCF campus."
+        }
+    }
+
+    private func requestLocationUpdate() {
+        isLocating = true
+        manager.requestLocation()
+    }
+}
+
+private struct UCFCampusLocation: Identifiable {
+    let name: String
+    let address: String
+
+    var id: String { name }
+}
+
 private struct PickupPreferencesView: View {
-    @State private var selectedCampus = "UCF Main Campus"
+    @AppStorage("usesCurrentPickupLocation") private var usesCurrentLocation = false
+    @AppStorage("preferredUCFCampus") private var selectedCampus = "UCF Main Campus"
+    @StateObject private var locationManager = ProfileLocationManager()
+    @Environment(\.openURL) private var openURL
 
     private let campuses = [
-        "UCF Main Campus",
-        "UCF Downtown",
-        "Rosen College of Hospitality Management",
-        "Academic Health Sciences Campus"
+        UCFCampusLocation(name: "UCF Main Campus", address: "4000 Central Florida Blvd."),
+        UCFCampusLocation(name: "UCF Downtown", address: "500 W. Livingston St."),
+        UCFCampusLocation(name: "Health Sciences Campus", address: "6850 Lake Nona Blvd."),
+        UCFCampusLocation(name: "Rosen College", address: "9907 Universal Blvd.")
     ]
 
     var body: some View {
         Form {
-            Section {
-                Picker("UCF campus", selection: $selectedCampus) {
-                    ForEach(campuses, id: \.self) { campus in
-                        Text(campus).tag(campus)
-                    }
+            Section("Current location") {
+                Button {
+                    selectCurrentLocation()
+                } label: {
+                    LocationPreferenceRow(
+                        icon: "location.fill",
+                        title: "Use My Location",
+                        subtitle: currentLocationSubtitle,
+                        isSelected: usesCurrentLocation,
+                        isLoading: locationManager.isLocating
+                    )
                 }
-                .pickerStyle(.inline)
+                .buttonStyle(.plain)
+                .accessibilityValue(usesCurrentLocation ? "Selected" : "Not selected")
+            }
+
+            Section {
+                ForEach(campuses) { campus in
+                    Button {
+                        usesCurrentLocation = false
+                        selectedCampus = campus.name
+                    } label: {
+                        LocationPreferenceRow(
+                            icon: "building.columns.fill",
+                            title: campus.name,
+                            subtitle: campus.address,
+                            isSelected: !usesCurrentLocation && selectedCampus == campus.name,
+                            isLoading: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(!usesCurrentLocation && selectedCampus == campus.name ? "Selected" : "Not selected")
+                }
             } header: {
-                Text("Preferred UCF campus")
+                Text("UCF campuses")
             } footer: {
-                Text("We’ll prioritize available pickups at this campus.")
+                Text("KnightSaver will prioritize available pickups near your selected location.")
             }
         }
         .scrollContentBackground(.hidden)
         .background(KnightTheme.paper)
+        .tint(KnightTheme.goldDeep)
         .navigationTitle("Pickup preferences")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: locationManager.authorizationStatus) { _, status in
+            if status == .authorizedAlways || status == .authorizedWhenInUse {
+                usesCurrentLocation = true
+            }
+        }
+        .alert("Location unavailable", isPresented: locationErrorBinding) {
+            if locationManager.authorizationStatus == .denied {
+                Button("Open Settings") {
+                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(settingsURL)
+                    }
+                }
+            }
+            Button("Choose a campus", role: .cancel) { }
+        } message: {
+            Text(locationManager.errorMessage ?? "Choose a UCF campus instead.")
+        }
+    }
+
+    private var currentLocationSubtitle: String {
+        if locationManager.isLocating {
+            return "Finding your location…"
+        }
+
+        switch locationManager.authorizationStatus {
+        case .denied:
+            return "Location access is off"
+        case .restricted:
+            return "Location access is restricted"
+        default:
+            return "Automatically find nearby pickups"
+        }
+    }
+
+    private var locationErrorBinding: Binding<Bool> {
+        Binding(
+            get: { locationManager.errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    locationManager.errorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func selectCurrentLocation() {
+        if locationManager.authorizationStatus == .authorizedAlways ||
+            locationManager.authorizationStatus == .authorizedWhenInUse {
+            usesCurrentLocation = true
+        }
+        locationManager.requestCurrentLocation()
+    }
+}
+
+private struct LocationPreferenceRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let isSelected: Bool
+    let isLoading: Bool
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(KnightTheme.goldDeep)
+                .frame(width: 38, height: 38)
+                .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.ink)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if isLoading {
+                ProgressView()
+                    .tint(KnightTheme.goldDeep)
+                    .accessibilityLabel("Finding your location")
+            } else if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(minHeight: 54)
+        .contentShape(Rectangle())
     }
 }
 
