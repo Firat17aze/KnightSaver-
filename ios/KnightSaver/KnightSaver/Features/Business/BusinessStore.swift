@@ -80,6 +80,10 @@ final class BusinessStore: ObservableObject {
             .sorted { ($0.verifiedAt ?? .distantPast) > ($1.verifiedAt ?? .distantPast) }
     }
 
+    var todaysVerifiedTotal: Double {
+        todaysVerifiedRescues.reduce(0.0) { $0 + $1.total }
+    }
+
     func waitlistCount(for listingID: UUID) -> Int {
         reservations.filter { $0.listingID == listingID && $0.status == .waitlisted }.count
     }
@@ -111,25 +115,131 @@ final class BusinessStore: ObservableObject {
         )
     }
 
-    /// Published bags in the student-side format, for Explore and KnightMap.
-    /// Paused, closed and cancelled listings are left out.
+    // MARK: - Student side (Explore, bag details, Profile, KnightMap)
+
+    /// Live bags in the student-side format. Paused, closed and cancelled listings are left out.
+    /// Each bag's `id` is the listing id, so the same bag keeps its identity across updates.
     var surpriseBagsForExplore: [SurpriseBag] {
         listings
             .filter { $0.status == .available || $0.status == .fullyReserved }
-            .map { listing in
-                SurpriseBag(
-                    business: profile.name,
-                    location: listing.pickupAddress,
-                    brand: profile.brand,
-                    rating: profile.rating,
-                    feedbackCount: profile.feedbackCount,
-                    distance: 0.4,
-                    pickupWindow: listing.pickupWindowText,
-                    availableCount: listing.remainingQuantity,
-                    price: listing.price,
-                    description: listing.publicDescription
+            .sorted { $0.pickupStart < $1.pickupStart }
+            .map { studentBag(for: $0) }
+    }
+
+    /// The current student-facing version of a live bag, or nil if it's no longer listed.
+    func liveBag(id: UUID) -> SurpriseBag? {
+        guard let listing = self.listing(id: id),
+              listing.status == .available || listing.status == .fullyReserved else { return nil }
+        return studentBag(for: listing)
+    }
+
+    /// True when the bag came from this store (not one of the sample restaurants).
+    func isLiveBag(_ bag: SurpriseBag) -> Bool {
+        listing(id: bag.id) != nil
+    }
+
+    /// Map pins for KnightMap. KnightMap must read these from the shared store.
+    var mapPins: [KnightMapPin] {
+        listings
+            .filter { $0.status == .available || $0.status == .fullyReserved }
+            .map { KnightMapPin(bag: studentBag(for: $0), latitude: $0.latitude, longitude: $0.longitude) }
+    }
+
+    func studentBag(for listing: BusinessListing) -> SurpriseBag {
+        SurpriseBag(
+            id: listing.id,
+            business: profile.name,
+            location: listing.pickupAddress,
+            brand: profile.brand,
+            rating: profile.rating,
+            feedbackCount: profile.feedbackCount,
+            distance: 0.4,
+            pickupWindow: listing.pickupWindowText,
+            availableCount: listing.isReservable ? listing.remainingQuantity : 0,
+            price: listing.price,
+            description: listing.publicDescription
+        )
+    }
+
+    /// A student reserves (or joins the waitlist when the bag is fully reserved).
+    /// Lowers the remaining count and shows up in Business › Reserved pickups.
+    @discardableResult
+    func reserve(bagID: UUID, studentName: String, passToken: String, quantity: Int = 1) -> BusinessReservation? {
+        guard let index = listings.firstIndex(where: { $0.id == bagID }),
+              listings[index].state == .live, quantity > 0 else { return nil }
+        let listing = listings[index]
+        let reservation: BusinessReservation
+        if listing.remainingQuantity >= quantity {
+            listings[index].remainingQuantity -= quantity
+            listings[index].updatedAt = Date()
+            reservation = BusinessReservation(
+                studentDisplayName: studentName, passToken: passToken, listingID: listing.id,
+                quantity: quantity, unitPrice: listing.price,
+                pickupStart: listing.pickupStart, pickupEnd: listing.pickupEnd,
+                status: .authorized, payment: .authorized
+            )
+            toast = "\(studentName) reserved \(quantity) Surprise Bag\(quantity == 1 ? "" : "s")."
+        } else {
+            reservation = BusinessReservation(
+                studentDisplayName: studentName, passToken: passToken, listingID: listing.id,
+                quantity: quantity, unitPrice: listing.price,
+                pickupStart: listing.pickupStart, pickupEnd: listing.pickupEnd,
+                status: .waitlisted, payment: .notStarted,
+                waitlistPosition: waitlistCount(for: listing.id) + 1
+            )
+            toast = "\(studentName) joined the waitlist."
+        }
+        reservations.append(reservation)
+        log(.reservationCreated, reservation.code)
+        return reservation
+    }
+
+    /// The signed-in student's reservations, in the student-side format.
+    /// Upcoming ones first, then pickups verified today.
+    func studentReservations(passToken: String) -> [ActiveReservation] {
+        reservations
+            .filter { reservation in
+                reservation.passToken == passToken
+                    && (reservation.isUpcoming
+                        || (reservation.isVerified && reservation.verifiedAt.map { Calendar.current.isDateInToday($0) } == true))
+            }
+            .sorted { a, b in
+                if a.isUpcoming != b.isUpcoming { return a.isUpcoming }
+                return a.pickupStart < b.pickupStart
+            }
+            .compactMap { reservation in
+                guard let listing = self.listing(id: reservation.listingID) else { return nil }
+                return ActiveReservation(
+                    id: reservation.id,
+                    bag: studentBag(for: listing),
+                    status: studentStatus(for: reservation),
+                    paymentStatus: reservation.payment.rawValue,
+                    attentionMessage: attentionMessage(for: reservation)
                 )
             }
+    }
+
+    func isStoreReservation(id: UUID) -> Bool {
+        reservation(id: id) != nil
+    }
+
+    private func studentStatus(for reservation: BusinessReservation) -> ReservationStatus {
+        switch reservation.status {
+        case .offerSent: return .waitlistOffer
+        case .waitlisted: return .waitlisted
+        case .pickupVerified, .paymentCaptured: return .verified
+        default: return .confirmed
+        }
+    }
+
+    private func attentionMessage(for reservation: BusinessReservation) -> String? {
+        switch reservation.status {
+        case .authorized: return "Pickup \(reservation.pickupWindowText)"
+        case .offerSent: return "A bag opened up for you"
+        case .waitlisted: return "Waitlist position \(reservation.waitlistPosition ?? 1)"
+        case .pickupVerified, .paymentCaptured: return "Picked up — thanks for rescuing food"
+        default: return nil
+        }
     }
 
     // MARK: - Publishing
@@ -162,7 +272,9 @@ final class BusinessStore: ObservableObject {
             pickupAddress: profile.pickupAddress,
             latitude: profile.latitude,
             longitude: profile.longitude,
-            inventory: inventory
+            inventory: inventory,
+            bagSplit: allocation.bags,
+            unallocated: allocation.leftover
         )
         listings.append(listing)
         if plan.createdByAI {
@@ -183,6 +295,9 @@ final class BusinessStore: ObservableObject {
             let delta = max(0, remaining) - listing.remainingQuantity
             listing.remainingQuantity = max(0, remaining)
             listing.totalQuantity = max(0, listing.totalQuantity + delta)
+            if delta != 0 {
+                listing.reallocateBags()
+            }
         }
         if let price = price { listing.price = max(0, price) }
         if let start = pickupStart, let end = pickupEnd, start < end {
@@ -418,26 +533,27 @@ final class BusinessStore: ObservableObject {
 
 extension BusinessStore {
     /// One evening at Knightro's Kitchen. Times are relative to "now" so the demo always works.
-    /// Alex Knight's reservation uses the token in KnightPass.sample, so scanning the
-    /// Knight Pass from Profile verifies it.
+    /// Reserved pickups has exactly two students. Alex Knight's reservation uses the token in
+    /// KnightPass.sample, so scanning the Knight Pass from Profile verifies it.
     static func demo(now: Date = Date()) -> BusinessStore {
         let profile = BusinessProfile.demo
         let base = PickupTime.roundedDown(now)
         func at(_ minutes: Int) -> Date { base.addingTimeInterval(TimeInterval(minutes * 60)) }
 
-        // Pickup open now.
-        var tonight = BusinessListing(
-            price: 5.99, totalQuantity: 8, remainingQuantity: 3,
+        // Pickup open now. 7 bags = 1 collected + 3 reserved (Alex 1, Jordan 2) + 3 available.
+        // 14 bagels, 7 pastries, 7 sandwiches -> each bag: 2 bagels, 1 pastry, 1 sandwich.
+        let tonight = BusinessListing(
+            price: 5.99, totalQuantity: 7, remainingQuantity: 3,
             pickupStart: at(-10), pickupEnd: at(40),
             publicDescription: BusinessRules.defaultPublicDescription,
             pickupAddress: profile.pickupAddress, latitude: profile.latitude, longitude: profile.longitude,
-            inventory: [SurplusItem(name: "Bagels", quantity: 12), SurplusItem(name: "Pastries", quantity: 6),
-                        SurplusItem(name: "Sandwiches", quantity: 6)],
-            createdAt: at(-120), updatedAt: at(-120)
+            inventory: [SurplusItem(name: "Bagels", quantity: 14), SurplusItem(name: "Pastries", quantity: 7),
+                        SurplusItem(name: "Sandwiches", quantity: 7)],
+            createdAt: at(-120), updatedAt: at(-30)
         )
-        // Later pickup, fully reserved with a waitlist.
+        // Later pickup, nothing reserved yet. Bags differ, so the staff note lists each bag.
         let later = BusinessListing(
-            price: 4.99, totalQuantity: 4, remainingQuantity: 0,
+            price: 4.99, totalQuantity: 4, remainingQuantity: 4,
             pickupStart: at(90), pickupEnd: at(120),
             publicDescription: "A mix of tonight's surplus items from the grill.",
             pickupAddress: profile.pickupAddress, latitude: profile.latitude, longitude: profile.longitude,
@@ -445,7 +561,7 @@ extension BusinessStore {
                         SurplusItem(name: "Cookies", quantity: 4)],
             createdAt: at(-60), updatedAt: at(-60)
         )
-        // Earlier pickup, finished.
+        // Earlier pickup, finished: 4 bags = 3 collected + 1 missed.
         let earlier = BusinessListing(
             price: 3.99, totalQuantity: 4, remainingQuantity: 0,
             pickupStart: at(-180), pickupEnd: at(-150),
@@ -455,43 +571,31 @@ extension BusinessStore {
             state: .closed,
             createdAt: at(-300), updatedAt: at(-150)
         )
-        tonight.updatedAt = at(-30)
 
         func reservation(
             _ code: String, _ name: String, _ token: String, _ listing: BusinessListing, quantity: Int,
-            status: PickupStatus, payment: PaymentState, waitlist: Int? = nil,
+            status: PickupStatus, payment: PaymentState,
             verified: Date? = nil, measured: Double? = nil
         ) -> BusinessReservation {
             BusinessReservation(
                 code: code, studentDisplayName: name, passToken: token, listingID: listing.id,
                 quantity: quantity, unitPrice: listing.price,
                 pickupStart: listing.pickupStart, pickupEnd: listing.pickupEnd,
-                status: status, payment: payment, waitlistPosition: waitlist,
+                status: status, payment: payment,
                 createdAt: at(-90), verifiedAt: verified, measuredWeightKg: measured
             )
         }
 
         let reservations = [
-            // Tonight: 8 bags = 1 collected + 4 reserved + 3 available.
+            // Reserved pickups: exactly these two.
             reservation("KS-4821", KnightPass.sample.displayName, KnightPass.sample.verificationToken, tonight,
                         quantity: 1, status: .authorized, payment: .authorized),
             reservation("KS-3307", "Jordan P.", "demo-JORDAN-3307", tonight,
                         quantity: 2, status: .authorized, payment: .authorized),
-            reservation("KS-5190", "Priya N.", "demo-PRIYA-5190", tonight,
-                        quantity: 1, status: .authorized, payment: .authorized),
+            // Already collected today (Today's total and the impact report).
             reservation("KS-2018", "Sam W.", "demo-SAM-2018", tonight,
                         quantity: 1, status: .paymentCaptured, payment: .captured,
                         verified: at(-5), measured: 0.52),
-            // Later: fully reserved, two students waiting.
-            reservation("KS-7742", "Leo M.", "demo-LEO-7742", later,
-                        quantity: 2, status: .authorized, payment: .authorized),
-            reservation("KS-6120", "Aisha K.", "demo-AISHA-6120", later,
-                        quantity: 2, status: .authorized, payment: .authorized),
-            reservation("KS-8803", "Chris T.", "demo-CHRIS-8803", later,
-                        quantity: 1, status: .waitlisted, payment: .notStarted, waitlist: 1),
-            reservation("KS-9156", "Dana R.", "demo-DANA-9156", later,
-                        quantity: 1, status: .waitlisted, payment: .notStarted, waitlist: 2),
-            // Earlier: 3 collected, 1 missed.
             reservation("KS-1404", "Diego A.", "demo-DIEGO-1404", earlier,
                         quantity: 1, status: .paymentCaptured, payment: .captured, verified: at(-170)),
             reservation("KS-1477", "Nia B.", "demo-NIA-1477", earlier,

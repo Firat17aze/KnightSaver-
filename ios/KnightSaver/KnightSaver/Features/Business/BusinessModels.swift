@@ -67,11 +67,84 @@ struct SurplusItem: Identifiable, Hashable {
 extension Array where Element == SurplusItem {
     var totalUnits: Int { reduce(0) { $0 + Swift.max(0, $1.quantity) } }
 
-    /// "12 bagels · 6 pastries · 4 sandwiches"
+    /// "12 bagels, 1 pastry, 4 sandwiches" — singular and plural handled.
     var summaryText: String {
         filter { $0.quantity > 0 }
-            .map { "\($0.quantity) \($0.name.lowercased())" }
-            .joined(separator: " · ")
+            .map { ItemName.phrase(count: $0.quantity, name: $0.name) }
+            .joined(separator: ", ")
+    }
+
+    /// Same items and counts, ignoring order and ids.
+    func hasSameContents(as other: [SurplusItem]) -> Bool {
+        func key(_ items: [SurplusItem]) -> [String] {
+            items.filter { $0.quantity > 0 }
+                .map { "\($0.name.lowercased())#\($0.quantity)" }
+                .sorted()
+        }
+        return key(self) == key(other)
+    }
+}
+
+/// Simple English singular/plural for item names staff say or type
+/// ("1 pastry", "2 pastries", "1 sandwich", "3 slices of pizza").
+enum ItemName {
+    static func phrase(count: Int, name: String) -> String {
+        let base = name.trimmingCharacters(in: .whitespaces).lowercased()
+        return "\(count) \(count == 1 ? singular(base) : plural(base))"
+    }
+
+    static func singular(_ name: String) -> String {
+        inflectHeadWord(of: name, using: singularWord)
+    }
+
+    static func plural(_ name: String) -> String {
+        inflectHeadWord(of: name, using: pluralWord)
+    }
+
+    /// "slices of pizza" changes "slices"; "fruit cups" changes "cups".
+    private static func inflectHeadWord(of name: String, using transform: (String) -> String) -> String {
+        var words = name.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard !words.isEmpty else { return name }
+        let headIndex = words.firstIndex(of: "of").map { max(0, $0 - 1) } ?? (words.count - 1)
+        words[headIndex] = transform(words[headIndex])
+        return words.joined(separator: " ")
+    }
+
+    private static let irregular: [String: String] = [
+        "cookies": "cookie", "brownies": "brownie", "smoothies": "smoothie", "pies": "pie",
+        "veggies": "veggie", "hoagies": "hoagie", "quiches": "quiche", "loaves": "loaf",
+        "potatoes": "potato", "tomatoes": "tomato", "mangoes": "mango", "knives": "knife",
+        "halves": "half", "people": "person", "children": "child",
+    ]
+
+    private static let uncountable: Set<String> = [
+        "rice", "pasta", "sushi", "fruit", "bread", "cheese", "food",
+    ]
+
+    private static func singularWord(_ word: String) -> String {
+        if let single = irregular[word] { return single }
+        if uncountable.contains(word) { return word }
+        if word.hasSuffix("ies"), word.count > 4 { return String(word.dropLast(3)) + "y" }
+        for ending in ["ches", "shes", "sses", "xes", "zes", "oes"] where word.hasSuffix(ending) {
+            return String(word.dropLast(2))
+        }
+        if word.hasSuffix("s"), !word.hasSuffix("ss"), word.count > 2 { return String(word.dropLast()) }
+        return word
+    }
+
+    private static func pluralWord(_ word: String) -> String {
+        if irregular[word] != nil { return word }
+        if let plural = irregular.first(where: { $0.value == word })?.key { return plural }
+        if uncountable.contains(word) { return word }
+        // Already plural ("bagels", "pastries").
+        if word.hasSuffix("s"), !word.hasSuffix("ss") { return word }
+        if word.hasSuffix("y"), let before = word.dropLast().last, !"aeiou".contains(before) {
+            return String(word.dropLast()) + "ies"
+        }
+        for ending in ["ch", "sh", "ss", "x", "z"] where word.hasSuffix(ending) {
+            return word + "es"
+        }
+        return word + "s"
     }
 }
 
@@ -109,6 +182,10 @@ struct BusinessListing: Identifiable, Hashable {
     var longitude: Double
     /// Staff-only record of what went into the bags.
     var inventory: [SurplusItem]
+    /// Staff-only: what to put in each bag (from SurplusAssistant.allocate).
+    var bagSplit: [[SurplusItem]]
+    /// Staff-only: items that didn't fit in any bag.
+    var unallocated: [SurplusItem]
     var state: ListingState
     let createdAt: Date
     var updatedAt: Date
@@ -125,6 +202,8 @@ struct BusinessListing: Identifiable, Hashable {
         latitude: Double,
         longitude: Double,
         inventory: [SurplusItem],
+        bagSplit: [[SurplusItem]]? = nil,
+        unallocated: [SurplusItem] = [],
         state: ListingState = .live,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -140,6 +219,14 @@ struct BusinessListing: Identifiable, Hashable {
         self.latitude = latitude
         self.longitude = longitude
         self.inventory = inventory
+        if let bagSplit {
+            self.bagSplit = bagSplit
+            self.unallocated = unallocated
+        } else {
+            let allocation = SurplusAssistant.allocate(inventory, into: totalQuantity)
+            self.bagSplit = allocation.bags
+            self.unallocated = allocation.leftover
+        }
         self.state = state
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -159,11 +246,45 @@ struct BusinessListing: Identifiable, Hashable {
 
     var pickupWindowText: String { PickupTime.window(pickupStart, pickupEnd) }
 
+    /// Recomputes the per-bag split after the number of bags changes.
+    mutating func reallocateBags() {
+        let allocation = SurplusAssistant.allocate(inventory + unallocated, into: totalQuantity)
+        bagSplit = allocation.bags
+        unallocated = allocation.leftover
+    }
+
+    /// Staff note lines: one "Each bag: …" line when all bags match, otherwise "Bag 1: …".
+    var staffPackingLines: [String] {
+        let bags = bagSplit
+        guard let first = bags.first else { return [] }
+        var lines: [String]
+        if bags.allSatisfy({ $0.hasSameContents(as: first) }) {
+            lines = ["Each bag: \(first.isEmpty ? "nothing assigned" : first.summaryText)"]
+        } else {
+            lines = bags.enumerated().map { index, bag in
+                "Bag \(index + 1): \(bag.isEmpty ? "nothing assigned" : bag.summaryText)"
+            }
+        }
+        if !unallocated.isEmpty {
+            lines.append("Not in a bag: \(unallocated.summaryText)")
+        }
+        return lines
+    }
+
     /// Estimated food weight of one bag, from the staff inventory.
     var estimatedKgPerBag: Double {
         guard totalQuantity > 0 else { return 0 }
         return Double(inventory.totalUnits) * BusinessRules.estimatedKgPerItem / Double(totalQuantity)
     }
+}
+
+/// A live bag on KnightMap. Built from the shared BusinessStore (see `BusinessStore.mapPins`).
+struct KnightMapPin: Identifiable {
+    let bag: SurpriseBag
+    let latitude: Double
+    let longitude: Double
+
+    var id: UUID { bag.id }
 }
 
 // MARK: - Reservations

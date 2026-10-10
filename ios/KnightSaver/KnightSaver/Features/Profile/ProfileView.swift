@@ -22,6 +22,13 @@ struct ProfileView: View {
     @State private var showSignOutConfirmation = false
     @State private var showDemoSignOutMessage = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Shared with Business: reservations, waitlist offers and verified pickups.
+    @EnvironmentObject var businessStore: BusinessStore
+
+    /// This student's reservations from the shared store, then sample-restaurant ones.
+    private var allReservations: [ActiveReservation] {
+        businessStore.studentReservations(passToken: pass.verificationToken) + activeReservations
+    }
 
     var body: some View {
         NavigationStack {
@@ -112,10 +119,10 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 12) {
             ProfileSectionHeader(
                 title: "My pickups",
-                subtitle: activeReservations.isEmpty ? "No upcoming pickups" : "Your next reservation"
+                subtitle: allReservations.isEmpty ? "No upcoming pickups" : "Your next reservation"
             )
 
-            if let reservation = activeReservations.first {
+            if let reservation = allReservations.first {
                 NavigationLink(value: ProfileRoute.reservation(reservation.id)) {
                     UpcomingPickupCard(reservation: reservation)
                 }
@@ -139,10 +146,15 @@ struct ProfileView: View {
     private func destination(for route: ProfileRoute) -> some View {
         switch route {
         case .reservation(let id):
-            if let reservation = activeReservations.first(where: { $0.id == id }) {
+            if let reservation = allReservations.first(where: { $0.id == id }) {
                 ReservationDetailsView(reservation: reservation) {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
-                        activeReservations.removeAll { $0.id == id }
+                        if businessStore.isStoreReservation(id: id) {
+                            // Releases the payment hold and frees the bag or offers it to the waitlist.
+                            businessStore.cancelReservation(id: id)
+                        } else {
+                            activeReservations.removeAll { $0.id == id }
+                        }
                     }
                 }
             } else {
@@ -458,20 +470,22 @@ private struct ReservationDetailsView: View {
                 .padding(16)
                 .background(KnightTheme.gold.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-                Button(role: .destructive) {
-                    confirmCancellation = true
-                } label: {
-                    Label("Cancel reservation", systemImage: "xmark.circle")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.red)
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                                .stroke(KnightTheme.red.opacity(0.28), lineWidth: 1)
-                        }
+                if reservation.status != .verified {
+                    Button(role: .destructive) {
+                        confirmCancellation = true
+                    } label: {
+                        Label("Cancel reservation", systemImage: "xmark.circle")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.red)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                                    .stroke(KnightTheme.red.opacity(0.28), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(KnightTheme.screenPadding)
             .padding(.bottom, 24)

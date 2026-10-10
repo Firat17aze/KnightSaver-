@@ -44,7 +44,8 @@ struct BagDetailView: View {
             }
             .alert(bag.availableCount == 0 ? "Waitlist joined" : "Reservation confirmed", isPresented: $showConfirmation) {
                 Button("Done") {
-                    if bag.availableCount > 0 { onReserve() }
+                    // ExploreView decides: reserve, or join the waitlist for live bags.
+                    onReserve()
                     dismiss()
                 }
             } message: {

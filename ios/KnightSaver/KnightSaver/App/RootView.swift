@@ -32,7 +32,12 @@ enum AppTab: String, CaseIterable, Identifiable {
 
 struct RootView: View {
     @State private var selectedTab: AppTab = .explore
-    @State private var activeReservations: [ActiveReservation] = [.sample]
+    /// Reservations for the sample restaurants only. Reservations for bags published from
+    /// Business live in `businessStore` and are merged in by Explore and Profile.
+    @State private var activeReservations: [ActiveReservation] = []
+    /// One shared store for Business and the student side. Created once here, so it survives
+    /// tab switches, and Explore, bag details, Profile and Business all see the same data.
+    @StateObject private var businessStore = BusinessStore.demo()
     @State private var showKnightPass = false
     private let knightPass = KnightPass.sample
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -47,11 +52,13 @@ struct RootView: View {
                     case .explore:
                         ExploreView(activeReservations: $activeReservations)
                     case .map:
+                        // When KnightMap is built, read live pins from the shared store:
+                        // `businessStore.mapPins` (bag + latitude/longitude), not sample data.
                         PlaceholderView(title: "KnightMap", subtitle: "Live campus pickup locations will appear here.", icon: "map.fill")
                     case .impact:
                         PlaceholderView(title: "Your impact", subtitle: "Verified rescues and EcoKnight AI live here.", icon: "leaf.fill")
                     case .business:
-                        BusinessDashboardView()
+                        BusinessDashboardView(store: businessStore)
                     case .profile:
                         ProfileView(
                             pass: knightPass,
@@ -79,6 +86,7 @@ struct RootView: View {
             }
         }
         .tint(KnightTheme.ink)
+        .environmentObject(businessStore)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
     }
 }
