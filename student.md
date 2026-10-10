@@ -109,31 +109,166 @@ The app shows only the contextual action that matches the student's current stat
 
 ## Explore
 
-### Location and search
+The Explore page uses an Uber Eats-inspired browsing hierarchy adapted for campus food rescue. It should feel food-first, fast to scan, and immediately useful. KnightSaver does not copy Uber Eats branding, delivery features, or exact layouts.
 
-- Current campus location.
-- Search by food or business.
-- Optional natural-language search.
-- Filters for price, walking time, pickup deadline, and confirmed dietary information.
+### Visual direction
 
-### Available food
+- Use a mostly clean, light background with strong food photography.
+- Keep typography direct and compact.
+- Use KnightSaver black, gold, and sustainability accents instead of Uber branding.
+- Favor large food images, clear prices, short pickup deadlines, and simple horizontal filters.
+- Show information in the order students need it: location, search, filters, available food, then details.
+- Avoid a generic dashboard full of statistics on the Explore page.
 
-- Food name and image.
+### 1. Campus pickup context
+
+The top of the page shows where the student is browsing:
+
+- **Pickup near UCF Main Campus**
+- Current campus area or selected pickup zone.
+- A small control for changing the campus area.
+- Pickup-only language; KnightSaver does not promise delivery.
+
+This adapts Uber Eats' location-first browsing pattern to campus pickup.
+
+### 2. Prominent AI search
+
+Place a wide search field directly below the location:
+
+> **Search food, places, or ask KnightSaver**
+
+Example requests:
+
+- “Vegetarian food under $5 before 7 PM”
+- “Free food near the library”
+- “Something within a ten-minute walk”
+
+AI converts the request into visible filters and searches only current, published inventory. It never invents availability, dietary information, or allergens.
+
+### 3. Quick filter row
+
+Use a horizontally scrollable row of compact filters:
+
+- **Free**
+- **Under $5**
+- **Under 10 min**
+- **Closing soon**
+- **Dietary**
+- **Available now**
+
+A selected filter has a clear active state. Students can combine filters without leaving Explore.
+
+### 4. Food category shortcuts
+
+Use a small horizontal category row only if it improves the demo:
+
+- **Meals**
+- **Bakery**
+- **Coffee**
+- **Snacks**
+- **Vegetarian**
+
+Category shortcuts should use simple food imagery or icons. Do not build a large category system for the hackathon.
+
+### 5. Available-now feed
+
+The main feed uses large, food-forward listing cards inspired by the fast-scanning restaurant feed pattern in Uber Eats.
+
+Each card shows:
+
+- Large food image.
+- Food name.
 - Business location.
-- Remaining quantity.
-- Free or discounted price.
+- Rescue price and original price.
 - Walking time.
 - Pickup deadline.
-- Available, closing soon, or fully reserved status.
+- Portions remaining.
+- Staff-confirmed dietary label when available.
+- Status such as **Available**, **Only 2 left**, **Closing soon**, or **Fully reserved**.
 
-### Food details
+Recommended feed sections:
 
+- **Available near you** — Primary live inventory.
+- **Ending soon** — Listings with the closest pickup deadlines.
+- **Free today** — Show only when real free listings exist.
+
+Do not duplicate the same listing in several visible sections during the demo.
+
+### 6. Food details sheet
+
+Tapping a listing opens a bottom sheet or focused detail view containing:
+
+- Larger food image.
+- Food and business name.
 - Portion description.
+- Remaining quantity.
+- Rescue price and student savings.
+- Pickup location and directions.
+- Pickup window.
 - Confirmed dietary information.
 - Allergen and cross-contact information.
-- Pickup instructions.
-- Total price.
-- Contextual **Reserve with Apple Pay** or **Join waitlist** action.
+- Cancellation and payment explanation.
+
+The main contextual action appears immediately above the shared navbar:
+
+- **Reserve with Apple Pay** when available.
+- **Reserve for free** when no payment is required.
+- **Join waitlist** when fully reserved.
+
+### 7. Reservation result
+
+After successful Apple Pay authorization:
+
+- Show **Reservation confirmed**.
+- Explain that payment is authorized and captured after staff verifies pickup.
+- Move the reservation into **My Rescues**.
+- Update the business dashboard's available quantity and reserved spots.
+
+Provide two actions:
+
+- **View my rescue**
+- **Continue exploring**
+
+### Required Explore states
+
+The first navigation section is complete only when it handles:
+
+1. Food available.
+2. Only a few portions remaining.
+3. Fully reserved with waitlist available.
+4. Closing soon.
+5. No matching listings.
+6. Payment authorization failed.
+7. Another student reserved the final portion first.
+8. Loading or connection failure.
+
+### Empty state
+
+When no food matches:
+
+> **Nothing matches right now**
+>
+> Try removing a filter or check again closer to closing time.
+
+### Explore MVP boundary
+
+Build these first:
+
+- Campus pickup context.
+- Search field.
+- Five or six filters.
+- Available-food listing cards.
+- Food-details sheet.
+- Apple Pay reservation.
+- Join-waitlist state.
+- Reservation-success state.
+
+Do not prioritize delivery tracking, restaurant ratings, reviews, tipping, large menus, promotional banners, or complicated personalization. Those Uber Eats concepts do not serve KnightSaver's food-rescue purpose.
+
+### Design references
+
+- Uber Eats' official product explanation emphasizes browsing nearby food and searching by restaurant or cuisine: <https://about.ubereats.com/>
+- Current App Store listing: <https://apps.apple.com/us/app/uber-eats-food-groceries/id1058959277>
 
 ## My Rescues
 
