@@ -106,7 +106,7 @@ private struct KnightTabBar: View {
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold, design: .rounded))
                     }
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(selection == tab ? KnightTheme.onAccent : KnightTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background {

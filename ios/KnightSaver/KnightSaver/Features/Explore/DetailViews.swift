@@ -183,7 +183,7 @@ struct BagDetailView: View {
                     Image(systemName: "arrow.right")
                 }
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
+                .foregroundStyle(KnightTheme.onAccent)
                 .padding(.horizontal, 19)
                 .frame(maxWidth: .infinity, minHeight: 54)
                 .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 18, style: .continuous))

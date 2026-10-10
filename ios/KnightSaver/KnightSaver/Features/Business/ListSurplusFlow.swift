@@ -24,7 +24,7 @@ struct ListSurplusFlow: View {
     @State private var plan: BagPlan?
     @FocusState private var dictationFocused: Bool
 
-    static let exampleSentence = "We have 12 bagels, 6 pastries, and 4 sandwiches left. Pickup can be from 7:00 to 7:30 PM."
+    static let exampleSentence = "We have 4 bagels and 6 cookies left. Pickup can be from 7:00 to 7:30 PM."
 
     init(store: BusinessStore) {
         _store = ObservedObject(wrappedValue: store)
