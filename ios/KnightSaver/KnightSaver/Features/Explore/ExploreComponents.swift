@@ -8,7 +8,7 @@ struct KnightMark: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(KnightTheme.ink)
+                .fill(KnightTheme.night)
             Text("K")
                 .font(.system(size: 22, weight: .black, design: .rounded))
                 .foregroundStyle(KnightTheme.gold)
@@ -33,7 +33,7 @@ struct KnightPassButton: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 13)
                     .frame(minHeight: 36)
-                    .background(KnightTheme.ink, in: Capsule())
+                    .background(KnightTheme.night, in: Capsule())
                     .accessibilityHidden(true)
             }
         }
@@ -158,6 +158,7 @@ struct KnightPassCard: View {
         Group {
             if showsQRCode {
                 verificationFace
+                    .alwaysLight()
             } else {
                 knightroFace
             }
@@ -285,7 +286,7 @@ struct ReservationPassStack: View {
                 Text("\(reservations.count) ACTIVE PASSES")
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .tracking(1)
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(KnightTheme.onAccent)
                     .padding(.horizontal, 11)
                     .frame(minHeight: 30)
                     .background(KnightTheme.gold, in: Capsule())
@@ -426,6 +427,7 @@ struct PickupPassCard: View {
         Group {
             if showsQRCode {
                 pickupCodeFace
+                    .alwaysLight()
             } else {
                 knightroFace
             }
@@ -464,7 +466,7 @@ struct PickupPassCard: View {
                         Text(reservation.status.rawValue.uppercased())
                             .font(.system(size: 9, weight: .black, design: .rounded))
                             .tracking(0.8)
-                            .foregroundStyle(KnightTheme.ink)
+                            .foregroundStyle(KnightTheme.onAccent)
                             .padding(.horizontal, 9)
                             .frame(minHeight: 27)
                             .background(KnightTheme.gold, in: Capsule())
@@ -609,7 +611,7 @@ private struct KnightroPassMark: View {
                 .fill(KnightTheme.gold)
             Text("K")
                 .font(.system(size: 24, weight: .black, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
+                .foregroundStyle(KnightTheme.onAccent)
         }
         .frame(width: 48, height: 48)
         .overlay {
@@ -684,6 +686,60 @@ private struct AppleWalletAddButton: UIViewRepresentable {
     }
 }
 
+struct FilterChip: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: isSelected ? "checkmark" : icon)
+                    .font(.system(size: 13, weight: .bold))
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(isSelected ? KnightTheme.onAccent : KnightTheme.muted)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(
+                isSelected ? KnightTheme.gold : KnightTheme.surface,
+                in: Capsule()
+            )
+            .overlay {
+                Capsule()
+                    .stroke(isSelected ? KnightTheme.ink.opacity(0.12) : KnightTheme.line, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+struct FilterMenuChip: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: isSelected ? "checkmark" : icon)
+                .font(.system(size: 13, weight: .bold))
+            Text(title)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+        }
+        .foregroundStyle(isSelected ? KnightTheme.ink : KnightTheme.muted)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 44)
+        .background(isSelected ? KnightTheme.gold : KnightTheme.surface, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(isSelected ? KnightTheme.ink.opacity(0.12) : KnightTheme.line, lineWidth: 1)
+        }
+        .contentShape(Capsule())
+    }
+}
 struct SurpriseBagCard: View {
     let bag: SurpriseBag
 
@@ -821,7 +877,7 @@ struct EmptyExploreState: View {
                 .multilineTextAlignment(.center)
             Button("Clear search", action: reset)
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
+                .foregroundStyle(KnightTheme.onAccent)
                 .padding(.horizontal, 18)
                 .frame(minHeight: 46)
                 .background(KnightTheme.gold, in: Capsule())

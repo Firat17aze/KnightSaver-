@@ -151,7 +151,7 @@ private struct KnightTabBar: View {
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold, design: .rounded))
                     }
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(selection == tab ? KnightTheme.onAccent : KnightTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background {
@@ -188,6 +188,19 @@ private struct PlaceholderView: View {
     let icon: String
 
     var body: some View {
+        VStack(spacing: 0) {
+            KnightSaverBrandBar()
+                .padding(.horizontal, KnightTheme.screenPadding)
+                .padding(.top, 10)
+
+            Spacer(minLength: 0)
+            placeholderContent
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var placeholderContent: some View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 38, weight: .medium))
@@ -204,6 +217,6 @@ private struct PlaceholderView: View {
                 .frame(maxWidth: 290)
         }
         .padding(32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
     }
 }

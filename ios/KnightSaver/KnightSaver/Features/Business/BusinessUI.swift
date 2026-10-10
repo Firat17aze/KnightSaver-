@@ -131,7 +131,7 @@ struct BizPrimaryLabel: View {
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
         }
-        .foregroundStyle(KnightTheme.ink)
+        .foregroundStyle(KnightTheme.onAccent)
         .frame(maxWidth: .infinity)
         .frame(minHeight: 52)
         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
@@ -175,7 +175,7 @@ struct BizMethodButton: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: icon)
                     .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(KnightTheme.onAccent)
                     .frame(width: 46, height: 46)
                     .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
@@ -208,29 +208,31 @@ struct BizStatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text(title.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(0.8)
+                Text(title)
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(KnightTheme.muted)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.85)
                 if isEstimate {
-                    Text("EST.")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
+                    Text("Est.")
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(KnightTheme.goldDeep)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(KnightTheme.gold.opacity(0.22), in: Capsule())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(KnightTheme.gold.opacity(0.18), in: Capsule())
+                        .accessibilityLabel("estimate")
                 }
             }
             Text(value)
-                .font(.system(size: 22, weight: .black, design: .rounded))
+                .font(.system(size: 20, weight: .semibold))
+                .monospacedDigit()
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.7)
         }
-        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
-        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 14)
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -274,11 +276,12 @@ enum BizKeyboard {
     }
 }
 
-/// Text box for dictation with the keyboard microphone.
+/// Text box the voice assistant writes into. Staff can also type or fix words by hand.
 struct BizDictationBox: View {
     let prompt: String
     @Binding var text: String
     var focus: FocusState<Bool>.Binding
+    var isLive = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -289,7 +292,7 @@ struct BizDictationBox: View {
                 .foregroundStyle(KnightTheme.ink)
                 .padding(10)
             if text.isEmpty {
-                Text(prompt)
+                Text(isLive ? "Go ahead, I'm listening…" : prompt)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(KnightTheme.muted.opacity(0.7))
                     .padding(.horizontal, 15)
@@ -301,7 +304,26 @@ struct BizDictationBox: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(KnightTheme.line, lineWidth: 1)
+                .stroke(isLive ? KnightTheme.red.opacity(0.7) : KnightTheme.line, lineWidth: isLive ? 1.5 : 1)
         }
+        .overlay(alignment: .bottomTrailing) {
+            if isLive {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(KnightTheme.red)
+                        .frame(width: 7, height: 7)
+                    Text("LIVE")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(0.8)
+                }
+                .foregroundStyle(KnightTheme.red)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(KnightTheme.red.opacity(0.10), in: Capsule())
+                .padding(10)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: isLive)
     }
 }

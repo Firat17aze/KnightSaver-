@@ -80,7 +80,7 @@ struct PassScannerView: View {
 
         ZStack {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                .fill(KnightTheme.ink)
+                .fill(KnightTheme.night)
 
             switch camera {
             case .ready:
@@ -253,7 +253,7 @@ struct PassScannerView: View {
                     .foregroundStyle(KnightTheme.ink)
                 Spacer()
                 BizDecimalField("0.00", value: $measuredWeight)
-                    .frame(maxWidth: 70)
+                    .fixedSize()
                 Text("kg")
                     .foregroundStyle(KnightTheme.muted)
             }

@@ -27,7 +27,10 @@ struct BagPlan: Hashable {
     var pickupStart: Date
     var pickupEnd: Date
     var publicDescription: String
-    var locationConfirmed: Bool = false
+    /// Chosen from the campus pickup spots.
+    var pickupLocation: PickupLocation = PickupLocation.campusSpots[0]
+    /// On: contents stay a secret, even in the staff split. Off: a Rescue Bag with known contents.
+    var isSurprise: Bool = true
     var createdByAI: Bool
 
     var validInventory: [SurplusItem] {
@@ -47,7 +50,6 @@ struct BagPlan: Hashable {
         if totalItems > 0 && bagCount > totalItems { result.append("There are more bags than surplus items.") }
         if price < 0 { result.append("Price can't be negative.") }
         if pickupEnd <= pickupStart { result.append("Pickup must end after it starts.") }
-        if !locationConfirmed { result.append("Confirm the pickup location.") }
         return result
     }
 
@@ -86,6 +88,13 @@ struct ListingEditProposal: Hashable {
 /// it only uses inventory staff reported, never invents allergens or dietary claims,
 /// never approves food safety, and nothing is published without staff approval.
 enum SurplusAssistant {
+    /// Words the speech recognizer should expect from kitchen staff.
+    static let speechHints = [
+        "bagels", "cookies", "pastries", "croissants", "muffins", "sandwiches", "wraps",
+        "salads", "donuts", "Surprise Bag", "Rescue Bag", "pickup", "bags", "per bag",
+        "Student Union", "Memory Mall", "Knight Pass"
+    ]
+
 
     // MARK: Stage 1
 
@@ -95,7 +104,8 @@ enum SurplusAssistant {
 
         let price = extractPrice(from: &working)
         let times = extractPickupTimes(from: &working, now: now, calendar: calendar)
-        notes.append(contentsOf: times.notes)
+        // The "No pickup time heard" case gets its own, more helpful note below.
+        notes.append(contentsOf: times.notes.filter { !$0.hasPrefix("No pickup") })
         let inventory = extractInventory(from: working)
 
         if inventory.isEmpty {

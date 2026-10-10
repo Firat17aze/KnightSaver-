@@ -29,6 +29,33 @@ struct BusinessProfile: Identifiable, Hashable {
     )
 }
 
+// MARK: - Pickup spots
+
+/// Where students collect a bag. Staff pick one when listing or editing.
+/// Coordinates are approximate campus points for KnightMap.
+struct PickupLocation: Identifiable, Hashable {
+    let name: String
+    let detail: String
+    let latitude: Double
+    let longitude: Double
+
+    var id: String { address }
+    var address: String { "\(name) · \(detail)" }
+
+    static let campusSpots: [PickupLocation] = [
+        PickupLocation(name: "Student Union", detail: "Level 1", latitude: 28.6016, longitude: -81.2005),
+        PickupLocation(name: "John C. Hitt Library", detail: "Front entrance", latitude: 28.6003, longitude: -81.2017),
+        PickupLocation(name: "Memory Mall", detail: "Reflecting pond", latitude: 28.6019, longitude: -81.1997),
+        PickupLocation(name: "Engineering Atrium", detail: "Ground floor", latitude: 28.6015, longitude: -81.1983),
+        PickupLocation(name: "Addition Financial Arena", detail: "Gate A", latitude: 28.6074, longitude: -81.1973),
+    ]
+
+    /// The spot that matches a saved address, or the first spot.
+    static func matching(_ address: String) -> PickupLocation {
+        campusSpots.first { $0.address == address } ?? campusSpots[0]
+    }
+}
+
 // MARK: - Rules the AI and the plan screen follow
 
 enum BusinessRules {
@@ -169,7 +196,9 @@ enum ListingState: Hashable {
 
 struct BusinessListing: Identifiable, Hashable {
     let id: UUID
-    let label = "Surprise Bag"
+    /// Surprise Bags keep their contents secret. Turned off, it's a Rescue Bag with known contents.
+    var isSurprise: Bool
+    var label: String { isSurprise ? "Surprise Bag" : "Rescue Bag" }
     var price: Double
     var totalQuantity: Int
     /// Bags students can still reserve.
@@ -207,6 +236,7 @@ struct BusinessListing: Identifiable, Hashable {
         inventory: [SurplusItem],
         bagSplit: [[SurplusItem]]? = nil,
         unallocated: [SurplusItem] = [],
+        isSurprise: Bool = true,
         state: ListingState = .live,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -223,6 +253,7 @@ struct BusinessListing: Identifiable, Hashable {
         self.longitude = longitude
         self.bannerAssetName = bannerAssetName
         self.inventory = inventory
+        self.isSurprise = isSurprise
         if let bagSplit {
             self.bagSplit = bagSplit
             self.unallocated = unallocated
@@ -279,6 +310,41 @@ struct BusinessListing: Identifiable, Hashable {
     var estimatedKgPerBag: Double {
         guard totalQuantity > 0 else { return 0 }
         return Double(inventory.totalUnits) * BusinessRules.estimatedKgPerItem / Double(totalQuantity)
+    }
+}
+
+/// Playful, knight-themed names for each bag in a batch, so staff can tell them apart
+/// without calling them "Bag 1, Bag 2". Paired with a Roman numeral.
+enum BagName {
+    private static let surpriseNames = [
+        "Mystery Satchel", "Knight's Secret", "Sealed Pouch", "Dragon's Hoard",
+        "Royal Riddle", "Hidden Treasure", "Squire's Stash", "Golden Gamble",
+        "Castle Surprise", "Midnight Feast", "Lucky Lance", "Quest Bag",
+    ]
+
+    /// Rescue Bags show their contents, so their names don't promise a mystery.
+    private static let rescueNames = [
+        "Royal Basket", "Knight's Feast", "Squire's Supper", "Golden Platter",
+        "Castle Pantry", "Banquet Box", "Trail Rations", "Great Hall Spread",
+        "Jousting Lunch", "Crown Hamper", "Shield Snack", "Tower Treats",
+    ]
+
+    static func name(_ index: Int, isSurprise: Bool = true) -> String {
+        let list = isSurprise ? surpriseNames : rescueNames
+        return list[index % list.count]
+    }
+
+    static func numeral(_ index: Int) -> String {
+        let values = [(10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
+        var number = index + 1
+        var result = ""
+        for (value, symbol) in values {
+            while number >= value {
+                result += symbol
+                number -= value
+            }
+        }
+        return result
     }
 }
 

@@ -21,7 +21,9 @@ struct EditListingFlow: View {
     @State private var pickupStart: Date
     @State private var pickupEnd: Date
     @State private var publicDescription: String
+    @State private var pickupLocation: PickupLocation
     @FocusState private var dictationFocused: Bool
+    @StateObject private var dictation = VoiceDictation()
 
     static let exampleInstruction = "Change the quantity to six bags and move pickup to 7:15–7:45 PM."
 
@@ -33,6 +35,7 @@ struct EditListingFlow: View {
         _pickupStart = State(initialValue: listing.pickupStart)
         _pickupEnd = State(initialValue: listing.pickupEnd)
         _publicDescription = State(initialValue: listing.publicDescription)
+        _pickupLocation = State(initialValue: PickupLocation.matching(listing.pickupAddress))
     }
 
     var body: some View {
@@ -56,7 +59,9 @@ struct EditListingFlow: View {
                         Button {
                             switch step {
                             case .choose: break
-                            case .voice, .manual: step = .choose
+                            case .voice, .manual:
+                                dictation.stop()
+                                step = .choose
                             case .proposal: step = .voice
                             }
                         } label: {
@@ -116,13 +121,13 @@ struct EditListingFlow: View {
                 Text("What should change?")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
-                Label("Tap the box, then the microphone on the keyboard.", systemImage: "mic.circle.fill")
+                Text("Tap the mic and say what to change: bags, price, pickup time or spot.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
 
-                BizDictationBox(prompt: "“\(Self.exampleInstruction)”", text: $instruction, focus: $dictationFocused)
+                BizVoiceComposer(prompt: "“\(Self.exampleInstruction)”", text: $instruction, focus: $dictationFocused, voice: dictation)
 
-                if store.isDemo && instruction.isEmpty {
+                if store.isDemo && instruction.isEmpty && !dictation.isListening {
                     Button {
                         instruction = Self.exampleInstruction
                     } label: {
@@ -132,6 +137,7 @@ struct EditListingFlow: View {
                 }
 
                 Button {
+                    dictation.stop()
                     proposal = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
                     dictationFocused = false
                     step = .proposal
@@ -144,7 +150,6 @@ struct EditListingFlow: View {
             }
             .padding(KnightTheme.screenPadding)
         }
-        .onAppear { dictationFocused = true }
     }
 
     private var instructionIsEmpty: Bool {
@@ -257,9 +262,12 @@ struct EditListingFlow: View {
                 HStack {
                     Text("Price per bag")
                     Spacer()
-                    Text("$").foregroundStyle(KnightTheme.muted)
-                    BizDecimalField("5.99", value: $price)
-                        .frame(maxWidth: 80)
+                    // "$" sits right next to the number; the field is only as wide as its text.
+                    HStack(spacing: 1) {
+                        Text("$").foregroundStyle(KnightTheme.muted)
+                        BizDecimalField("5.99", value: $price)
+                            .fixedSize()
+                    }
                 }
                 DatePicker("Pickup starts", selection: $pickupStart, displayedComponents: .hourAndMinute)
                 DatePicker("Pickup ends", selection: $pickupEnd, displayedComponents: .hourAndMinute)
@@ -267,6 +275,12 @@ struct EditListingFlow: View {
                 Text("Listing")
             } footer: {
                 Text("Reserved bags stay reserved. Changing bags available only changes what students can still reserve.")
+            }
+
+            Section {
+                PickupLocationPicker(selection: $pickupLocation)
+            } header: {
+                Text("Pickup location")
             }
 
             Section {
@@ -291,7 +305,8 @@ struct EditListingFlow: View {
                         price: price,
                         pickupStart: pickupStart,
                         pickupEnd: pickupEnd,
-                        description: publicDescription
+                        description: publicDescription,
+                        location: pickupLocation
                     )
                     dismiss()
                 } label: {
