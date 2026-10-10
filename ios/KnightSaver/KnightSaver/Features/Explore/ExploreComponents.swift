@@ -32,7 +32,17 @@ struct KnightPassButton: View {
 
     var body: some View {
         Button(action: action) {
-            KnightPassCard(pass: pass, showsQRCode: false)
+            VStack(spacing: 10) {
+                KnightPassCard(pass: pass, showsQRCode: false)
+
+                Label("Tap card to flip", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 13)
+                    .frame(minHeight: 36)
+                    .background(KnightTheme.ink, in: Capsule())
+                    .accessibilityHidden(true)
+            }
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel("Knight Pass for \(pass.displayName)")
