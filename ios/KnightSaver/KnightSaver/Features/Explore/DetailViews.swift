@@ -269,6 +269,7 @@ struct LocationPickerView: View {
     @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
     @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
     @AppStorage("currentPickupLabel") private var storedCurrentLocationLabel = "Current location"
+    @AppStorage("currentPickupUpdatedAt") private var currentLocationUpdatedAt = 0.0
     @StateObject private var locationManager = PickupLocationManager()
 
     private let locations = [
@@ -386,5 +387,6 @@ struct LocationPickerView: View {
         currentLatitude = location.coordinate.latitude
         currentLongitude = location.coordinate.longitude
         storedCurrentLocationLabel = locationManager.currentLocationLabel ?? "Current location"
+        currentLocationUpdatedAt = Date().timeIntervalSince1970
     }
 }

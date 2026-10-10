@@ -47,3 +47,36 @@ extension View {
         environment(\.colorScheme, .light)
     }
 }
+
+/// Height of the floating tab bar, measured by RootView. Scrolling screens read it so their
+/// last items can scroll clear of the bar.
+private struct TabBarInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var tabBarInset: CGFloat {
+        get { self[TabBarInsetKey.self] }
+        set { self[TabBarInsetKey.self] = newValue }
+    }
+}
+
+private struct ReservesTabBarSpace: ViewModifier {
+    @Environment(\.tabBarInset) private var tabBarInset
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear
+                .frame(height: tabBarInset)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+extension View {
+    /// Apply to a tab's scroll view (and to screens pushed inside a tab) so content can scroll
+    /// above the floating tab bar. NavigationStack doesn't pass an outer inset down to its pages.
+    func reservesTabBarSpace() -> some View {
+        modifier(ReservesTabBarSpace())
+    }
+}

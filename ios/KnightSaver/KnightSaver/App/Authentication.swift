@@ -6,6 +6,20 @@ enum AccountRole: String, Codable, CaseIterable, Identifiable {
     case business = "Business"
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .student: "Student"
+        case .business: "Business owner"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .student: "graduationcap.fill"
+        case .business: "storefront.fill"
+        }
+    }
 }
 
 struct AppAccount: Codable, Identifiable, Hashable {
@@ -47,21 +61,30 @@ final class SessionStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([LocalCredential].self, from: data) {
             credentials = decoded
         }
+        seedDemoAccounts()
         if let activeID = UserDefaults.standard.string(forKey: activeAccountKey),
            let credential = credentials.first(where: { $0.account.id.uuidString == activeID }) {
             account = credential.account
         }
     }
 
-    func signIn(email: String, password: String) {
+    /// Signs in to the side the person chose. A student account can't open the business
+    /// side, and a business account can't open the student side.
+    func signIn(email: String, password: String, as role: AccountRole) {
         errorMessage = nil
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard let credential = credentials.first(where: { $0.account.email == normalizedEmail }) else {
-            errorMessage = "No local account uses that email. Create an account or use a demo account."
+            errorMessage = "No account uses that email. Check it, or create an account."
             return
         }
         guard credential.passwordDigest == digest(password) else {
             errorMessage = "That password doesn’t match this account."
+            return
+        }
+        guard credential.account.role == role else {
+            errorMessage = credential.account.role == .business
+                ? "This is a business account. Go back and choose Business owner."
+                : "This is a student account. Go back and choose Student."
             return
         }
         setActive(credential.account)
@@ -117,20 +140,34 @@ final class SessionStore: ObservableObject {
         setActive(newAccount)
     }
 
-    func useDemo(_ role: AccountRole) {
-        let demo = AppAccount(
-            id: role == .student
-                ? UUID(uuidString: "B13A07AB-347E-4AF4-86A2-847C18B32A15")!
-                : UUID(uuidString: "91DA268C-493A-4C0C-8B79-10D1EDC76184")!,
-            displayName: role == .student ? "Alex Knight" : "Jordan Manager",
-            email: role == .student ? "alex@ucf.edu" : "manager@knightros.example",
-            role: role,
-            businessName: role == .business ? "Knightro's Kitchen" : nil,
-            phoneNumber: role == .student ? "(407) 555-0142" : "(407) 555-0188",
-            campusName: "UCF Main Campus",
-            passToken: role == .student ? "demo-7F4C92B1A8E6" : "demo-business-session"
-        )
-        setActive(demo)
+    /// Prototype accounts that are always available for sign in (password "knightsaver").
+    /// Remove when the KnightSaver backend handles accounts.
+    private func seedDemoAccounts() {
+        let demos = [
+            AppAccount(
+                id: UUID(uuidString: "B13A07AB-347E-4AF4-86A2-847C18B32A15")!,
+                displayName: "Alex Knight",
+                email: "alex@ucf.edu",
+                role: .student,
+                phoneNumber: "(407) 555-0142",
+                campusName: "UCF Main Campus",
+                passToken: "demo-7F4C92B1A8E6"
+            ),
+            AppAccount(
+                id: UUID(uuidString: "91DA268C-493A-4C0C-8B79-10D1EDC76184")!,
+                displayName: "Jordan Manager",
+                email: "manager@knightros.example",
+                role: .business,
+                businessName: "Knightro's Kitchen",
+                phoneNumber: "(407) 555-0188",
+                campusName: "UCF Main Campus",
+                passToken: "demo-business-session"
+            )
+        ]
+        let missing = demos.filter { demo in !credentials.contains { $0.account.email == demo.email } }
+        guard !missing.isEmpty else { return }
+        credentials += missing.map { LocalCredential(account: $0, passwordDigest: digest("knightsaver")) }
+        saveCredentials()
     }
 
     /// Updates the signed-in profile immediately and persists it for locally created accounts.
@@ -201,11 +238,146 @@ private enum AuthenticationMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// First screen: choose Student or Business owner, then sign in or sign up for that side.
 struct AuthenticationView: View {
     @ObservedObject var store: SessionStore
+    @State private var role: AccountRole?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            if let role {
+                RoleAuthenticationView(store: store, role: role) {
+                    store.errorMessage = nil
+                    self.role = nil
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                RoleChoiceView { role = $0 }
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: role)
+        .background(KnightTheme.paper.ignoresSafeArea())
+    }
+}
+
+private struct RoleChoiceView: View {
+    let onChoose: (AccountRole) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 30) {
+                VStack(alignment: .leading, spacing: 14) {
+                    KnightSaverBrandBar()
+                    Text("Save good food.\nMake an impact.")
+                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Text("How will you use KnightSaver?")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+
+                VStack(spacing: 14) {
+                    RoleCard(
+                        role: .student,
+                        title: "I'm a student",
+                        subtitle: "Find and reserve Surprise Bags around campus"
+                    ) { onChoose(.student) }
+
+                    RoleCard(
+                        role: .business,
+                        title: "I'm a business owner",
+                        subtitle: "List surplus food and verify pickups"
+                    ) { onChoose(.business) }
+                }
+            }
+            .padding(.horizontal, KnightTheme.screenPadding)
+            .padding(.vertical, 28)
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
+private struct RoleCard: View {
+    let role: AccountRole
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                RoleIcon(role: role, size: 64)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(KnightTheme.goldDeep)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
+                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+            }
+            .knightCardShadow()
+        }
+        .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
+    }
+}
+
+/// Student: graduation cap. Business: the sprout storefront used for the Kitchen tab.
+private struct RoleIcon: View {
+    let role: AccountRole
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if role == .business {
+                Image("TabKitchenFill")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size * 0.48, height: size * 0.48)
+            } else {
+                Image(systemName: role.icon)
+                    .font(.system(size: size * 0.4, weight: .semibold))
+            }
+        }
+        .foregroundStyle(role == .business ? KnightTheme.gold : KnightTheme.onAccent)
+        .frame(width: size, height: size)
+        .background(
+            role == .business ? KnightTheme.night : KnightTheme.gold,
+            in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+        )
+        .accessibilityHidden(true)
+    }
+}
+
+/// Sign in or create an account for one side of the app.
+private struct RoleAuthenticationView: View {
+    @ObservedObject var store: SessionStore
+    let role: AccountRole
+    let onBack: () -> Void
 
     @State private var mode: AuthenticationMode = .signIn
-    @State private var role: AccountRole = .student
     @State private var name = ""
     @State private var businessName = ""
     @State private var email = ""
@@ -214,6 +386,16 @@ struct AuthenticationView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
+                Button(action: onBack) {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Choose student or business owner")
+
                 header
 
                 VStack(spacing: 18) {
@@ -225,14 +407,11 @@ struct AuthenticationView: View {
                     .pickerStyle(.segmented)
 
                     if mode == .createAccount {
-                        Picker("Account type", selection: $role) {
-                            ForEach(AccountRole.allCases) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        AuthField(title: "Full name", icon: "person", text: $name)
+                        AuthField(
+                            title: role == .business ? "Your full name" : "Full name",
+                            icon: "person",
+                            text: $name
+                        )
 
                         if role == .business {
                             AuthField(title: "Business name", icon: "storefront", text: $businessName)
@@ -240,21 +419,26 @@ struct AuthenticationView: View {
                     }
 
                     AuthField(
-                        title: mode == .createAccount && role == .student ? "UCF email" : "Email",
+                        title: role == .student ? "UCF email" : "Business email",
                         icon: "envelope",
                         text: $email,
                         keyboard: .emailAddress
                     )
 
-                    SecureField("Password", text: $password)
-                        .textContentType(mode == .signIn ? .password : .newPassword)
-                        .padding(.horizontal, 16)
-                        .frame(height: 54)
-                        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                                .stroke(KnightTheme.line, lineWidth: 1)
-                        }
+                    HStack(spacing: 11) {
+                        Image(systemName: "lock")
+                            .foregroundStyle(KnightTheme.muted)
+                            .frame(width: 20)
+                        SecureField("Password", text: $password)
+                            .textContentType(mode == .signIn ? .password : .newPassword)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(height: 54)
+                    .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                            .stroke(KnightTheme.line, lineWidth: 1)
+                    }
 
                     if let error = store.errorMessage {
                         Text(error)
@@ -267,65 +451,47 @@ struct AuthenticationView: View {
                     Button(action: submit) {
                         Text(mode.rawValue)
                             .font(.system(size: 16, weight: .black, design: .rounded))
-                            .foregroundStyle(KnightTheme.ink)
+                            .foregroundStyle(KnightTheme.onAccent)
                             .frame(maxWidth: .infinity, minHeight: 54)
                             .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("TRY THE PROTOTYPE")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .tracking(1.4)
-                        .foregroundStyle(KnightTheme.muted)
-
-                    HStack(spacing: 12) {
-                        DemoAccountButton(title: "Student demo", icon: "graduationcap") {
-                            store.useDemo(.student)
-                        }
-                        DemoAccountButton(title: "Business demo", icon: "storefront") {
-                            store.useDemo(.business)
-                        }
-                    }
-
-                    Text("Accounts created here stay on this device. Production sign-in will connect to the KnightSaver backend and business approval service.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(KnightTheme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
             .padding(.horizontal, KnightTheme.screenPadding)
-            .padding(.vertical, 28)
+            .padding(.vertical, 20)
         }
+        .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .background(KnightTheme.paper.ignoresSafeArea())
         .onChange(of: mode) { _, _ in store.errorMessage = nil }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            KnightSaverBrandBar {
-                Text("PICKUP ONLY")
+        HStack(alignment: .center, spacing: 14) {
+            RoleIcon(role: role, size: 56)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(role.title.uppercased())
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .tracking(1.4)
                     .foregroundStyle(KnightTheme.goldDeep)
+                Text(mode == .signIn ? "Welcome back" : "Create your account")
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(role == .student
+                     ? "Use your UCF email to reserve bags."
+                     : "Manage your listings and pickups.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
             }
-            Text("Save good food.\nMake an impact.")
-                .font(.system(size: 36, weight: .black, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
-            Text("Sign in as a student, or manage surplus through an authorized business account.")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(KnightTheme.muted)
         }
     }
 
     private func submit() {
         if mode == .signIn {
-            // Temporary prototype behavior: let reviewers enter immediately without
-            // creating credentials. Restore `signIn(email:password:)` when the backend
-            // authentication flow is ready.
-            store.useDemo(.student)
+            store.signIn(email: email, password: password, as: role)
         } else {
             store.register(
                 role: role,
@@ -362,26 +528,5 @@ private struct AuthField: View {
             RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
                 .stroke(KnightTheme.line, lineWidth: 1)
         }
-    }
-}
-
-private struct DemoAccountButton: View {
-    let title: String
-    let icon: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
-                .frame(maxWidth: .infinity, minHeight: 50)
-                .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                        .stroke(KnightTheme.line, lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
     }
 }
