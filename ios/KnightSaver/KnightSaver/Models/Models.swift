@@ -1,5 +1,32 @@
 import SwiftUI
 
+enum ListingBannerCatalog {
+    static let assetNames = [
+        "BannerBagels",
+        "BannerBakeryDisplay",
+        "BannerCafeBrunch",
+        "BannerCafeTable",
+        "BannerCoffeePastry",
+        "BannerCoffeeTable",
+        "BannerCroissants",
+        "BannerPastryFlatlay",
+        "BannerPastryShelves"
+    ]
+
+    static func random(excluding previous: String? = nil) -> String {
+        let choices = assetNames.filter { $0 != previous }
+        return choices.randomElement() ?? assetNames[0]
+    }
+}
+
+private extension Date {
+    static func nextPickup(hour: Int, minute: Int) -> Date {
+        let calendar = Calendar.current
+        let today = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        return today > Date() ? today : calendar.date(byAdding: .day, value: 1, to: today) ?? today
+    }
+}
+
 enum BagBrand: String, CaseIterable, Hashable {
     case knightros
     case campusBakery
@@ -51,8 +78,13 @@ struct SurpriseBag: Identifiable, Hashable {
     let brand: BagBrand
     let rating: Double
     let feedbackCount: Int
-    let distance: Double
+    var distance: Double
     let pickupWindow: String
+    let pickupStart: Date?
+    let pickupEnd: Date?
+    let latitude: Double
+    let longitude: Double
+    let bannerAssetName: String
     let availableCount: Int
     let price: Double
     let description: String
@@ -76,6 +108,11 @@ struct SurpriseBag: Identifiable, Hashable {
             feedbackCount: 126,
             distance: 0.4,
             pickupWindow: "7:00–7:30 PM",
+            pickupStart: .nextPickup(hour: 19, minute: 0),
+            pickupEnd: .nextPickup(hour: 19, minute: 30),
+            latitude: 28.6016,
+            longitude: -81.2005,
+            bannerAssetName: "BannerCafeBrunch",
             availableCount: 3,
             price: 5.99,
             description: "A changing mix of today’s surplus items, packed for one easy campus pickup."
@@ -88,6 +125,11 @@ struct SurpriseBag: Identifiable, Hashable {
             feedbackCount: 84,
             distance: 0.7,
             pickupWindow: "6:30–7:00 PM",
+            pickupStart: .nextPickup(hour: 18, minute: 30),
+            pickupEnd: .nextPickup(hour: 19, minute: 0),
+            latitude: 28.6028,
+            longitude: -81.1977,
+            bannerAssetName: "BannerBagels",
             availableCount: 2,
             price: 4.49,
             description: "A surprise selection prepared from the bakery’s remaining items for the day."
@@ -100,6 +142,11 @@ struct SurpriseBag: Identifiable, Hashable {
             feedbackCount: 61,
             distance: 1.1,
             pickupWindow: "8:00–8:30 PM",
+            pickupStart: .nextPickup(hour: 20, minute: 0),
+            pickupEnd: .nextPickup(hour: 20, minute: 30),
+            latitude: 28.6071,
+            longitude: -81.1974,
+            bannerAssetName: "BannerBakeryDisplay",
             availableCount: 6,
             price: 6.49,
             description: "A convenient assortment of surplus market items available after evening service."
@@ -112,6 +159,11 @@ struct SurpriseBag: Identifiable, Hashable {
             feedbackCount: 93,
             distance: 0.2,
             pickupWindow: "5:45–6:15 PM",
+            pickupStart: .nextPickup(hour: 17, minute: 45),
+            pickupEnd: .nextPickup(hour: 18, minute: 15),
+            latitude: 28.6004,
+            longitude: -81.2019,
+            bannerAssetName: "BannerCoffeeTable",
             availableCount: 0,
             price: 3.99,
             description: "A rotating selection from the café’s available surplus. Join the waitlist for updates."

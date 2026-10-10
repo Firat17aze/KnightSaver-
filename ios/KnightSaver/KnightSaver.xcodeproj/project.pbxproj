@@ -16,6 +16,7 @@
 		A10000000000000000000007 /* DetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* DetailViews.swift */; };
 		A10000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* Assets.xcassets */; };
 		A10000000000000000000009 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* ProfileView.swift */; };
+		A1000000000000000000000A /* Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* Authentication.swift */; };
 		A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B01 /* BusinessDashboardView.swift */; };
 		A10000000000000000000B02 /* BusinessModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B02 /* BusinessModels.swift */; };
 		A10000000000000000000B03 /* BusinessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B03 /* BusinessStore.swift */; };
@@ -39,6 +40,7 @@
 		B10000000000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000009 /* KnightSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KnightSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000010 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000A /* Authentication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Authentication.swift; sourceTree = "<group>"; };
 		B10000000000000000000B01 /* BusinessDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessDashboardView.swift; sourceTree = "<group>"; };
 		B10000000000000000000B02 /* BusinessModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessModels.swift; sourceTree = "<group>"; };
 		B10000000000000000000B03 /* BusinessStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessStore.swift; sourceTree = "<group>"; };
@@ -85,6 +87,7 @@
 			children = (
 				B10000000000000000000001 /* KnightSaverApp.swift */,
 				B10000000000000000000002 /* RootView.swift */,
+				B1000000000000000000000A /* Authentication.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -214,6 +217,7 @@
 				A10000000000000000000006 /* ExploreComponents.swift in Sources */,
 				A10000000000000000000007 /* DetailViews.swift in Sources */,
 				A10000000000000000000009 /* ProfileView.swift in Sources */,
+				A1000000000000000000000A /* Authentication.swift in Sources */,
 				A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */,
 				A10000000000000000000B02 /* BusinessModels.swift in Sources */,
 				A10000000000000000000B03 /* BusinessStore.swift in Sources */,

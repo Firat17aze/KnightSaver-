@@ -28,9 +28,14 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .profile: "person.fill"
         }
     }
+
+    static func available(for role: AccountRole) -> [AppTab] {
+        role == .business ? allCases : allCases.filter { $0 != .business }
+    }
 }
 
 struct RootView: View {
+    @StateObject private var sessionStore = SessionStore()
     @State private var selectedTab: AppTab = .explore
     /// Reservations for the sample restaurants only. Reservations for bags published from
     /// Business live in `businessStore` and are merged in by Explore and Profile.
@@ -39,10 +44,20 @@ struct RootView: View {
     /// tab switches, and Explore, bag details, Profile and Business all see the same data.
     @StateObject private var businessStore = BusinessStore.demo()
     @State private var showKnightPass = false
-    private let knightPass = KnightPass.sample
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        Group {
+            if let account = sessionStore.account {
+                authenticatedApp(account: account)
+            } else {
+                AuthenticationView(store: sessionStore)
+            }
+        }
+        .tint(KnightTheme.ink)
+    }
+
+    private func authenticatedApp(account: AppAccount) -> some View {
         ZStack {
             ZStack {
                 KnightTheme.paper.ignoresSafeArea()
@@ -50,7 +65,7 @@ struct RootView: View {
                 Group {
                     switch selectedTab {
                     case .explore:
-                        ExploreView(activeReservations: $activeReservations)
+                        ExploreView(activeReservations: $activeReservations, student: account.knightPass)
                     case .map:
                         // When KnightMap is built, read live pins from the shared store:
                         // `businessStore.mapPins` (bag + latitude/longitude), not sample data.
@@ -58,18 +73,27 @@ struct RootView: View {
                     case .impact:
                         PlaceholderView(title: "Your impact", subtitle: "Verified rescues and EcoKnight AI live here.", icon: "leaf.fill")
                     case .business:
-                        BusinessDashboardView(store: businessStore)
+                        if account.role == .business {
+                            BusinessDashboardView(store: businessStore)
+                        } else {
+                            PlaceholderView(title: "Business access", subtitle: "An approved business account is required.", icon: "lock.fill")
+                        }
                     case .profile:
                         ProfileView(
-                            pass: knightPass,
+                            pass: account.knightPass,
                             activeReservations: $activeReservations,
-                            action: { showKnightPass = true }
+                            action: { showKnightPass = true },
+                            onSignOut: {
+                                showKnightPass = false
+                                selectedTab = .explore
+                                sessionStore.signOut()
+                            }
                         )
                     }
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                KnightTabBar(selection: $selectedTab)
+                KnightTabBar(selection: $selectedTab, tabs: AppTab.available(for: account.role))
             }
             .blur(radius: showKnightPass ? 12 : 0)
             .scaleEffect(!showKnightPass || reduceMotion ? 1 : 0.985)
@@ -78,25 +102,33 @@ struct RootView: View {
 
             if showKnightPass {
                 KnightPassOverlay(
-                    pass: knightPass,
+                    pass: account.knightPass,
                     onClose: { showKnightPass = false }
                 )
                 .transition(.opacity)
                 .zIndex(10)
             }
         }
-        .tint(KnightTheme.ink)
         .environmentObject(businessStore)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
+        .onAppear {
+            if account.role == .business, let businessName = account.businessName, !businessName.isEmpty {
+                businessStore.profile.name = businessName
+            }
+            if !AppTab.available(for: account.role).contains(selectedTab) {
+                selectedTab = .explore
+            }
+        }
     }
 }
 
 private struct KnightTabBar: View {
     @Binding var selection: AppTab
+    let tabs: [AppTab]
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(AppTab.allCases) { tab in
+            ForEach(tabs) { tab in
                 Button {
                     selection = tab
                 } label: {
