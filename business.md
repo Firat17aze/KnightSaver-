@@ -14,6 +14,27 @@ The business dashboard occupies only the fourth button in the shared navigation.
 
 For a real deployment, the **Business** section requires an authorized staff or manager account. During the hackathon, it may be shown as a clearly labeled demo business view.
 
+## Shared visual references
+
+The two developers should follow the same design decisions.
+
+### Bottom navigation
+
+- Use the Rakuten-inspired floating rounded capsule documented in `student.md`.
+- Keep five equal destinations with an icon above each visible label.
+- Use a soft KnightSaver-colored highlight for the active destination.
+- Business remains the fourth navigation button.
+- Do not add a second business navigation bar.
+- Place **+ List surplus** immediately above the shared navigation.
+
+### Explore page
+
+- The student Explore page uses an Uber Eats-inspired food-browsing hierarchy.
+- It starts with campus pickup context, a prominent search field, horizontal filters, and large food listing cards.
+- It uses KnightSaver branding and pickup-specific information rather than delivery tracking, ratings, or restaurant promotions.
+- Business listings must provide the information needed by those cards: image, food name, price, quantity, pickup deadline, location, and confirmed dietary details.
+- Changes made from the Business section should update the Explore feed immediately.
+
 ## Main business action
 
 **+ List surplus**
