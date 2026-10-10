@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreLocation
+import UIKit
 
 struct BagDetailView: View {
     let bag: SurpriseBag
@@ -261,37 +263,66 @@ private struct RevealCard: View {
 
 struct LocationPickerView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedLocation = "UCF Main Campus"
+    @Environment(\.openURL) private var openURL
+    @AppStorage("usesCurrentPickupLocation") private var usesCurrentLocation = false
+    @AppStorage("preferredUCFCampus") private var selectedLocation = "UCF Main Campus"
+    @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
+    @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
+    @AppStorage("currentPickupLabel") private var storedCurrentLocationLabel = "Current location"
+    @StateObject private var locationManager = PickupLocationManager()
 
-    private let locations = ["UCF Main Campus", "Student Union", "Memory Mall", "Academic Village"]
+    private let locations = [
+        "UCF Main Campus",
+        "UCF Downtown",
+        "Health Sciences Campus",
+        "Rosen College"
+    ]
 
     var body: some View {
         NavigationStack {
-            List(locations, id: \.self) { location in
-                Button {
-                    selectedLocation = location
-                    dismiss()
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(location)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(KnightTheme.ink)
-                            if location == "UCF Main Campus" {
-                                Text("Using your current campus area")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(KnightTheme.muted)
-                            }
-                        }
-                        Spacer()
-                        if selectedLocation == location {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(KnightTheme.goldDeep)
-                        }
+            List {
+                Section {
+                    Button {
+                        locationManager.requestCurrentLocation()
+                    } label: {
+                        LocationPreferenceRow(
+                            icon: "location.fill",
+                            title: "My Current Location",
+                            subtitle: currentLocationSubtitle,
+                            isSelected: usesCurrentLocation,
+                            isLoading: locationManager.isLocating
+                        )
                     }
-                    .frame(minHeight: 48)
+                    .buttonStyle(.plain)
+                    .accessibilityValue(usesCurrentLocation ? "Selected" : "Not selected")
                 }
-                .buttonStyle(.plain)
+
+                Section("UCF campuses") {
+                    ForEach(locations, id: \.self) { location in
+                        Button {
+                            usesCurrentLocation = false
+                            selectedLocation = location
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(location)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(KnightTheme.ink)
+
+                                Spacer()
+
+                                if !usesCurrentLocation && selectedLocation == location {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(KnightTheme.goldDeep)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .frame(minHeight: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(!usesCurrentLocation && selectedLocation == location ? "Selected" : "Not selected")
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(KnightTheme.paper)
@@ -302,6 +333,58 @@ struct LocationPickerView: View {
                     Button("Close") { dismiss() }
                 }
             }
+            .onChange(of: locationManager.hasCurrentLocation) { _, hasCurrentLocation in
+                if hasCurrentLocation {
+                    persistCurrentLocation()
+                    usesCurrentLocation = true
+                    dismiss()
+                }
+            }
+            .alert("Location unavailable", isPresented: locationErrorBinding) {
+                if locationManager.authorizationStatus == .denied {
+                    Button("Open Settings") {
+                        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                            openURL(settingsURL)
+                        }
+                    }
+                }
+                Button("Choose a campus", role: .cancel) { }
+            } message: {
+                Text(locationManager.errorMessage ?? "Choose a UCF campus instead.")
+            }
         }
+    }
+
+    private var currentLocationSubtitle: String {
+        if locationManager.isLocating {
+            return "Finding your location…"
+        }
+
+        switch locationManager.authorizationStatus {
+        case .denied:
+            return "Location access is off"
+        case .restricted:
+            return "Location access is restricted"
+        default:
+            return usesCurrentLocation ? storedCurrentLocationLabel : "Use your device location"
+        }
+    }
+
+    private var locationErrorBinding: Binding<Bool> {
+        Binding(
+            get: { locationManager.errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    locationManager.errorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func persistCurrentLocation() {
+        guard let location = locationManager.currentLocation else { return }
+        currentLatitude = location.coordinate.latitude
+        currentLongitude = location.coordinate.longitude
+        storedCurrentLocationLabel = locationManager.currentLocationLabel ?? "Current location"
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 enum ExploreSort: String, CaseIterable, Identifiable {
     case recommended = "Recommended"
@@ -9,25 +10,64 @@ enum ExploreSort: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+private enum ExplorePickupTimeFilter: String, CaseIterable, Identifiable {
+    case any = "Any time"
+    case nextHour = "Next hour"
+    case afternoon = "Afternoon"
+    case evening = "Evening"
+
+    var id: String { rawValue }
+
+    func includes(_ date: Date?) -> Bool {
+        guard self != .any else { return true }
+        guard let date else { return false }
+        switch self {
+        case .any:
+            return true
+        case .nextHour:
+            return date >= Date() && date <= Date().addingTimeInterval(60 * 60)
+        case .afternoon:
+            return (12..<17).contains(Calendar.current.component(.hour, from: date))
+        case .evening:
+            return Calendar.current.component(.hour, from: date) >= 17
+        }
+    }
+}
+
 struct ExploreView: View {
     @Binding var activeReservations: [ActiveReservation]
+    let student: KnightPass
 
     @State private var searchText = ""
     @State private var availableOnly = false
+    @State private var maximumDistance: Double?
+    @State private var minimumRating: Double?
+    @State private var pickupTimeFilter: ExplorePickupTimeFilter = .any
     @State private var sort: ExploreSort = .recommended
     @State private var selectedBag: SurpriseBag?
     @State private var showLocationPicker = false
+    @AppStorage("usesCurrentPickupLocation") private var usesCurrentLocation = false
+    @AppStorage("preferredUCFCampus") private var selectedCampus = "UCF Main Campus"
+    @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
+    @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
+    @AppStorage("currentPickupLabel") private var currentLocationLabel = "Current location"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Shared with Business: bags published there appear here right away.
     @EnvironmentObject var businessStore: BusinessStore
 
-    /// Signed-in student. Demo account until authentication is added.
-    private var student: KnightPass { KnightPass.sample }
-
     /// Live bags from Business first, then the sample restaurants (minus the business that is live).
     private var allBags: [SurpriseBag] {
-        businessStore.surpriseBagsForExplore
-            + SurpriseBag.samples.filter { $0.business != businessStore.profile.name }
+        (businessStore.surpriseBagsForExplore
+            + SurpriseBag.samples.filter { $0.business != businessStore.profile.name })
+            .map(resolvingDistance)
+    }
+
+    private var pickupLocationTitle: String {
+        usesCurrentLocation ? currentLocationLabel : selectedCampus
+    }
+
+    private var hasActiveFilters: Bool {
+        maximumDistance != nil || minimumRating != nil || pickupTimeFilter != .any || availableOnly
     }
 
     private var visibleBags: [SurpriseBag] {
@@ -35,7 +75,11 @@ struct ExploreView: View {
             let matchesSearch = searchText.isEmpty ||
                 bag.business.localizedCaseInsensitiveContains(searchText) ||
                 "Surprise Bag".localizedCaseInsensitiveContains(searchText)
-            return matchesSearch && (!availableOnly || bag.availableCount > 0)
+            let matchesDistance = maximumDistance.map { bag.distance <= $0 } ?? true
+            let matchesRating = minimumRating.map { bag.rating >= $0 } ?? true
+            let matchesPickupTime = pickupTimeFilter.includes(bag.pickupStart)
+            let matchesAvailability = !availableOnly || bag.availableCount > 0
+            return matchesSearch && matchesDistance && matchesRating && matchesPickupTime && matchesAvailability
         }
 
         switch sort {
@@ -44,7 +88,7 @@ struct ExploreView: View {
         case .nearest:
             bags.sort { $0.distance < $1.distance }
         case .pickupTime:
-            bags.sort { $0.pickupWindow < $1.pickupWindow }
+            bags.sort { ($0.pickupStart ?? .distantFuture) < ($1.pickupStart ?? .distantFuture) }
         case .highestRated:
             bags.sort { $0.rating > $1.rating }
         }
@@ -65,9 +109,7 @@ struct ExploreView: View {
 
                     if visibleBags.isEmpty {
                         EmptyExploreState(searchText: searchText) {
-                            searchText = ""
-                            availableOnly = false
-                            sort = .recommended
+                            clearDiscovery()
                         }
                         .padding(.top, 26)
                     } else {
@@ -94,7 +136,7 @@ struct ExploreView: View {
             .navigationBarHidden(true)
             .sheet(item: $selectedBag) { bag in
                 // Always show the latest version of a live bag (quantity, price, pickup time).
-                BagDetailView(bag: businessStore.liveBag(id: bag.id) ?? bag) {
+                BagDetailView(bag: resolvingDistance(businessStore.liveBag(id: bag.id) ?? bag)) {
                     reserve(bag)
                 }
                 .presentationDetents([.large])
@@ -133,8 +175,9 @@ struct ExploreView: View {
                                 .tracking(1.2)
                                 .foregroundStyle(KnightTheme.muted)
                             HStack(spacing: 5) {
-                                Text("UCF Main Campus")
+                                Text(pickupLocationTitle)
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .lineLimit(1)
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 10, weight: .bold))
                             }
@@ -144,7 +187,7 @@ struct ExploreView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(minHeight: 48)
-                .accessibilityLabel("Pickup area, UCF Main Campus")
+                .accessibilityLabel("Pickup area, \(pickupLocationTitle)")
                 .accessibilityHint("Change pickup area")
 
                 Spacer()
@@ -212,21 +255,63 @@ struct ExploreView: View {
 
             ScrollView(.horizontal) {
                 HStack(spacing: 9) {
-                    FilterChip(title: "Distance", icon: "location", isSelected: sort == .nearest) {
-                        sort = sort == .nearest ? .recommended : .nearest
+                    Menu {
+                        Button("Any distance") { maximumDistance = nil }
+                        Button("Within 0.5 mi") { maximumDistance = 0.5 }
+                        Button("Within 1 mi") { maximumDistance = 1 }
+                        Button("Within 2 mi") { maximumDistance = 2 }
+                    } label: {
+                        FilterMenuChip(
+                            title: maximumDistance.map { "Within \(formatDistance($0)) mi" } ?? "Distance",
+                            icon: "location",
+                            isSelected: maximumDistance != nil
+                        )
                     }
-                    FilterChip(title: "Pickup time", icon: "clock", isSelected: sort == .pickupTime) {
-                        sort = sort == .pickupTime ? .recommended : .pickupTime
+                    .accessibilityLabel("Distance filter")
+
+                    Menu {
+                        Picker("Pickup time", selection: $pickupTimeFilter) {
+                            ForEach(ExplorePickupTimeFilter.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                    } label: {
+                        FilterMenuChip(
+                            title: pickupTimeFilter == .any ? "Pickup time" : pickupTimeFilter.rawValue,
+                            icon: "clock",
+                            isSelected: pickupTimeFilter != .any
+                        )
                     }
-                    FilterChip(title: "Rating", icon: "star", isSelected: sort == .highestRated) {
-                        sort = sort == .highestRated ? .recommended : .highestRated
+                    .accessibilityLabel("Pickup time filter")
+
+                    Menu {
+                        Button("Any rating") { minimumRating = nil }
+                        Button("4.0 and up") { minimumRating = 4.0 }
+                        Button("4.5 and up") { minimumRating = 4.5 }
+                        Button("4.8 and up") { minimumRating = 4.8 }
+                    } label: {
+                        FilterMenuChip(
+                            title: minimumRating.map { String(format: "%.1f+", $0) } ?? "Rating",
+                            icon: "star",
+                            isSelected: minimumRating != nil
+                        )
                     }
+                    .accessibilityLabel("Rating filter")
+
                     FilterChip(title: "Available now", icon: "checkmark.circle", isSelected: availableOnly) {
                         availableOnly.toggle()
                     }
                 }
             }
             .scrollIndicators(.hidden)
+
+            if hasActiveFilters {
+                Button("Clear filters", action: clearFilters)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.goldDeep)
+                    .frame(minHeight: 44)
+                    .accessibilityHint("Shows every listing near the selected pickup area")
+            }
         }
     }
 
@@ -260,5 +345,48 @@ struct ExploreView: View {
             }
             .accessibilityLabel("Sort Surprise Bags, currently \(sort.rawValue)")
         }
+    }
+
+    private func clearFilters() {
+        maximumDistance = nil
+        minimumRating = nil
+        pickupTimeFilter = .any
+        availableOnly = false
+    }
+
+    private func clearDiscovery() {
+        searchText = ""
+        clearFilters()
+        sort = .recommended
+    }
+
+    private func formatDistance(_ distance: Double) -> String {
+        distance.rounded() == distance ? String(Int(distance)) : String(format: "%.1f", distance)
+    }
+
+    private func resolvingDistance(_ bag: SurpriseBag) -> SurpriseBag {
+        var resolved = bag
+        let destination = CLLocation(latitude: bag.latitude, longitude: bag.longitude)
+        resolved.distance = pickupOrigin.distance(from: destination) / 1_609.344
+        return resolved
+    }
+
+    private var pickupOrigin: CLLocation {
+        if usesCurrentLocation, currentLatitude != 0, currentLongitude != 0 {
+            return CLLocation(latitude: currentLatitude, longitude: currentLongitude)
+        }
+
+        let coordinate: (Double, Double)
+        switch selectedCampus {
+        case "UCF Downtown":
+            coordinate = (28.5447, -81.3799)
+        case "Health Sciences Campus":
+            coordinate = (28.3688, -81.2788)
+        case "Rosen College":
+            coordinate = (28.4284, -81.4428)
+        default:
+            coordinate = (28.6024, -81.2001)
+        }
+        return CLLocation(latitude: coordinate.0, longitude: coordinate.1)
     }
 }

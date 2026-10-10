@@ -18,9 +18,9 @@ struct ProfileView: View {
     let pass: KnightPass
     @Binding var activeReservations: [ActiveReservation]
     let action: () -> Void
+    let onSignOut: () -> Void
 
     @State private var showSignOutConfirmation = false
-    @State private var showDemoSignOutMessage = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Shared with Business: reservations, waitlist offers and verified pickups.
     @EnvironmentObject var businessStore: BusinessStore
@@ -92,14 +92,9 @@ struct ProfileView: View {
             }
             .confirmationDialog("Sign out of KnightSaver?", isPresented: $showSignOutConfirmation, titleVisibility: .visible) {
                 Button("Sign out", role: .destructive) {
-                    showDemoSignOutMessage = true
+                    onSignOut()
                 }
                 Button("Stay signed in", role: .cancel) { }
-            }
-            .alert("Demo account", isPresented: $showDemoSignOutMessage) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Account sign-out will be connected when authentication is added.")
             }
         }
     }
@@ -632,9 +627,12 @@ private struct NotificationSettingsView: View {
     }
 }
 
-private final class ProfileLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class PickupLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var authorizationStatus: CLAuthorizationStatus
     @Published private(set) var isLocating = false
+    @Published private(set) var hasCurrentLocation = false
+    @Published private(set) var currentLocation: CLLocation?
+    @Published private(set) var currentLocationLabel: String?
     @Published var errorMessage: String?
 
     private let manager = CLLocationManager()
@@ -649,6 +647,7 @@ private final class ProfileLocationManager: NSObject, ObservableObject, CLLocati
 
     func requestCurrentLocation() {
         errorMessage = nil
+        hasCurrentLocation = false
         hasPendingRequest = true
 
         switch manager.authorizationStatus {
@@ -689,8 +688,27 @@ private final class ProfileLocationManager: NSObject, ObservableObject, CLLocati
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        hasPendingRequest = false
-        isLocating = false
+        guard let location = locations.last else {
+            hasPendingRequest = false
+            isLocating = false
+            errorMessage = "We couldn’t find your location. Try again or choose a UCF campus."
+            return
+        }
+
+        currentLocation = location
+        CLGeocoder().reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let placemark = placemarks?.first
+                self.currentLocationLabel = placemark?.name
+                    ?? placemark?.subLocality
+                    ?? placemark?.locality
+                    ?? "Current location"
+                self.hasPendingRequest = false
+                self.isLocating = false
+                self.hasCurrentLocation = true
+            }
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -718,7 +736,10 @@ private struct UCFCampusLocation: Identifiable {
 private struct PickupPreferencesView: View {
     @AppStorage("usesCurrentPickupLocation") private var usesCurrentLocation = false
     @AppStorage("preferredUCFCampus") private var selectedCampus = "UCF Main Campus"
-    @StateObject private var locationManager = ProfileLocationManager()
+    @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
+    @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
+    @AppStorage("currentPickupLabel") private var storedCurrentLocationLabel = "Current location"
+    @StateObject private var locationManager = PickupLocationManager()
     @Environment(\.openURL) private var openURL
 
     private let campuses = [
@@ -774,8 +795,9 @@ private struct PickupPreferencesView: View {
         .tint(KnightTheme.goldDeep)
         .navigationTitle("Pickup preferences")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: locationManager.authorizationStatus) { _, status in
-            if status == .authorizedAlways || status == .authorizedWhenInUse {
+        .onChange(of: locationManager.hasCurrentLocation) { _, hasCurrentLocation in
+            if hasCurrentLocation {
+                persistCurrentLocation()
                 usesCurrentLocation = true
             }
         }
@@ -804,7 +826,7 @@ private struct PickupPreferencesView: View {
         case .restricted:
             return "Location access is restricted"
         default:
-            return "Automatically find nearby pickups"
+            return usesCurrentLocation ? storedCurrentLocationLabel : "Automatically find nearby pickups"
         }
     }
 
@@ -820,15 +842,18 @@ private struct PickupPreferencesView: View {
     }
 
     private func selectCurrentLocation() {
-        if locationManager.authorizationStatus == .authorizedAlways ||
-            locationManager.authorizationStatus == .authorizedWhenInUse {
-            usesCurrentLocation = true
-        }
         locationManager.requestCurrentLocation()
+    }
+
+    private func persistCurrentLocation() {
+        guard let location = locationManager.currentLocation else { return }
+        currentLatitude = location.coordinate.latitude
+        currentLongitude = location.coordinate.longitude
+        storedCurrentLocationLabel = locationManager.currentLocationLabel ?? "Current location"
     }
 }
 
-private struct LocationPreferenceRow: View {
+struct LocationPreferenceRow: View {
     let icon: String
     let title: String
     let subtitle: String
