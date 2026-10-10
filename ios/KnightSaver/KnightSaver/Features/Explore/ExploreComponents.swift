@@ -14,13 +14,6 @@ struct KnightMark: View {
                 .foregroundStyle(KnightTheme.gold)
         }
         .frame(width: 46, height: 46)
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(KnightTheme.gold)
-                .frame(width: 10, height: 10)
-                .overlay(Circle().stroke(KnightTheme.paper, lineWidth: 2))
-                .offset(x: 2, y: -2)
-        }
         .accessibilityHidden(true)
     }
 }
@@ -747,57 +740,41 @@ struct FilterMenuChip: View {
         .contentShape(Capsule())
     }
 }
-
 struct SurpriseBagCard: View {
     let bag: SurpriseBag
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             BrandBanner(bag: bag)
-                .frame(height: 145)
+                .frame(height: 138)
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    BrandMark(brand: bag.brand, size: 47)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(bag.business)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.ink)
-                            .lineLimit(1)
-                        Text("Surprise Bag")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(KnightTheme.muted)
-                    }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(bag.business)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                        .lineLimit(1)
 
                     Spacer(minLength: 8)
 
                     Text(bag.formattedPrice)
-                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
                 }
 
-                HStack(spacing: 0) {
-                    MetadataItem(icon: "figure.walk", text: String(format: "%.1f mi", bag.distance))
-                    MetadataDivider()
+                Text("Surprise Bag")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.muted)
+
+                VStack(alignment: .leading, spacing: 8) {
                     MetadataItem(icon: "clock", text: bag.pickupWindow)
-                    MetadataDivider()
-                    AvailabilityLabel(count: bag.availableCount, text: bag.availabilityText)
+                    MetadataItem(icon: "figure.walk", text: String(format: "%.1f mi · %@", bag.distance, bag.location))
                 }
 
-                Divider().overlay(KnightTheme.line)
-
-                HStack {
-                    Text(bag.availableCount == 0 ? "View waitlist" : "View Surprise Bag")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(KnightTheme.goldDeep)
-                }
+                AvailabilityLabel(count: bag.availableCount, text: bag.availabilityText)
             }
-            .padding(17)
+            .padding(15)
+            .frame(maxWidth: .infinity, minHeight: 152, alignment: .topLeading)
         }
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
@@ -805,7 +782,6 @@ struct SurpriseBagCard: View {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
                 .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
         }
-        .knightCardShadow()
     }
 }
 
@@ -813,54 +789,21 @@ struct BrandBanner: View {
     let bag: SurpriseBag
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                if UIImage(named: bag.bannerAssetName) != nil {
-                    Image(bag.bannerAssetName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipped()
-                } else {
-                    bag.brand.primary
-                }
+        ZStack(alignment: .topTrailing) {
+            Image(bag.bannerAssetName)
+                .resizable()
+                .interpolation(.medium)
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
-                LinearGradient(
-                    colors: [.black.opacity(0.5), .clear, .black.opacity(0.16)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-
-                HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("SURPRISE PICKUP")
-                            .font(.system(size: 10, weight: .black, design: .rounded))
-                            .tracking(1.6)
-                            .foregroundStyle(.white.opacity(0.9))
-                        Text(bag.brand.mark)
-                            .font(.system(size: 42, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                            .minimumScaleFactor(0.7)
-                            .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
-                    }
-                    Spacer()
-                }
-                .padding(20)
-
-                VStack {
-                    HStack {
-                        Spacer()
-                        Label(String(format: "%.1f", bag.rating), systemImage: "star.fill")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.onAccent)
-                            .padding(.horizontal, 10)
-                            .frame(minHeight: 34)
-                            .background(.white.opacity(0.94), in: Capsule())
-                    }
-                    Spacer()
-                }
-                .padding(14)
-            }
+            Label(String(format: "%.1f", bag.rating), systemImage: "star.fill")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 32)
+                .background(.white.opacity(0.94), in: Capsule())
+                .padding(12)
         }
         .accessibilityHidden(true)
     }
@@ -896,15 +839,6 @@ private struct MetadataItem: View {
     }
 }
 
-private struct MetadataDivider: View {
-    var body: some View {
-        Circle()
-            .fill(KnightTheme.line)
-            .frame(width: 4, height: 4)
-            .padding(.horizontal, 8)
-    }
-}
-
 private struct AvailabilityLabel: View {
     let count: Int
     let text: String
@@ -937,11 +871,11 @@ struct EmptyExploreState: View {
             Text("No Surprise Bags found")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)
-            Text(searchText.isEmpty ? "Try removing a filter to see more campus pickups." : "Try another business name or clear your filters.")
+            Text(searchText.isEmpty ? "New campus pickups will appear here as businesses publish them." : "Try another business, food, or location name.")
                 .font(.system(size: 14))
                 .foregroundStyle(KnightTheme.muted)
                 .multilineTextAlignment(.center)
-            Button("Clear search and filters", action: reset)
+            Button("Clear search", action: reset)
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.onAccent)
                 .padding(.horizontal, 18)

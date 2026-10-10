@@ -80,9 +80,18 @@ struct RootView: View {
                         }
                     case .profile:
                         ProfileView(
+                            account: account,
                             pass: account.knightPass,
                             activeReservations: $activeReservations,
                             action: { showKnightPass = true },
+                            onUpdateProfile: { name, email, phone, campus in
+                                sessionStore.updateProfile(
+                                    displayName: name,
+                                    email: email,
+                                    phoneNumber: phone,
+                                    campusName: campus
+                                )
+                            },
                             onSignOut: {
                                 showKnightPass = false
                                 selectedTab = .explore
@@ -125,12 +134,16 @@ struct RootView: View {
 private struct KnightTabBar: View {
     @Binding var selection: AppTab
     let tabs: [AppTab]
+    @Namespace private var selectionAnimation
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(tabs) { tab in
                 Button {
-                    selection = tab
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82)) {
+                        selection = tab
+                    }
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: selection == tab ? tab.selectedIcon : tab.icon)
@@ -145,6 +158,7 @@ private struct KnightTabBar: View {
                         if selection == tab {
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
                                 .fill(KnightTheme.gold)
+                                .matchedGeometryEffect(id: "selected-tab", in: selectionAnimation)
                         }
                     }
                     .contentShape(Rectangle())
