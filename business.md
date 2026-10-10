@@ -28,7 +28,7 @@ The Business page is one focused, scrollable dashboard. Keep **+ List surplus** 
 - Listings are **Surprise Bags** with unknown exact contents.
 - Businesses set the price, available quantity, pickup location, and exact pickup interval.
 - Student Explore uses restaurant logos or branded banners, not promised food photography.
-- The student's next active reservation appears as a standalone card at the top of Explore.
+- Explore remains discovery-focused; the student's reusable Knight Pass lives in Profile.
 - KnightMap is a dedicated second navigation destination rather than a toggle inside Explore.
 - Do not require an exact food name or category.
 - Do not promise ingredients, allergens, dietary suitability, freshness, or specific contents.
@@ -230,7 +230,9 @@ Show completed pickups from today:
 - Payment-captured status
 - Verified rescue status
 
-A reservation appears here only after staff verifies the student's single-use QR pickup pass.
+A reservation appears here only after staff scans the student's reusable Knight Pass and verifies the matching pickup.
+
+The scanner checks valid reservations for the current business and pickup window. No match returns **No valid pickup**. One match can be verified directly. Multiple matches require staff to select the exact reservation. Verification must be idempotent so repeated scans cannot capture payment or award impact twice.
 
 QR verification triggers:
 
@@ -307,7 +309,7 @@ The business side does not need to build routing or directions.
 9. A student authorizes payment and reserves.
 10. The reservation appears in Reserved pickups.
 11. Cancellation releases the authorization and triggers the waitlist when relevant.
-12. Staff verifies the final student's QR pickup pass.
+12. Staff scans the student's Knight Pass and verifies the matching reservation.
 13. Payment is captured.
 14. The pickup moves into Today's verified rescues.
 15. Verified impact and leaderboard state update.
@@ -323,7 +325,7 @@ The business-side portion of the demo should take approximately 20–35 seconds:
 4. Show the **What I understood** inventory summary.
 5. Show AI's proposed number of Surprise Bags and listing details.
 6. Correct the draft if needed, then tap **Approve and publish**.
-7. Later, scan or verify the student's QR pickup pass.
+7. Later, scan the student's Knight Pass and verify the matching reservation.
 8. Show the listing move into Today's verified rescues.
 
 The student demo then shows KnightMap, reservation, EcoKnight AI, Past Surprise Reveals, verified impact, and the Campus Rescue League.
