@@ -15,9 +15,11 @@ private enum ProfileRoute: Hashable {
 }
 
 struct ProfileView: View {
+    let account: AppAccount
     let pass: KnightPass
     @Binding var activeReservations: [ActiveReservation]
     let action: () -> Void
+    let onUpdateProfile: (String, String, String, String) -> String?
     let onSignOut: () -> Void
 
     @State private var showSignOutConfirmation = false
@@ -100,13 +102,33 @@ struct ProfileView: View {
     }
 
     private var profileHeader: some View {
-        HStack(alignment: .center, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             Text("Profile")
                 .font(.system(size: 32, weight: .black, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)
 
-            Spacer(minLength: 12)
-            KnightMark()
+            HStack(spacing: 14) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 52, weight: .regular))
+                    .foregroundStyle(KnightTheme.ink)
+                    .frame(width: 64, height: 64)
+                    .background(KnightTheme.gold.opacity(0.32), in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(account.displayName)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(account.email)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                    Text(pass.memberID)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(KnightTheme.goldDeep)
+                }
+
+                Spacer(minLength: 0)
+            }
         }
     }
 
@@ -158,7 +180,7 @@ struct ProfileView: View {
         case .pickupHistory:
             PickupHistoryView()
         case .personalInformation:
-            PersonalInformationView(pass: pass)
+            PersonalInformationView(account: account, pass: pass, onSave: onUpdateProfile)
         case .notifications:
             NotificationSettingsView()
         case .pickupPreferences:
@@ -587,22 +609,236 @@ private struct PickupHistoryView: View {
     }
 }
 
+private enum PersonalInfoField: Hashable {
+    case name
+    case email
+    case phone
+}
+
 private struct PersonalInformationView: View {
+    let account: AppAccount
     let pass: KnightPass
+    let onSave: (String, String, String, String) -> String?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var campus: String
+    @State private var validationMessage: String?
+    @State private var editingField: PersonalInfoField?
+    @FocusState private var focusedField: PersonalInfoField?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let campuses = [
+        "UCF Main Campus",
+        "UCF Downtown",
+        "Health Sciences Campus",
+        "Rosen College"
+    ]
+
+    init(
+        account: AppAccount,
+        pass: KnightPass,
+        onSave: @escaping (String, String, String, String) -> String?
+    ) {
+        self.account = account
+        self.pass = pass
+        self.onSave = onSave
+        _name = State(initialValue: account.displayName)
+        _email = State(initialValue: account.email)
+        _phone = State(initialValue: account.phoneNumber ?? "")
+        _campus = State(initialValue: account.campusName ?? pass.campusName)
+    }
 
     var body: some View {
-        ScrollView {
-            DetailCard(title: "Student account") {
-                DetailLine(icon: "person.fill", label: "Name", value: pass.displayName)
-                DetailLine(icon: "building.columns.fill", label: "Campus", value: pass.campusName)
-                DetailLine(icon: "number", label: "Member ID", value: pass.memberID)
-                DetailLine(icon: "graduationcap.fill", label: "Role", value: "Student")
+        Form {
+            Section {
+                HStack(spacing: 14) {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 46))
+                        .foregroundStyle(KnightTheme.ink)
+                        .frame(width: 58, height: 58)
+                        .background(KnightTheme.gold.opacity(0.28), in: Circle())
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(name.isEmpty ? "Your profile" : name)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+                        Text("Edit the information businesses use for pickups.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(KnightTheme.muted)
+                    }
+                }
+                .padding(.vertical, 5)
             }
-            .padding(KnightTheme.screenPadding)
+
+            Section {
+                editableContactRow(
+                    title: "Full name",
+                    field: .name,
+                    text: $name,
+                    placeholder: "Name",
+                    keyboard: .default
+                )
+
+                editableContactRow(
+                    title: "Email",
+                    field: .email,
+                    text: $email,
+                    placeholder: "Email",
+                    keyboard: .emailAddress
+                )
+
+                editableContactRow(
+                    title: "Phone",
+                    field: .phone,
+                    text: $phone,
+                    placeholder: "Not provided",
+                    keyboard: .phonePad
+                )
+            } header: {
+                Text("Contact information")
+            } footer: {
+                Text("Tap a pencil to unlock that field, then save your changes.")
+            }
+
+            Section("University") {
+                Picker("Campus", selection: $campus) {
+                    ForEach(campuses, id: \.self) { campus in
+                        Text(campus).tag(campus)
+                    }
+                }
+
+                LabeledContent("Account type", value: account.role.rawValue)
+            }
+
+            Section {
+                LabeledContent("Member ID", value: pass.memberID)
+                    .textSelection(.enabled)
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("Your member ID is created by KnightSaver and can’t be edited.")
+            }
         }
+        .scrollContentBackground(.hidden)
         .background(KnightTheme.paper)
         .navigationTitle("Personal information")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Save", action: save)
+                    .fontWeight(.semibold)
+                    .disabled(!hasChanges)
+            }
+        }
+        .alert("Unable to save", isPresented: validationAlert) {
+            Button("OK", role: .cancel) { validationMessage = nil }
+        } message: {
+            Text(validationMessage ?? "Check your information and try again.")
+        }
+    }
+
+    @ViewBuilder
+    private func editableContactRow(
+        title: String,
+        field: PersonalInfoField,
+        text: Binding<String>,
+        placeholder: String,
+        keyboard: UIKeyboardType
+    ) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .foregroundStyle(KnightTheme.ink)
+
+            Spacer(minLength: 12)
+
+            if editingField == field {
+                TextField(placeholder, text: text)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(keyboard)
+                    .textContentType(contentType(for: field))
+                    .textInputAutocapitalization(field == .email ? .never : .words)
+                    .autocorrectionDisabled(field != .name)
+                    .focused($focusedField, equals: field)
+                    .submitLabel(.done)
+                    .onSubmit { finishEditing(field) }
+                    .transition(.opacity)
+            } else {
+                Text(text.wrappedValue.isEmpty ? placeholder : text.wrappedValue)
+                    .foregroundStyle(KnightTheme.muted)
+                    .lineLimit(1)
+                    .transition(.opacity)
+            }
+
+            Button {
+                if editingField == field {
+                    finishEditing(field)
+                } else {
+                    beginEditing(field)
+                }
+            } label: {
+                Image(systemName: editingField == field ? "checkmark" : "pencil")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(editingField == field ? KnightTheme.ink : KnightTheme.goldDeep)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        editingField == field ? KnightTheme.gold : KnightTheme.gold.opacity(0.14),
+                        in: Circle()
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(editingField == field ? "Finish editing \(title)" : "Edit \(title)")
+        }
+        .frame(minHeight: 44)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: editingField)
+    }
+
+    private func contentType(for field: PersonalInfoField) -> UITextContentType? {
+        switch field {
+        case .name: .name
+        case .email: .emailAddress
+        case .phone: .telephoneNumber
+        }
+    }
+
+    private func beginEditing(_ field: PersonalInfoField) {
+        editingField = field
+        DispatchQueue.main.async {
+            focusedField = field
+        }
+    }
+
+    private func finishEditing(_ field: PersonalInfoField) {
+        guard editingField == field else { return }
+        focusedField = nil
+        editingField = nil
+    }
+
+    private var hasChanges: Bool {
+        name != account.displayName
+            || email != account.email
+            || phone != (account.phoneNumber ?? "")
+            || campus != (account.campusName ?? pass.campusName)
+    }
+
+    private var validationAlert: Binding<Bool> {
+        Binding(
+            get: { validationMessage != nil },
+            set: { if !$0 { validationMessage = nil } }
+        )
+    }
+
+    private func save() {
+        focusedField = nil
+        editingField = nil
+        if let error = onSave(name, email, phone, campus) {
+            validationMessage = error
+        } else {
+            dismiss()
+        }
     }
 }
 
@@ -636,18 +872,25 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
     @Published var errorMessage: String?
 
     private let manager = CLLocationManager()
+    private let geocoder = CLGeocoder()
     private var hasPendingRequest = false
+    private var requestStartedAt: Date?
+    private var bestLocation: CLLocation?
+    private var timeoutWorkItem: DispatchWorkItem?
 
     override init() {
         authorizationStatus = manager.authorizationStatus
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
     }
 
     func requestCurrentLocation() {
         errorMessage = nil
         hasCurrentLocation = false
+        currentLocation = nil
+        currentLocationLabel = nil
         hasPendingRequest = true
 
         switch manager.authorizationStatus {
@@ -688,41 +931,101 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else {
-            hasPendingRequest = false
-            isLocating = false
-            errorMessage = "We couldn’t find your location. Try again or choose a UCF campus."
-            return
+        guard hasPendingRequest else { return }
+        let earliestAllowedDate = requestStartedAt?.addingTimeInterval(-2) ?? .distantPast
+        let candidates = locations.filter {
+            $0.horizontalAccuracy >= 0 && $0.timestamp >= earliestAllowedDate
+        }
+        guard !candidates.isEmpty else { return }
+
+        for location in candidates {
+            if bestLocation == nil || location.horizontalAccuracy < bestLocation!.horizontalAccuracy {
+                bestLocation = location
+            }
         }
 
+        guard let bestLocation else { return }
+        if bestLocation.horizontalAccuracy <= 65 {
+            finish(using: bestLocation)
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let code = (error as? CLError)?.code
+        if code == .locationUnknown, hasPendingRequest {
+            return
+        }
+        finishWithError("We couldn’t find your location. Try again outdoors or choose a UCF campus.")
+    }
+
+    private func requestLocationUpdate() {
+        timeoutWorkItem?.cancel()
+        geocoder.cancelGeocode()
+        requestStartedAt = Date()
+        bestLocation = nil
+        isLocating = true
+        manager.startUpdatingLocation()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.hasPendingRequest else { return }
+            if let best = self.bestLocation, best.horizontalAccuracy <= 500 {
+                self.finish(using: best)
+            } else {
+                self.finishWithError("We couldn’t get an accurate location. Try again outdoors or choose a UCF campus.")
+            }
+        }
+        timeoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: workItem)
+    }
+
+    private func finish(using location: CLLocation) {
+        guard hasPendingRequest else { return }
+        hasPendingRequest = false
+        manager.stopUpdatingLocation()
+        timeoutWorkItem?.cancel()
         currentLocation = location
-        CLGeocoder().reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             DispatchQueue.main.async {
                 guard let self else { return }
-                let placemark = placemarks?.first
-                self.currentLocationLabel = placemark?.name
-                    ?? placemark?.subLocality
-                    ?? placemark?.locality
-                    ?? "Current location"
-                self.hasPendingRequest = false
+                self.currentLocationLabel = self.locationLabel(
+                    for: placemarks?.first,
+                    fallback: location.coordinate
+                )
                 self.isLocating = false
                 self.hasCurrentLocation = true
             }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    private func finishWithError(_ message: String) {
         hasPendingRequest = false
+        manager.stopUpdatingLocation()
+        timeoutWorkItem?.cancel()
         isLocating = false
-
-        if (error as? CLError)?.code != .denied {
-            errorMessage = "We couldn’t find your location. Try again or choose a UCF campus."
-        }
+        errorMessage = message
     }
 
-    private func requestLocationUpdate() {
-        isLocating = true
-        manager.requestLocation()
+    private func locationLabel(for placemark: CLPlacemark?, fallback coordinate: CLLocationCoordinate2D) -> String {
+        guard let placemark else {
+            return String(format: "%.4f, %.4f", coordinate.latitude, coordinate.longitude)
+        }
+
+        let street = [placemark.subThoroughfare, placemark.thoroughfare]
+            .compactMap { $0 }
+            .joined(separator: " ")
+        let city = placemark.locality ?? placemark.subAdministrativeArea
+
+        if !street.isEmpty, let city, !city.isEmpty {
+            return "\(street), \(city)"
+        }
+        if let name = placemark.name, !name.isEmpty {
+            return name
+        }
+        if let city, !city.isEmpty {
+            return [city, placemark.administrativeArea].compactMap { $0 }.joined(separator: ", ")
+        }
+        return String(format: "%.4f, %.4f", coordinate.latitude, coordinate.longitude)
     }
 }
 
