@@ -131,7 +131,6 @@ struct ProfileView: View {
                 }
                 Spacer(minLength: 0)
             }
-            }
         }
     }
 
