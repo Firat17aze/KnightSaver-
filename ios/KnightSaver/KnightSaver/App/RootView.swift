@@ -72,7 +72,7 @@ struct RootView: View {
                         // `businessStore.mapPins` (bag + latitude/longitude), not sample data.
                         PlaceholderView(title: "KnightMap", subtitle: "Live campus pickup locations will appear here.", icon: "map.fill")
                     case .impact:
-                        PlaceholderView(title: "Your impact", subtitle: "Verified rescues and EcoKnight AI live here.", icon: "leaf.fill")
+                        ImpactView(student: account.knightPass)
                     case .business:
                         // Keep the complete five-tab prototype available to reviewers.
                         // Reinstate the business-role gate when production auth is connected.

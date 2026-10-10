@@ -403,6 +403,33 @@ final class BusinessStore: ObservableObject {
         toast = released == 0 ? "Listing cancelled." : "Listing cancelled. \(released) payment holds released."
     }
 
+    // MARK: - Student feedback (from the Impact tab)
+
+    /// A verified student rates a pickup once. It feeds the Kitchen's average rating.
+    func submitFeedback(
+        reservationCode: String,
+        overall: Int,
+        portion: Int,
+        surpriseQuality: Int,
+        pickupExperience: Int,
+        comment: String,
+        wouldReserveAgain: Bool
+    ) {
+        guard reservations.contains(where: { $0.code == reservationCode && $0.isVerified }),
+              !feedback.contains(where: { $0.reservationCode == reservationCode }) else { return }
+        feedback.append(PickupFeedback(
+            reservationCode: reservationCode,
+            overall: min(max(overall, 1), 5),
+            portion: min(max(portion, 1), 5),
+            surpriseQuality: min(max(surpriseQuality, 1), 5),
+            pickupExperience: min(max(pickupExperience, 1), 5),
+            comment: comment.trimmingCharacters(in: .whitespacesAndNewlines),
+            wouldReserveAgain: wouldReserveAgain,
+            submittedAt: Date()
+        ))
+        log(.feedbackSubmitted, reservationCode)
+    }
+
     // MARK: - Reservations (student actions are simulated in the demo)
 
     /// Student cancelled: release the hold, then free the bag or offer it to the waitlist.
