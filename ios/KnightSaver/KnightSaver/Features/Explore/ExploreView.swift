@@ -20,6 +20,8 @@ struct ExploreView: View {
     @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
     @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
     @AppStorage("currentPickupLabel") private var currentLocationLabel = "Current location"
+    @AppStorage("currentPickupUpdatedAt") private var currentLocationUpdatedAt = 0.0
+    @StateObject private var locationManager = PickupLocationManager()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var businessStore: BusinessStore
 
@@ -130,6 +132,7 @@ struct ExploreView: View {
                 .padding(.bottom, 28)
             }
             .scrollIndicators(.hidden)
+            .reservesTabBarSpace()
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
             .sheet(item: $selectedBag) { bag in
@@ -145,6 +148,16 @@ struct ExploreView: View {
                    businessStore.liveBag(id: bag.id) == nil {
                     selectedBag = nil
                 }
+            }
+            .task {
+                refreshCurrentLocationIfStale()
+            }
+            .onChange(of: locationManager.hasCurrentLocation) { _, found in
+                guard found, let location = locationManager.currentLocation else { return }
+                currentLatitude = location.coordinate.latitude
+                currentLongitude = location.coordinate.longitude
+                currentLocationLabel = locationManager.currentLocationLabel ?? "Current location"
+                currentLocationUpdatedAt = Date().timeIntervalSince1970
             }
             .sheet(isPresented: $showLocationPicker) {
                 LocationPickerView()
@@ -283,6 +296,15 @@ struct ExploreView: View {
     private static let cardSpacing: CGFloat = 14
     private static let nextCardPeek: CGFloat = 40
     private static let maxCardWidth: CGFloat = 340
+
+    /// "Current location" was only saved once when picked. Refresh it when Explore opens
+    /// (at most every two minutes) so distances follow the student around campus.
+    private func refreshCurrentLocationIfStale() {
+        guard usesCurrentLocation else { return }
+        let age = Date().timeIntervalSince1970 - currentLocationUpdatedAt
+        guard age > 120 else { return }
+        locationManager.refreshIfAuthorized()
+    }
 
     private func reserve(_ bag: SurpriseBag) {
         if businessStore.isLiveBag(bag) {

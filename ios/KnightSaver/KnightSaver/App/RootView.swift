@@ -30,8 +30,13 @@ enum AppTab: String, CaseIterable, Identifiable {
         }
     }
 
-    static func available(for _: AccountRole) -> [AppTab] {
-        allCases
+    /// Students and business owners get separate apps: students find and reserve bags,
+    /// business owners run their Kitchen.
+    static func available(for role: AccountRole) -> [AppTab] {
+        switch role {
+        case .student: [.explore, .map, .impact, .profile]
+        case .business: [.business, .profile]
+        }
     }
 }
 
@@ -45,6 +50,8 @@ struct RootView: View {
     /// tab switches, and Explore, bag details, Profile and Business all see the same data.
     @StateObject private var businessStore = BusinessStore.demo()
     @State private var showKnightPass = false
+    @State private var tabBarHeight: CGFloat = 0
+    @StateObject private var profilePhotos = ProfilePhotoStore()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -74,9 +81,12 @@ struct RootView: View {
                     case .impact:
                         ImpactView(student: account.knightPass)
                     case .business:
-                        // Keep the complete five-tab prototype available to reviewers.
-                        // Reinstate the business-role gate when production auth is connected.
                         BusinessDashboardView(store: businessStore)
+                    case .profile where account.role == .business:
+                        BusinessAccountView(
+                            account: account,
+                            onSignOut: { signOut() }
+                        )
                     case .profile:
                         ProfileView(
                             account: account,
@@ -91,17 +101,20 @@ struct RootView: View {
                                     campusName: campus
                                 )
                             },
-                            onSignOut: {
-                                showKnightPass = false
-                                selectedTab = .explore
-                                sessionStore.signOut()
-                            }
+                            onSignOut: { signOut() }
                         )
                     }
                 }
+                .environment(\.tabBarInset, tabBarHeight)
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .overlay(alignment: .bottom) {
                 KnightTabBar(selection: $selectedTab, tabs: AppTab.available(for: account.role))
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { height in
+                        tabBarHeight = height
+                    }
+                    .ignoresSafeArea(.keyboard)
             }
             .blur(radius: showKnightPass ? 12 : 0)
             .scaleEffect(!showKnightPass || reduceMotion ? 1 : 0.985)
@@ -118,15 +131,23 @@ struct RootView: View {
             }
         }
         .environmentObject(businessStore)
+        .environmentObject(profilePhotos)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
         .onAppear {
             if account.role == .business, let businessName = account.businessName, !businessName.isEmpty {
                 businessStore.profile.name = businessName
             }
-            if !AppTab.available(for: account.role).contains(selectedTab) {
-                selectedTab = .explore
+            let tabs = AppTab.available(for: account.role)
+            if !tabs.contains(selectedTab), let first = tabs.first {
+                selectedTab = first
             }
         }
+    }
+
+    private func signOut() {
+        showKnightPass = false
+        selectedTab = .explore
+        sessionStore.signOut()
     }
 }
 
@@ -199,7 +220,7 @@ private struct KnightTabBar: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 4)
-        .background(KnightTheme.paper.opacity(0.94))
+        .background(KnightTheme.paper.opacity(0.94).ignoresSafeArea(edges: .bottom))
     }
 }
 

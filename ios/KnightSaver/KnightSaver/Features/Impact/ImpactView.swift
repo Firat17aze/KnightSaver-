@@ -91,6 +91,7 @@ struct ImpactView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
+            .reservesTabBarSpace()
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
             .sheet(item: $sheet) { sheet in

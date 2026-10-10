@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import UIKit
+import PhotosUI
 
 private enum ProfileRoute: Hashable {
     case reservation(UUID)
@@ -22,7 +23,6 @@ struct ProfileView: View {
     let onUpdateProfile: (String, String, String, String) -> String?
     let onSignOut: () -> Void
 
-    @State private var showSignOutConfirmation = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Shared with Business: reservations, waitlist offers and verified pickups.
     @EnvironmentObject var businessStore: BusinessStore
@@ -56,7 +56,8 @@ struct ProfileView: View {
                         rows: [
                             ProfileLinkItem(route: .personalInformation, title: "Personal information", icon: "person.crop.circle"),
                             ProfileLinkItem(route: .notifications, title: "Notification settings", icon: "bell"),
-                            ProfileLinkItem(route: .pickupPreferences, title: "Pickup preferences", icon: "slider.horizontal.3")
+                            ProfileLinkItem(route: .pickupPreferences, title: "Pickup preferences", icon: "slider.horizontal.3"),
+                            ProfileLinkItem(route: .pickupHistory, title: "Pickup history", icon: "clock.arrow.circlepath")
                         ]
                     )
 
@@ -70,36 +71,19 @@ struct ProfileView: View {
                         ]
                     )
 
-                    Button(role: .destructive) {
-                        showSignOutConfirmation = true
-                    } label: {
-                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.red)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                                    .stroke(KnightTheme.line, lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+                    SignOutButton(onSignOut: onSignOut)
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 16)
                 .padding(.bottom, 34)
             }
             .scrollIndicators(.hidden)
+            .reservesTabBarSpace()
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
             .navigationDestination(for: ProfileRoute.self) { route in
                 destination(for: route)
-            }
-            .confirmationDialog("Sign out of KnightSaver?", isPresented: $showSignOutConfirmation, titleVisibility: .visible) {
-                Button("Sign out", role: .destructive) {
-                    onSignOut()
-                }
-                Button("Stay signed in", role: .cancel) { }
+                    .reservesTabBarSpace()
             }
         }
     }
@@ -111,12 +95,7 @@ struct ProfileView: View {
                 .foregroundStyle(KnightTheme.ink)
 
             HStack(spacing: 14) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 52, weight: .regular))
-                    .foregroundStyle(KnightTheme.ink)
-                    .frame(width: 64, height: 64)
-                    .background(KnightTheme.gold.opacity(0.32), in: Circle())
-                    .accessibilityHidden(true)
+                ProfileAvatar(accountID: account.id, size: 68)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(account.displayName)
@@ -149,15 +128,6 @@ struct ProfileView: View {
             } else {
                 EmptyPickupCard()
             }
-
-            NavigationLink(value: ProfileRoute.pickupHistory) {
-                ProfileRow(
-                    title: "Pickup history",
-                    subtitle: "Completed and cancelled reservations",
-                    icon: "clock.arrow.circlepath"
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -657,18 +627,13 @@ private struct PersonalInformationView: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 46))
-                        .foregroundStyle(KnightTheme.ink)
-                        .frame(width: 58, height: 58)
-                        .background(KnightTheme.gold.opacity(0.28), in: Circle())
-                        .accessibilityHidden(true)
+                    ProfileAvatar(accountID: account.id, size: 60)
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(name.isEmpty ? "Your profile" : name)
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(KnightTheme.ink)
-                        Text("Edit the information businesses use for pickups.")
+                        Text("Tap your photo to change it. Edit the information businesses use for pickups.")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(KnightTheme.muted)
                     }
@@ -879,6 +844,7 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
     private var requestStartedAt: Date?
     private var bestLocation: CLLocation?
     private var timeoutWorkItem: DispatchWorkItem?
+    private var isQuietRefresh = false
 
     override init() {
         authorizationStatus = manager.authorizationStatus
@@ -888,7 +854,23 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         manager.distanceFilter = kCLDistanceFilterNone
     }
 
+    /// Quietly refreshes the saved location when permission is already granted.
+    /// Never prompts and never shows an error; used when Explore opens.
+    func refreshIfAuthorized() {
+        guard !hasPendingRequest else { return }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            hasCurrentLocation = false
+            hasPendingRequest = true
+            isQuietRefresh = true
+            requestLocationUpdate()
+        default:
+            break
+        }
+    }
+
     func requestCurrentLocation() {
+        isQuietRefresh = false
         errorMessage = nil
         hasCurrentLocation = false
         currentLocation = nil
@@ -947,7 +929,7 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         }
 
         guard let bestLocation else { return }
-        if bestLocation.horizontalAccuracy <= 65 {
+        if bestLocation.horizontalAccuracy <= 100 {
             finish(using: bestLocation)
         }
     }
@@ -1005,7 +987,9 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         manager.stopUpdatingLocation()
         timeoutWorkItem?.cancel()
         isLocating = false
-        errorMessage = message
+        if !isQuietRefresh {
+            errorMessage = message
+        }
     }
 
     private func locationLabel(for placemark: CLPlacemark?, fallback coordinate: CLLocationCoordinate2D) -> String {
@@ -1044,6 +1028,7 @@ private struct PickupPreferencesView: View {
     @AppStorage("currentPickupLatitude") private var currentLatitude = 0.0
     @AppStorage("currentPickupLongitude") private var currentLongitude = 0.0
     @AppStorage("currentPickupLabel") private var storedCurrentLocationLabel = "Current location"
+    @AppStorage("currentPickupUpdatedAt") private var currentLocationUpdatedAt = 0.0
     @StateObject private var locationManager = PickupLocationManager()
     @Environment(\.openURL) private var openURL
 
@@ -1155,6 +1140,7 @@ private struct PickupPreferencesView: View {
         currentLatitude = location.coordinate.latitude
         currentLongitude = location.coordinate.longitude
         storedCurrentLocationLabel = locationManager.currentLocationLabel ?? "Current location"
+        currentLocationUpdatedAt = Date().timeIntervalSince1970
     }
 }
 
@@ -1244,5 +1230,267 @@ private struct ProfileArticleView: View {
         .background(KnightTheme.paper)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Profile photo
+
+/// Profile photos chosen from the photo library, kept on this device (one per account).
+@MainActor
+final class ProfilePhotoStore: ObservableObject {
+    @Published private(set) var photos: [UUID: UIImage] = [:]
+    private let directory: URL
+
+    init() {
+        directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ProfilePhotos", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        for file in files {
+            if let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent),
+               let image = UIImage(contentsOfFile: file.path) {
+                photos[id] = image
+            }
+        }
+    }
+
+    func save(_ data: Data, for accountID: UUID) {
+        guard let image = UIImage(data: data) else { return }
+        let resized = image.resizedToFit(maxSide: 600)
+        if let jpeg = resized.jpegData(compressionQuality: 0.85) {
+            try? jpeg.write(to: fileURL(for: accountID), options: .atomic)
+        }
+        photos[accountID] = resized
+    }
+
+    func remove(for accountID: UUID) {
+        try? FileManager.default.removeItem(at: fileURL(for: accountID))
+        photos[accountID] = nil
+    }
+
+    private func fileURL(for accountID: UUID) -> URL {
+        directory.appendingPathComponent("\(accountID.uuidString).jpg")
+    }
+}
+
+private extension UIImage {
+    func resizedToFit(maxSide: CGFloat) -> UIImage {
+        let scale = min(1, maxSide / max(size.width, size.height))
+        guard scale < 1 else { return self }
+        let target = CGSize(width: size.width * scale, height: size.height * scale)
+        return UIGraphicsImageRenderer(size: target).image { _ in
+            draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
+}
+
+/// Round profile photo with a camera badge. Tap to pick a new photo, or remove the current one.
+struct ProfileAvatar: View {
+    let accountID: UUID
+    var size: CGFloat = 64
+
+    @EnvironmentObject private var photoStore: ProfilePhotoStore
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var showPicker = false
+    @State private var showOptions = false
+
+    private var photo: UIImage? { photoStore.photos[accountID] }
+
+    var body: some View {
+        Button {
+            if photo == nil {
+                showPicker = true
+            } else {
+                showOptions = true
+            }
+        } label: {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let photo {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: size * 0.42, weight: .semibold))
+                            .foregroundStyle(KnightTheme.goldDeep)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(KnightTheme.gold.opacity(0.28))
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay {
+                    Circle().stroke(KnightTheme.line, lineWidth: 1)
+                }
+
+                Image(systemName: "camera.fill")
+                    .font(.system(size: size * 0.16, weight: .bold))
+                    .foregroundStyle(KnightTheme.onAccent)
+                    .frame(width: size * 0.36, height: size * 0.36)
+                    .background(KnightTheme.gold, in: Circle())
+                    .overlay {
+                        Circle().stroke(KnightTheme.paper, lineWidth: 2.5)
+                    }
+                    .offset(x: 2, y: 2)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(photo == nil ? "Add profile photo" : "Change profile photo")
+        .photosPicker(isPresented: $showPicker, selection: $pickerItem, matching: .images)
+        .confirmationDialog("Profile photo", isPresented: $showOptions, titleVisibility: .visible) {
+            Button("Choose new photo") { showPicker = true }
+            Button("Remove photo", role: .destructive) { photoStore.remove(for: accountID) }
+            Button("Cancel", role: .cancel) { }
+        }
+        .onChange(of: pickerItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    photoStore.save(data, for: accountID)
+                }
+                pickerItem = nil
+            }
+        }
+    }
+}
+
+// MARK: - Sign out
+
+private struct SignOutButton: View {
+    let onSignOut: () -> Void
+    @State private var showConfirmation = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(role: .destructive) {
+            showConfirmation = true
+        } label: {
+            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.red)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                        .stroke(KnightTheme.line, lineWidth: 1)
+                }
+        }
+        .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+        .confirmationDialog("Sign out of KnightSaver?", isPresented: $showConfirmation, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive, action: onSignOut)
+            Button("Stay signed in", role: .cancel) { }
+        }
+    }
+}
+
+// MARK: - Business profile
+
+/// Profile tab for business owners: their photo, business details, and sign out.
+/// Students see `ProfileView` instead.
+struct BusinessAccountView: View {
+    let account: AppAccount
+    let onSignOut: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        KnightSaverBrandBar()
+                        header
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Business details")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+
+                        VStack(spacing: 0) {
+                            BusinessDetailRow(icon: "storefront", title: "Business", value: account.businessName ?? "Not set")
+                            Divider().overlay(KnightTheme.line).padding(.leading, 58)
+                            BusinessDetailRow(icon: "person", title: "Manager", value: account.displayName)
+                            Divider().overlay(KnightTheme.line).padding(.leading, 58)
+                            BusinessDetailRow(icon: "envelope", title: "Email", value: account.email)
+                            Divider().overlay(KnightTheme.line).padding(.leading, 58)
+                            BusinessDetailRow(icon: "phone", title: "Phone", value: account.phoneNumber ?? "Not provided")
+                        }
+                        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                        }
+                    }
+
+                    SignOutButton(onSignOut: onSignOut)
+                }
+                .padding(.horizontal, KnightTheme.screenPadding)
+                .padding(.top, 16)
+                .padding(.bottom, 34)
+            }
+            .scrollIndicators(.hidden)
+            .reservesTabBarSpace()
+            .background(KnightTheme.paper)
+            .navigationBarHidden(true)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Profile")
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+
+            HStack(spacing: 14) {
+                ProfileAvatar(accountID: account.id, size: 68)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(account.businessName ?? account.displayName)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(account.email)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                    Text("BUSINESS ACCOUNT")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(KnightTheme.goldDeep)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+}
+
+private struct BusinessDetailRow: View {
+    let icon: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(KnightTheme.goldDeep)
+                .frame(width: 34, height: 34)
+                .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(KnightTheme.ink)
+
+            Spacer(minLength: 12)
+
+            Text(value)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(KnightTheme.muted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 56)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -28,6 +28,7 @@ struct BusinessDashboardView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .reservesTabBarSpace()
         .background(KnightTheme.paper)
         .overlay(alignment: .top) {
             toastView
