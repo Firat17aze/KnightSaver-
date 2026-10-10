@@ -107,7 +107,9 @@ struct ExploreView: View {
 
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 28) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    KnightSaverBrandBar()
+                        .padding(.bottom, 12)
                     header
                         .padding(.horizontal, KnightTheme.screenPadding)
 

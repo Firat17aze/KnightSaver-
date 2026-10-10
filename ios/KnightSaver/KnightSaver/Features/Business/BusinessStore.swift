@@ -162,8 +162,20 @@ final class BusinessStore: ObservableObject {
             bannerAssetName: listing.bannerAssetName,
             availableCount: listing.isReservable ? listing.remainingQuantity : 0,
             price: listing.price,
-            description: listing.publicDescription
+            description: listing.isSurprise ? listing.publicDescription : contentsDescription(for: listing)
         )
+    }
+
+    /// Rescue Bags (not a surprise) tell students what's inside.
+    private func contentsDescription(for listing: BusinessListing) -> String {
+        let bags = listing.bagSplit.filter { !$0.isEmpty }
+        guard let first = bags.first else { return listing.publicDescription }
+        if bags.allSatisfy({ $0.hasSameContents(as: first) }) {
+            return "Each bag: \(first.summaryText)."
+        }
+        let sizes = bags.map { $0.totalUnits }
+        let names = listing.inventory.map { $0.name.lowercased() }.joined(separator: ", ")
+        return "Bags of \(sizes.min() ?? 0)–\(sizes.max() ?? 0) items from: \(names)."
     }
 
     /// A student reserves (or joins the waitlist when the bag is fully reserved).
@@ -274,13 +286,14 @@ final class BusinessStore: ObservableObject {
             pickupStart: plan.pickupStart,
             pickupEnd: plan.pickupEnd,
             publicDescription: plan.publicDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-            pickupAddress: profile.pickupAddress,
-            latitude: profile.latitude,
-            longitude: profile.longitude,
+            pickupAddress: plan.pickupLocation.address,
+            latitude: plan.pickupLocation.latitude,
+            longitude: plan.pickupLocation.longitude,
             bannerAssetName: ListingBannerCatalog.random(excluding: listings.last?.bannerAssetName),
             inventory: inventory,
             bagSplit: allocation.bags,
-            unallocated: allocation.leftover
+            unallocated: allocation.leftover,
+            isSurprise: plan.isSurprise
         )
         listings.append(listing)
         if plan.createdByAI {
@@ -293,9 +306,16 @@ final class BusinessStore: ObservableObject {
 
     // MARK: - Editing
 
-    func applyEdit(listingID: UUID, remaining: Int?, price: Double?, pickupStart: Date?, pickupEnd: Date?, description: String? = nil) {
+    func applyEdit(listingID: UUID, remaining: Int?, price: Double?, pickupStart: Date?, pickupEnd: Date?,
+                   description: String? = nil, location: PickupLocation? = nil) {
         guard let index = listings.firstIndex(where: { $0.id == listingID }) else { return }
         var listing = listings[index]
+
+        if let location = location {
+            listing.pickupAddress = location.address
+            listing.latitude = location.latitude
+            listing.longitude = location.longitude
+        }
 
         if let remaining = remaining {
             let delta = max(0, remaining) - listing.remainingQuantity
@@ -539,7 +559,7 @@ final class BusinessStore: ObservableObject {
 
 extension BusinessStore {
     /// One evening at Knightro's Kitchen. Times are relative to "now" so the demo always works.
-    /// Reserved pickups has exactly two students. Alex Knight's reservation uses the token in
+    /// Reserved pickups has three students. Alex Knight's reservation uses the token in
     /// KnightPass.sample, so scanning the Knight Pass from Profile verifies it.
     static func demo(now: Date = Date()) -> BusinessStore {
         let profile = BusinessProfile.demo
@@ -557,15 +577,15 @@ extension BusinessStore {
                         SurplusItem(name: "Sandwiches", quantity: 7)],
             createdAt: at(-120), updatedAt: at(-30)
         )
-        // Later pickup, nothing reserved yet. Bags differ, so the staff note lists each bag.
-        let later = BusinessListing(
-            price: 4.99, totalQuantity: 4, remainingQuantity: 4,
-            pickupStart: at(90), pickupEnd: at(120),
-            publicDescription: "A mix of tonight's surplus items from the grill.",
+        // Listed by staff with "We have 4 bagels and 6 cookies left" (List surplus example).
+        // 10 items -> 3 bags at the standard $5.99. One student reserved a bag: 2 of 3 left.
+        let bagelsAndCookies = BusinessListing(
+            price: BusinessRules.defaultBagPrice, totalQuantity: 3, remainingQuantity: 2,
+            pickupStart: at(5), pickupEnd: at(35),
+            publicDescription: BusinessRules.defaultPublicDescription,
             pickupAddress: profile.pickupAddress, latitude: profile.latitude, longitude: profile.longitude,
-            inventory: [SurplusItem(name: "Wraps", quantity: 6), SurplusItem(name: "Salads", quantity: 4),
-                        SurplusItem(name: "Cookies", quantity: 4)],
-            createdAt: at(-60), updatedAt: at(-60)
+            inventory: [SurplusItem(name: "Bagels", quantity: 4), SurplusItem(name: "Cookies", quantity: 6)],
+            createdAt: at(-15), updatedAt: at(-10)
         )
         // Earlier pickup, finished: 4 bags = 3 collected + 1 missed.
         let earlier = BusinessListing(
@@ -593,11 +613,13 @@ extension BusinessStore {
         }
 
         let reservations = [
-            // Reserved pickups: exactly these two.
+            // Reserved pickups: Alex and Jordan (tonight), Maya (bagels and cookies).
             reservation("KS-4821", KnightPass.sample.displayName, KnightPass.sample.verificationToken, tonight,
                         quantity: 1, status: .authorized, payment: .authorized),
             reservation("KS-3307", "Jordan P.", "demo-JORDAN-3307", tonight,
                         quantity: 2, status: .authorized, payment: .authorized),
+            reservation("KS-6402", "Maya R.", "demo-MAYA-6402", bagelsAndCookies,
+                        quantity: 1, status: .authorized, payment: .authorized),
             // Already collected today (Today's total and the impact report).
             reservation("KS-2018", "Sam W.", "demo-SAM-2018", tonight,
                         quantity: 1, status: .paymentCaptured, payment: .captured,
@@ -622,7 +644,7 @@ extension BusinessStore {
         return BusinessStore(
             profile: profile,
             isDemo: true,
-            listings: [tonight, later, earlier],
+            listings: [tonight, bagelsAndCookies, earlier],
             reservations: reservations,
             feedback: feedback
         )

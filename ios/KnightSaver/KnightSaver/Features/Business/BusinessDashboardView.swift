@@ -7,6 +7,8 @@ struct BusinessDashboardView: View {
     @ObservedObject var store: BusinessStore
     @State private var sheet: BusinessSheet?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// App-wide dark mode, read by KnightSaverApp.
+    @AppStorage("knightsaver.darkMode") private var darkMode = false
 
     init(store: BusinessStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -41,23 +43,15 @@ struct BusinessDashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "storefront.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(KnightTheme.goldDeep)
-                    .frame(width: 50, height: 50)
-                    .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.isDemo ? "BUSINESS · DEMO VIEW" : "BUSINESS")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.goldDeep)
-                    Text("Restaurant")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                }
-                Spacer(minLength: 0)
+            KnightSaverBrandBar {
+                darkModeButton
+            }
+
+            HStack(spacing: 12) {
+                BrandMark(brand: store.profile.brand, size: 50)
+                Text("Restaurant")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
             }
             .accessibilityElement(children: .combine)
 
@@ -75,6 +69,29 @@ struct BusinessDashboardView: View {
             .accessibilityLabel("List surplus")
             .accessibilityHint("Publish new Surprise Bags with AI or manually")
         }
+    }
+
+    /// Crescent moon at the top right. Turns dark mode on or off for the whole app.
+    private var darkModeButton: some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                darkMode.toggle()
+            }
+        } label: {
+            Image(systemName: "moon.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(darkMode ? KnightTheme.onAccent : KnightTheme.ink)
+                .frame(width: 44, height: 44)
+                .background(darkMode ? KnightTheme.gold : KnightTheme.surface, in: Circle())
+                .overlay {
+                    Circle().stroke(KnightTheme.line, lineWidth: darkMode ? 0 : 1)
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Dark mode")
+        .accessibilityValue(darkMode ? "On" : "Off")
+        .accessibilityHint("Switches the whole app between light and dark")
     }
 
     // MARK: - 1. Current Surprise Bags
@@ -148,7 +165,7 @@ struct BusinessDashboardView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(KnightTheme.ink.opacity(0.92), in: Capsule())
+                .background(KnightTheme.night.opacity(0.92), in: Capsule())
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 6)
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -215,6 +232,16 @@ enum BusinessSheet: Identifiable, Hashable {
 struct ScanKnightPassButton: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isDark: Bool { colorScheme == .dark }
+
+    /// Dark mode: the Knight Pass card's black. Light mode: soft champagne gold that sits well on white.
+    private var gradientColors: [Color] {
+        isDark
+            ? [Color(red: 0.055, green: 0.053, blue: 0.05), Color(red: 0.14, green: 0.125, blue: 0.095)]
+            : [Color(red: 1.0, green: 0.968, blue: 0.875), Color(red: 0.965, green: 0.878, blue: 0.635)]
+    }
 
     var body: some View {
         Button(action: action) {
@@ -223,14 +250,14 @@ struct ScanKnightPassButton: View {
                     Text("KNIGHTSAVER")
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(2.2)
-                        .foregroundStyle(KnightTheme.gold)
+                        .foregroundStyle(isDark ? KnightTheme.gold : KnightTheme.goldDeep)
                         .padding(.bottom, 4)
                     Text("Scan Knight Pass")
                         .font(.system(size: 21, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(isDark ? Color.white : KnightTheme.onAccent)
                     Text("Verify a student's pickup")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(isDark ? Color.white.opacity(0.68) : KnightTheme.onAccent.opacity(0.62))
                 }
 
                 Spacer(minLength: 8)
@@ -243,9 +270,9 @@ struct ScanKnightPassButton: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(KnightTheme.ink)
+                    .foregroundStyle(isDark ? KnightTheme.onAccent : KnightTheme.gold)
                     .frame(width: 38, height: 38)
-                    .background(KnightTheme.gold, in: Circle())
+                    .background(isDark ? KnightTheme.gold : KnightTheme.night, in: Circle())
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 18)
@@ -254,16 +281,9 @@ struct ScanKnightPassButton: View {
             .background {
                 GeometryReader { proxy in
                     ZStack {
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.055, green: 0.053, blue: 0.05),
-                                Color(red: 0.14, green: 0.125, blue: 0.095)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
                         Circle()
-                            .stroke(KnightTheme.gold.opacity(0.14), lineWidth: 1)
+                            .stroke(isDark ? KnightTheme.gold.opacity(0.14) : KnightTheme.goldDeep.opacity(0.22), lineWidth: 1)
                             .frame(width: proxy.size.width * 0.62)
                             .offset(x: proxy.size.width * 0.38, y: -proxy.size.height * 0.62)
                     }
@@ -272,9 +292,9 @@ struct ScanKnightPassButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(.white.opacity(0.14), lineWidth: 1)
+                    .stroke(isDark ? Color.white.opacity(0.14) : Color.white.opacity(0.7), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.18), radius: 16, x: 0, y: 8)
+            .shadow(color: isDark ? .black.opacity(0.18) : KnightTheme.goldDeep.opacity(0.18), radius: 16, x: 0, y: 8)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
@@ -316,27 +336,6 @@ struct SurpriseBagListingCard: View {
                 BizMetaRow(icon: "clock.fill", text: "Pickup \(listing.pickupWindowText)")
                 BizMetaRow(icon: "bag.fill", text: "\(listing.remainingQuantity) of \(listing.totalQuantity) bags left"
                            + (waitlistCount > 0 ? " · \(waitlistCount) on waitlist" : ""))
-            }
-
-            let packingLines = listing.staffPackingLines
-            if !packingLines.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("STAFF ONLY", systemImage: "lock.fill")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .tracking(0.9)
-                        .foregroundStyle(KnightTheme.muted)
-                    ForEach(Array(packingLines.enumerated()), id: \.offset) { _, line in
-                        Text(line)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(KnightTheme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(KnightTheme.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Staff only. " + packingLines.joined(separator: ". "))
             }
 
             if isOpen {
@@ -411,10 +410,7 @@ struct ReservedPickupCard: View {
                 BizChip(text: statusText, tint: reservation.status.tint)
             }
 
-            VStack(spacing: 9) {
-                BizMetaRow(icon: "clock.fill", text: "Pickup \(reservation.pickupWindowText)")
-                BizMetaRow(icon: "creditcard.fill", text: reservation.payment.rawValue)
-            }
+            BizMetaRow(icon: "clock.fill", text: "Pickup \(reservation.pickupWindowText)")
 
             HStack(spacing: 10) {
                 if reservation.status == .authorized {
@@ -424,7 +420,7 @@ struct ReservedPickupCard: View {
                             Text("Verify pickup")
                         }
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                        .foregroundStyle(KnightTheme.onAccent)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 44)
                         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -474,7 +470,7 @@ struct ReservedPickupCard: View {
 
 // MARK: - Today's total
 
-/// One row with today's verified total. Tapping it shows each verified pickup's price.
+/// One "Total" row for today's verified pickups. Tapping it shows each pickup's price.
 struct TodaysTotalCard: View {
     let rescues: [BusinessReservation]
     let total: Double
@@ -490,12 +486,12 @@ struct TodaysTotalCard: View {
                 }
             } label: {
                 HStack(spacing: 12) {
-                    Text("Today's total")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                    Text("Total")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
                     Spacer(minLength: 8)
                     Text(PickupTime.money(total))
-                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(KnightTheme.ink)
                     Image(systemName: "chevron.right")
@@ -508,7 +504,7 @@ struct TodaysTotalCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Today's total, \(PickupTime.money(total))")
+            .accessibilityLabel("Total, \(PickupTime.money(total))")
             .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             .accessibilityHint(isExpanded ? "Hides the individual pickups" : "Shows the price of each verified pickup")
             .accessibilityAddTraits(.isButton)
@@ -527,11 +523,12 @@ struct TodaysTotalCard: View {
                             Divider().overlay(KnightTheme.line)
                             HStack {
                                 Text(rescue.verifiedAt.map { PickupTime.time($0) } ?? "")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 14, weight: .regular))
+                                    .monospacedDigit()
                                     .foregroundStyle(KnightTheme.muted)
                                 Spacer()
                                 Text(PickupTime.money(rescue.total))
-                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 15, weight: .medium))
                                     .monospacedDigit()
                                     .foregroundStyle(KnightTheme.ink)
                             }
@@ -559,14 +556,16 @@ struct BusinessImpactSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             BizSectionHeader(title: "Impact report", subtitle: "Updates only after a verified pickup")
+                .padding(.bottom, 2)
+
+            // 5 tiles: the headline number spans the full width, the other four form a 2×2 grid,
+            // so no tile sits alone on the last row.
+            BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
 
             LazyVGrid(columns: columns, spacing: 12) {
-                BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
                 BizStatTile(title: "Revenue recovered", value: PickupTime.money(impact.revenueRecovered))
-                BizStatTile(title: "Measured weight", value: kg(impact.measuredWeightKg))
-                BizStatTile(title: "Estimated weight", value: kg(impact.estimatedWeightKg), isEstimate: true)
                 BizStatTile(title: "CO₂e avoided", value: kg(impact.estimatedCO2eKg), isEstimate: true)
                 BizStatTile(title: "Pickup completion", value: percent(impact.pickupCompletionRate))
                 BizStatTile(title: "Average rating", value: rating(impact.averageRating))

@@ -36,7 +36,10 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    profileHeader
+                    VStack(alignment: .leading, spacing: 12) {
+                        KnightSaverBrandBar()
+                        profileHeader
+                    }
 
                     VStack(alignment: .leading, spacing: 12) {
                         ProfileSectionHeader(
@@ -126,8 +129,8 @@ struct ProfileView: View {
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(KnightTheme.goldDeep)
                 }
-
                 Spacer(minLength: 0)
+            }
             }
         }
     }
@@ -469,7 +472,7 @@ private struct ReservationDetailsView: View {
                 } label: {
                     Label("Open directions", systemImage: "location.fill")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                        .foregroundStyle(KnightTheme.onAccent)
                         .frame(maxWidth: .infinity, minHeight: 52)
                         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
                 }

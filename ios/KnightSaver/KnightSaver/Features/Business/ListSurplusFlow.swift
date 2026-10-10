@@ -23,8 +23,9 @@ struct ListSurplusFlow: View {
     @State private var heardPrice: Double?
     @State private var plan: BagPlan?
     @FocusState private var dictationFocused: Bool
+    @StateObject private var dictation = VoiceDictation()
 
-    static let exampleSentence = "We have 12 bagels, 6 pastries, and 4 sandwiches left. Pickup can be from 7:00 to 7:30 PM."
+    static let exampleSentence = "We have 4 bagels and 6 cookies left. Pickup can be from 7:00 to 7:30 PM."
 
     init(store: BusinessStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -45,7 +46,7 @@ struct ListSurplusFlow: View {
                     understoodView
                 case .plan:
                     if let binding = Binding($plan) {
-                        BagPlanEditor(plan: binding, pickupAddress: store.profile.pickupAddress) {
+                        BagPlanEditor(plan: binding) {
                             if let plan {
                                 store.publish(plan)
                             }
@@ -90,7 +91,9 @@ struct ListSurplusFlow: View {
     private func goBack() {
         switch step {
         case .choose: break
-        case .speak: step = .choose
+        case .speak:
+            dictation.stop()
+            step = .choose
         case .understood: step = usingAI ? .speak : .choose
         case .plan: step = .understood
         }
@@ -149,13 +152,13 @@ struct ListSurplusFlow: View {
                 Text("Tell me what's left")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
-                Label("Tap the box, then the microphone on the keyboard, and talk.", systemImage: "mic.circle.fill")
+                Text("Tap the mic and say what's left, when pickup is and the price if you have one. I'll write it down.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
 
-                BizDictationBox(prompt: "“\(Self.exampleSentence)”", text: $transcript, focus: $dictationFocused)
+                BizVoiceComposer(prompt: "“\(Self.exampleSentence)”", text: $transcript, focus: $dictationFocused, voice: dictation)
 
-                if store.isDemo && transcript.isEmpty {
+                if store.isDemo && transcript.isEmpty && !dictation.isListening {
                     Button {
                         transcript = Self.exampleSentence
                     } label: {
@@ -175,7 +178,6 @@ struct ListSurplusFlow: View {
             }
             .padding(KnightTheme.screenPadding)
         }
-        .onAppear { dictationFocused = true }
     }
 
     private var transcriptIsEmpty: Bool {
@@ -183,6 +185,7 @@ struct ListSurplusFlow: View {
     }
 
     private func understand() {
+        dictation.stop()
         let result = SurplusAssistant.interpret(transcript)
         inventory = result.inventory
         if let start = result.pickupStart { pickupStart = start }
@@ -304,14 +307,12 @@ struct ListSurplusFlow: View {
 
 struct BagPlanEditor: View {
     @Binding var plan: BagPlan
-    let pickupAddress: String
     let onPublish: () -> Void
 
     @State private var isPublishing = false
 
-    init(plan: Binding<BagPlan>, pickupAddress: String, onPublish: @escaping () -> Void) {
+    init(plan: Binding<BagPlan>, onPublish: @escaping () -> Void) {
         _plan = plan
-        self.pickupAddress = pickupAddress
         self.onPublish = onPublish
     }
 
@@ -337,9 +338,12 @@ struct BagPlanEditor: View {
                 HStack {
                     Text("Price per bag")
                     Spacer()
-                    Text("$").foregroundStyle(KnightTheme.muted)
-                    BizDecimalField("5.99", value: $plan.price)
-                        .frame(maxWidth: 80)
+                    // "$" sits right next to the number; the field is only as wide as its text.
+                    HStack(spacing: 1) {
+                        Text("$").foregroundStyle(KnightTheme.muted)
+                        BizDecimalField("5.99", value: $plan.price)
+                            .fixedSize()
+                    }
                 }
                 DatePicker("Pickup starts", selection: $plan.pickupStart, displayedComponents: .hourAndMinute)
                 DatePicker("Pickup ends", selection: $plan.pickupEnd, displayedComponents: .hourAndMinute)
@@ -357,25 +361,25 @@ struct BagPlanEditor: View {
             }
 
             Section {
-                LabeledContent("Pickup location", value: pickupAddress)
-                Toggle("Location confirmed", isOn: $plan.locationConfirmed)
+                PickupLocationPicker(selection: $plan.pickupLocation)
             } header: {
                 Text("Pickup location")
             } footer: {
-                Text("From your business profile, with its map coordinates for KnightMap.")
+                Text("Students see this spot on KnightMap and in the bag details.")
             }
 
             Section {
-                LabeledContent("Inventory accounted for", value: "\(allocatedCount) of \(plan.totalItems) items")
-                ForEach(Array(allocation.bags.enumerated()), id: \.offset) { index, bag in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("Bag \(index + 1)")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .frame(width: 54, alignment: .leading)
-                        Text(bag.summaryText)
-                            .font(.system(size: 14, weight: .medium))
+                Toggle(isOn: $plan.isSurprise) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Surprise Bag")
+                        Text(plan.isSurprise ? "Contents stay a secret" : "Rescue Bag · students see what's inside")
+                            .font(.system(size: 13))
                             .foregroundStyle(KnightTheme.muted)
                     }
+                }
+                LabeledContent("Inventory accounted for", value: "\(allocatedCount) of \(plan.totalItems) items")
+                ForEach(Array(allocation.bags.enumerated()), id: \.offset) { index, bag in
+                    BagLineupRow(index: index, items: bag, isSurprise: plan.isSurprise)
                 }
                 if !allocation.leftover.isEmpty {
                     Label("Not allocated: \(allocation.leftover.summaryText)", systemImage: "exclamationmark.triangle.fill")
@@ -383,9 +387,11 @@ struct BagPlanEditor: View {
                         .foregroundStyle(KnightTheme.red)
                 }
             } header: {
-                Text("How the surplus is split · staff only")
+                Text("The lineup · staff only")
             } footer: {
-                Text("Uses only the items you confirmed. Students still see a Surprise Bag with no guaranteed contents.")
+                Text(plan.isSurprise
+                     ? "What's inside stays a surprise, even here. Pack the confirmed items across these bags."
+                     : "Not a surprise, so each bag's contents are shown here and to students.")
             }
 
             Section {
@@ -413,6 +419,63 @@ struct BagPlanEditor: View {
         }
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+/// All campus pickup spots as a tappable checklist, so long names never get cut off.
+struct PickupLocationPicker: View {
+    @Binding var selection: PickupLocation
+
+    var body: some View {
+        Picker("Pickup location", selection: $selection) {
+            ForEach(PickupLocation.campusSpots) { spot in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(spot.name)
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(spot.detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+                .tag(spot)
+            }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
+    }
+}
+
+/// One bag in the lineup: Roman numeral, a knight-themed name, and either a
+/// sealed "surprise" line or the contents (Rescue Bags only).
+struct BagLineupRow: View {
+    let index: Int
+    let items: [SurplusItem]
+    let isSurprise: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(BagName.numeral(index))
+                .font(.system(size: 13, weight: .bold, design: .serif))
+                .foregroundStyle(KnightTheme.goldDeep)
+                .frame(width: 34, height: 34)
+                .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(BagName.name(index, isSurprise: isSurprise))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+                if isSurprise {
+                    Label("\(items.totalUnits) item\(items.totalUnits == 1 ? "" : "s"), sealed", systemImage: "lock.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                } else {
+                    Text(items.isEmpty ? "Nothing assigned yet" : items.summaryText)
+                        .font(.system(size: 13))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

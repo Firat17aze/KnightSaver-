@@ -9,19 +9,19 @@ It is already added to `KnightSaver.xcodeproj` and shown from `RootView` with `B
 One scrollable dashboard:
 
 - **Header**: "Restaurant", the **Scan Knight Pass** button (styled like the Knight Pass card), and a full-width gold **List surplus** button under it.
-- **Current Surprise Bags**: status, bags left, price, pickup interval, and a staff-only packing note from the AI bag split ("Each bag: 2 bagels, 1 pastry, 1 sandwich", or "Bag 1: …" when bags differ). Also **Edit listing** (voice or manual), **Pause/Resume** and close/cancel.
+- **Current Surprise Bags**: status, bags left, price and pickup interval, with **Edit listing** (voice or manual), **Pause/Resume** and close/cancel. The AI bag split is still saved on each listing (`bagSplit`, `staffPackingLines`) but isn't shown on the card.
 - **Reserved pickups**: authorized, waitlisted and offer-sent reservations, with **Verify pickup**.
-- **Today's verified rescues**: one "Today's total" row. Tap it to see each verified pickup's price.
-- **Impact report**: bags collected, revenue, measured weight, estimated weight, estimated CO₂e, completion rate and average rating. Estimates are tagged EST.
+- **Today's verified rescues**: one "Total" row. Tap it to see each verified pickup's price.
+- **Impact report**: bags collected (full width), then revenue, estimated CO₂e (tagged Est.), pickup completion and average rating in a 2×2 grid.
 
 ## Flows
 
-- **+ List surplus → Speak with AI**: staff dictate with the keyboard microphone. Then:
+- **+ List surplus → Speak with AI**: staff tap the big gold microphone and talk; words stream into the box live (Speech framework, `VoiceDictation`). Tap again to stop, or type to fix words. Then:
   1. **What I understood**: an editable list of items and quantities, the pickup interval, and any missing information.
   2. **Proposed listing**: number of bags, price, interval, public description, location confirmation, and how the items are split per bag, with anything unallocated shown.
   3. Nothing goes live until staff tap **Approve and publish**.
 - **+ List surplus → Enter manually**: same two screens without AI.
-- **Edit listing**: voice ("Change the quantity to six bags and move pickup to 7:15–7:45 PM") shows the proposed changes for approval, or staff edit manually.
+- **Edit listing**: voice, using the same microphone button ("Change the quantity to six bags and move pickup to 7:15–7:45 PM") shows the proposed changes for approval, or staff edit manually.
 - **Scan Knight Pass**: camera QR scan of the student's reusable pass (`knightsaver://verify-user/<token>`). The result is one of:
   - **No valid pickup**.
   - One match → confirm.
@@ -48,6 +48,7 @@ One scrollable dashboard:
 | `ListSurplusFlow.swift` | + List surplus: AI/manual, What I understood, Proposed listing |
 | `EditListingFlow.swift` | Edit with voice / Edit manually |
 | `PassScannerView.swift` | Knight Pass camera scanner and verification |
+| `VoiceDictation.swift` | Live speech-to-text and the microphone button (`BizVoiceComposer`) |
 | `SurplusAssistant.swift` | Speech-to-inventory parsing, bag plan and allocation, voice edits |
 | `BusinessStore.swift` | Data and actions (publish, edit, waitlist, scan, verify), plus demo data |
 | `BusinessModels.swift` | Listing, reservation, payment, feedback, impact and event types |
