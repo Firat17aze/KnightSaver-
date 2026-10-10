@@ -276,11 +276,12 @@ enum BizKeyboard {
     }
 }
 
-/// Text box for dictation with the keyboard microphone.
+/// Text box the voice assistant writes into. Staff can also type or fix words by hand.
 struct BizDictationBox: View {
     let prompt: String
     @Binding var text: String
     var focus: FocusState<Bool>.Binding
+    var isLive = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -291,7 +292,7 @@ struct BizDictationBox: View {
                 .foregroundStyle(KnightTheme.ink)
                 .padding(10)
             if text.isEmpty {
-                Text(prompt)
+                Text(isLive ? "Go ahead, I'm listening…" : prompt)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(KnightTheme.muted.opacity(0.7))
                     .padding(.horizontal, 15)
@@ -303,7 +304,26 @@ struct BizDictationBox: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(KnightTheme.line, lineWidth: 1)
+                .stroke(isLive ? KnightTheme.red.opacity(0.7) : KnightTheme.line, lineWidth: isLive ? 1.5 : 1)
         }
+        .overlay(alignment: .bottomTrailing) {
+            if isLive {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(KnightTheme.red)
+                        .frame(width: 7, height: 7)
+                    Text("LIVE")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(0.8)
+                }
+                .foregroundStyle(KnightTheme.red)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(KnightTheme.red.opacity(0.10), in: Capsule())
+                .padding(10)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: isLive)
     }
 }

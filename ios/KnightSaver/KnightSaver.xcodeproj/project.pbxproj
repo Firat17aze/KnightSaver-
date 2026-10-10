@@ -23,6 +23,7 @@
 		A10000000000000000000B06 /* ListSurplusFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B06 /* ListSurplusFlow.swift */; };
 		A10000000000000000000B07 /* PassScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B07 /* PassScannerView.swift */; };
 		A10000000000000000000B08 /* SurplusAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B08 /* SurplusAssistant.swift */; };
+		A10000000000000000000B09 /* VoiceDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B09 /* VoiceDictation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		B10000000000000000000B06 /* ListSurplusFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListSurplusFlow.swift; sourceTree = "<group>"; };
 		B10000000000000000000B07 /* PassScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassScannerView.swift; sourceTree = "<group>"; };
 		B10000000000000000000B08 /* SurplusAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurplusAssistant.swift; sourceTree = "<group>"; };
+		B10000000000000000000B09 /* VoiceDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +142,7 @@
 				B10000000000000000000B06 /* ListSurplusFlow.swift */,
 				B10000000000000000000B07 /* PassScannerView.swift */,
 				B10000000000000000000B08 /* SurplusAssistant.swift */,
+				B10000000000000000000B09 /* VoiceDictation.swift */,
 			);
 			path = Business;
 			sourceTree = "<group>";
@@ -216,6 +219,7 @@
 				A10000000000000000000B06 /* ListSurplusFlow.swift in Sources */,
 				A10000000000000000000B07 /* PassScannerView.swift in Sources */,
 				A10000000000000000000B08 /* SurplusAssistant.swift in Sources */,
+				A10000000000000000000B09 /* VoiceDictation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,6 +279,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "KnightSaver uses the microphone so restaurant staff can tell the assistant what surplus is left.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "KnightSaver turns staff speech into text to list and edit Surprise Bags.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "KnightSaver uses your location to show nearby UCF pickup options.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -303,6 +309,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "KnightSaver uses the microphone so restaurant staff can tell the assistant what surplus is left.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "KnightSaver turns staff speech into text to list and edit Surprise Bags.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "KnightSaver uses your location to show nearby UCF pickup options.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

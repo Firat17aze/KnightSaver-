@@ -88,6 +88,13 @@ struct ListingEditProposal: Hashable {
 /// it only uses inventory staff reported, never invents allergens or dietary claims,
 /// never approves food safety, and nothing is published without staff approval.
 enum SurplusAssistant {
+    /// Words the speech recognizer should expect from kitchen staff.
+    static let speechHints = [
+        "bagels", "cookies", "pastries", "croissants", "muffins", "sandwiches", "wraps",
+        "salads", "donuts", "Surprise Bag", "Rescue Bag", "pickup", "bags", "per bag",
+        "Student Union", "Memory Mall", "Knight Pass"
+    ]
+
 
     // MARK: Stage 1
 
