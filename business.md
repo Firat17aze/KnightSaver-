@@ -2,25 +2,58 @@
 
 ## Start here: developer handoff
 
-This file is the source of truth for the **Business** tab. The sections immediately below describe what is in the repository now, what the business-side developer owns, and the smallest complete hackathon implementation. The rest of the document describes the target product behavior and integration contract.
+This file is the source of truth for the **Business** tab, shown in the app as **Kitchen**. The first part below describes what is built in the repository today and what is still missing. The rest of the document describes the target product behavior and the integration contract.
 
-### Current repository state
+### Built so far (October 10)
 
-- The native SwiftUI app lives in `ios/KnightSaver/KnightSaver/` and targets iOS 17 or later.
-- `App/RootView.swift` already contains the shared five-item navigation: Explore, Map, Impact, Business, and Profile.
-- The Business destination is currently only a placeholder. Replace that placeholder; do not create a separate app, navigation bar, or role-selection flow.
-- Explore and Profile are already implemented. Profile contains the reusable Knight Pass and the student's reservation-management flow, including cancellation.
-- Demo data is local. There is no production backend, authentication, Apple Pay capture, AI service, or staff scanner yet.
-- `Models/Models.swift` currently defines `SurpriseBag`, `ActiveReservation`, `ReservationStatus`, and `KnightPass`.
-- `RootView` currently owns `activeReservations`, so it is the temporary shared source of truth between the student and business experiences.
-- Explore currently reads `SurpriseBag.samples` directly. Publishing from Business will not update Explore until the shared listing array is lifted into `RootView` and passed into both views. Coordinate that small interface change with the student-side developer instead of maintaining a second list.
-- The current Knight Pass QR payload identifies the signed-in user with a renewable demo token. Continue using QR for the hackathon. A phone can read traditional barcodes, but changing KnightSaver to a student-ID barcode is not part of the agreed product flow and would need a separate security decision.
+All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see its `README.md` for a file-by-file map). It runs on local demo data that is shared with the student side.
+
+**Navigation and look**
+
+- The fourth tab is labeled **Kitchen** with a custom sprout-storefront icon (`TabKitchen` / `TabKitchenFill` vector assets). The code name is still `AppTab.business`.
+- Every tab starts with the KnightSaver bar: the Helm & Leaf logo left of the "KnightSaver" wordmark (`DesignSystem/KnightSaverBrand.swift`).
+- The moon button in the Kitchen header switches the whole app between light and dark mode (`@AppStorage("knightsaver.darkMode")`).
+
+**Shared data**
+
+- One `BusinessStore` is created in `RootView` and shared with Explore, bag details and Profile. There are no parallel copies of listings or reservations.
+- Published bags appear in Explore right away. A student reservation from Explore shows up in Reserved pickups, a cancellation from Profile removes it, and a verified pickup updates the student's status.
+- `businessStore.mapPins` gives KnightMap live pins (bag, latitude, longitude). KnightMap itself is not built yet.
+
+**Page sections (top to bottom)**
+
+1. **Scan Knight Pass**: opens the camera scanner (AVFoundation, `NSCameraUsageDescription`). In the Simulator it shows demo scan buttons instead. Result states: **No valid pickup**, one match (confirm), several matches (pick one), **Pickup verified**, **Already verified**. Verification is idempotent and accepts an optional measured weight in kg. Scans outside the pickup window (15-minute grace) return **No valid pickup**; there is no override.
+2. **+ List surplus**, with two paths:
+   - **Speak with AI**: a large microphone button turns speech into text live (Speech framework, `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`). Staff can also type, or tap **Use example (demo)**. Next comes **What I understood** (editable items, pickup times, price, missing or uncertain notes), then the proposed plan.
+   - **Enter manually**: staff type the items, then plan the bags.
+   - The plan lets staff edit the number of bags, price, pickup times and the public description, and choose the pickup spot from five campus locations.
+   - **The lineup · staff only** lists each bag by a knight-themed name and shows how the items are split. A **Surprise Bag** switch keeps contents secret; turned off, the listing becomes a **Rescue Bag** whose contents students can see.
+   - Nothing is published until staff tap **Approve and publish**.
+   - The "AI" is a local rule-based parser (`SurplusAssistant.swift`): one bag per 3 items, $5.99 when no price is said.
+3. **Current Surprise Bags**: status chip, price, pickup window, bags left and pickup spot.
+   - **Edit listing** works by voice (same microphone, proposed changes are approved first) or manually (bags available, price, times, spot, description).
+   - **Pause** / **Resume**, and a ••• menu with **Close listing** and **Cancel listing**.
+4. **Reserved pickups**: name and code, number of bags, **Verify pickup**. The ••• menu holds **Mark as missed** and **Student cancels (demo)**.
+5. **Today's verified rescues**: one **Total** row; tapping it lists each verified pickup's price.
+6. **Impact report** (updates only after a verified pickup):
+   - **CO₂e avoided** card with an "Est." tag, a green bar toward a 10 kg goal and a "≈ km not driven" comparison (0.17 kg CO₂e per car-km).
+   - Four tiles: **Bags collected**, **Revenue recovered**, **Pickup completion** (with a small bar) and **Average rating**.
+
+**Demo data**: Knightro's Kitchen with two live listings, three reserved pickups (Alex Knight's matches the Profile Knight Pass) and three pickups already verified today.
+
+### Not built yet
+
+- **This week / This month** switch for the impact report, and **Export PDF**.
+- The overall rating as a number in the header. Average rating is currently a tile in the Impact report.
+- **Outside pickup window** override in the scanner.
+- A real AI service, payments, a backend and authentication. The business-role gate is off for the prototype, so every account sees Kitchen.
+- KnightMap (the student side), which should read `businessStore.mapPins`.
 
 ### Business-side ownership
 
 The business-side developer owns:
 
-- The content rendered when `AppTab.business` is selected.
+- The content rendered when `AppTab.business` (Kitchen) is selected.
 - Listing creation and editing UI.
 - Current-listing controls such as pause, resume, and close.
 - A minimal reserved-pickup list used to start verification.
@@ -30,7 +63,7 @@ The business-side developer owns:
 - One overall restaurant rating displayed near the top of the page.
 - Business-specific demo state and components.
 
-The student-side developer continues to own Explore, KnightMap, Impact, Profile, the shared tab bar, and student reservation management. Do not duplicate cancellation controls on the Business page. A student cancellation should disappear from the business pickup queue because both sides read the same reservation state.
+The student-side developer continues to own Explore, KnightMap, Impact, Profile, the shared tab bar, and student reservation management. Do not duplicate cancellation controls on the Business page. A student cancellation disappears from the business pickup queue because both sides read the same reservation state.
 
 ### Visible feature set
 
@@ -46,87 +79,6 @@ Only these features need visible space on the one-page Business experience:
 8. See the restaurant's overall verified rating as one number near the top.
 
 Do not add visible payment management, synchronization status, individual feedback, arrival estimates, interactive charts, or detailed reservation metadata. Those are background concerns or outside the Business MVP.
-
-### Files to create or touch
-
-Prefer this structure:
-
-```text
-ios/KnightSaver/KnightSaver/
-├── App/RootView.swift
-├── Models/Models.swift
-└── Features/Business/
-    ├── BusinessView.swift
-    └── BusinessComponents.swift        # optional when BusinessView becomes large
-```
-
-- Create `Features/Business/BusinessView.swift` for the page and its sheets.
-- Add `BusinessComponents.swift` only when it improves readability; a one-file MVP is acceptable.
-- Make the smallest necessary shared changes in `Models/Models.swift` and `App/RootView.swift`.
-- Add new Swift files to the Xcode target if the project does not pick them up automatically.
-- Avoid editing files under `Features/Explore/` or `Features/Profile/` unless both developers agree on the integration change.
-
-The intended root wiring is conceptually:
-
-```swift
-BusinessView(
-    listings: $listings,
-    reservations: $activeReservations,
-    verifiedRescues: $verifiedRescues
-)
-```
-
-`RootView` should temporarily own these arrays so publishing, cancellation, verification, Explore availability, and Business totals can all react to the same local state. When a backend is added, replace these bindings with a shared observable store rather than preserving separate copies.
-
-For a low-conflict first pass, the business developer can build `BusinessView` against preview/demo bindings. Before merging the end-to-end demo, the team must move `SurpriseBag.samples` into `RootView`, pass the same listings into Explore and Business, and resolve edits to `RootView.swift` together.
-
-### Hackathon MVP: build this first
-
-The minimum complete Business experience is one scrollable page with a compact business header, four sections, and one persistent action. The header shows the business name and one overall rating number; it does not open a detailed feedback feed.
-
-1. **Current Surprise Bags**
-   - Show at least one demo listing.
-   - Show remaining/total quantity, price, pickup interval, and status.
-   - Support edit and pause/resume.
-2. **Reserved pickups**
-   - Read from the shared active reservations.
-   - Show only the student display name or reservation identifier, Surprise Bag quantity, and **Verify pickup**.
-   - Do not show expected-arrival language, pickup time, reservation status, payment status, or waitlist details on this page.
-3. **Today's rescue summary**
-   - Keep this visually small and show only a few totals, such as verified pickups and bags rescued today.
-   - Do not render a long list of completed reservations.
-   - Repeated verification must not add a second rescue or impact record.
-4. **Business impact report**
-   - Let staff choose **This week** or **This month**.
-   - Show a concise text-and-number summary on the page, without charts.
-   - Provide **Export PDF**. The exported report may contain charts or other visualizations because those do not consume dashboard space.
-   - Derive verified bag count, food weight, estimated environmental impact, revenue recovered, and pickup completion from verified rescues.
-   - Label weight and environmental values as estimates unless measured input exists.
-5. **+ List surplus**
-   - Keep it immediately above the shared bottom navigation while Business is selected.
-   - Open **Speak with AI** and **Enter manually**.
-   - Require review before publishing.
-
-For the hackathon, camera scanning and AI generation may use honest local demo behavior:
-
-- **Scanner:** Provide a simulated scan/manual reservation selection in Simulator. If a real camera scanner is added, keep the same verification result states.
-- **AI:** Use a deterministic sample or local parser to show the two review stages. Clearly label it as a draft and never publish automatically.
-
-Any payment processing and student-facing synchronization happen in the background. Do not add payment controls, payment status, or a “shared live data” card to the Business page.
-
-### Shared model changes needed for the MVP
-
-Do not build parallel business-only copies of student data. Extend the shared models so both sides can observe the same records.
-
-| Object | MVP fields or changes |
-|---|---|
-| `SurpriseBag` | Stable `id`; business ID/name; address/location; total quantity; remaining quantity; price; pickup start/end; description; `ListingStatus`; created/updated time. Coordinates can be added now or when KnightMap is connected. |
-| `ActiveReservation` | Stable ID; student display name or demo identifier; bag/listing ID; quantity; reservation status; created time. Payment state may remain in the shared background model but is not shown on the Business page. |
-| `VerifiedRescue` | Reservation ID; listing ID; quantity; verified time; captured amount; optional measured weight; optional estimated weight. |
-| `ListingStatus` | `draft`, `available`, `fullyReserved`, `paused`, `closed`, `cancelled`. |
-| `ReservationStatus` | Expand beyond the current demo cases so it can represent authorized, waitlisted, offer sent, cancelled, pickup verified, payment captured, refunded, and missed. |
-
-During the local prototype, values may remain in memory. Preserve stable IDs across edits so verification and cancellation affect the correct record.
 
 ### State transition rules
 
@@ -149,40 +101,33 @@ Whether the demo uses a camera, manual code entry, or a reservation picker, the 
 4. **Multiple matching reservations** — require staff to select the exact pickup
 5. **Pickup verified**
 6. **Already verified**
-7. **Outside pickup window** — warn staff and require an explicit demo override if supported
+7. **Outside pickup window** — warn staff and require an explicit demo override if supported (not built yet; such scans currently return **No valid pickup**)
 
 The reusable Knight Pass identifies the student; the app then finds reservations valid for the current business and pickup window. Do not place a raw student ID, payment data, or complete reservation details inside the QR payload.
-
-### Demo data and scope
-
-- Reuse the current sample businesses and reservations in `Models/Models.swift` so the Business tab matches what Explore and Profile show.
-- Use one selected demo business for the Business page; do not build multi-location management.
-- The earlier UCF dining-location research can later seed onboarding, but the Business MVP does not need the full campus directory.
-- Keep Surprise Bag contents general in student-facing text. Internal surplus items may be detailed only inside the staff review flow.
 
 ### Definition of done
 
 The Business MVP is done when all of these can be demonstrated without restarting the app:
 
-- A staff user creates a reviewed Surprise Bag draft and publishes it.
-- The published listing appears in the shared local listing state.
-- An active student reservation appears in Reserved pickups.
-- Cancelling that reservation from Profile removes it from Reserved pickups and restores availability.
-- Staff can verify a valid pickup once.
-- A second verification attempt does not duplicate the rescue or impact.
-- The verified pickup leaves the active queue and updates the small today's-rescues summary.
-- Business metrics update from the verified record.
-- Staff can switch the impact report between this week and this month.
-- Staff can export the selected report as a PDF containing clear metrics and optional charts.
-- Pause/resume and edit actions change the same listing used by the student experience.
-- The page works with Dynamic Type, VoiceOver labels, reduced motion, safe areas, and the shared bottom navigation.
-- The project builds successfully for an iOS Simulator.
+- [x] A staff user creates a reviewed Surprise Bag draft and publishes it.
+- [x] The published listing appears in the shared local listing state.
+- [x] An active student reservation appears in Reserved pickups.
+- [x] Cancelling that reservation from Profile removes it from Reserved pickups and restores availability.
+- [x] Staff can verify a valid pickup once.
+- [x] A second verification attempt does not duplicate the rescue or impact.
+- [x] The verified pickup leaves the active queue and updates the small today's-rescues summary.
+- [x] Business metrics update from the verified record.
+- [ ] Staff can switch the impact report between this week and this month.
+- [ ] Staff can export the selected report as a PDF containing clear metrics and optional charts.
+- [x] Pause/resume and edit actions change the same listing used by the student experience.
+- [ ] The page works with Dynamic Type, VoiceOver labels, reduced motion, safe areas, and the shared bottom navigation. (Reduced motion, VoiceOver labels and safe areas are in place; Dynamic Type still needs a pass.)
+- [ ] The project builds successfully for an iOS Simulator. (To be confirmed in Xcode after each merge.)
 
 ## Business-side purpose
 
 The Business section lets authorized staff turn uncertain surplus into live pickup-only Surprise Bags, manage listings, verify collection, and produce credible impact records.
 
-The business-side developer owns the content inside the fourth **Business** navigation destination. The student-side developer owns the shared navigation shell and the other four destinations.
+The business-side developer owns the content inside the fourth navigation destination, labeled **Kitchen** in the app. The student-side developer owns the shared navigation shell and the other four destinations.
 
 For the hackathon, Business may remain visible as a clearly labeled demo view. In a real deployment, it must require an authorized staff or manager account.
 
@@ -193,10 +138,10 @@ KnightSaver uses five bottom-navigation destinations:
 1. **Explore**
 2. **Map** (opens **KnightMap**)
 3. **Impact**
-4. **Business**
+4. **Kitchen** (the Business destination)
 5. **Profile**
 
-Business remains the fourth destination. Do not create a second business navigation bar or a separate business app.
+Kitchen remains the fourth destination. Do not create a second business navigation bar or a separate business app.
 
 The Business page is one focused, scrollable dashboard. Keep **+ List surplus** immediately above the shared bottom navigation while Business is selected.
 
@@ -267,7 +212,7 @@ Tapping **+ List surplus** gives staff two choices:
 
 ### Speak with AI
 
-Staff describe the actual surplus inventory they have and any known pickup constraints. They do not need to decide the number of Surprise Bags first.
+Staff tap the microphone and describe the actual surplus inventory they have and any known pickup constraints; the words appear as they speak and can be corrected by typing. They do not need to decide the number of Surprise Bags first.
 
 Example:
 
@@ -339,7 +284,8 @@ The manual fallback first records the actual surplus inventory and then lets sta
 - Pickup start time
 - Pickup end time
 - Optional public general description
-- Location confirmation
+- Pickup spot, chosen from the campus locations
+- Whether it is a **Surprise Bag** (contents secret) or a **Rescue Bag** (contents shown to students)
 
 The restaurant logo comes from the business profile unless staff explicitly replaces it.
 
