@@ -14,13 +14,15 @@ struct AppAccount: Codable, Identifiable, Hashable {
     var email: String
     var role: AccountRole
     var businessName: String?
+    var phoneNumber: String? = nil
+    var campusName: String? = nil
     let passToken: String
 
     var knightPass: KnightPass {
         KnightPass(
             memberID: "KNIGHT-\(id.uuidString.prefix(4).uppercased())",
             displayName: displayName,
-            campusName: "UCF Main Campus",
+            campusName: campusName ?? "UCF Main Campus",
             verificationToken: passToken
         )
     }
@@ -124,9 +126,51 @@ final class SessionStore: ObservableObject {
             email: role == .student ? "alex@ucf.edu" : "manager@knightros.example",
             role: role,
             businessName: role == .business ? "Knightro's Kitchen" : nil,
+            phoneNumber: role == .student ? "(407) 555-0142" : "(407) 555-0188",
+            campusName: "UCF Main Campus",
             passToken: role == .student ? "demo-7F4C92B1A8E6" : "demo-business-session"
         )
         setActive(demo)
+    }
+
+    /// Updates the signed-in profile immediately and persists it for locally created accounts.
+    /// Returns a user-facing validation error, or nil when the save succeeds.
+    func updateProfile(displayName: String, email: String, phoneNumber: String, campusName: String) -> String? {
+        guard var updated = account else { return "Sign in again to update your profile." }
+
+        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmedPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        let phoneDigits = trimmedPhone.filter(\.isNumber)
+
+        guard trimmedName.count >= 2 else { return "Enter your full name." }
+        guard normalizedEmail.contains("@"), normalizedEmail.contains(".") else {
+            return "Enter a valid email address."
+        }
+        if updated.role == .student && !normalizedEmail.hasSuffix("@ucf.edu") {
+            return "Student accounts require a UCF email address."
+        }
+        if !trimmedPhone.isEmpty && phoneDigits.count < 10 {
+            return "Enter a complete phone number or leave it blank."
+        }
+        if credentials.contains(where: { $0.account.id != updated.id && $0.account.email == normalizedEmail }) {
+            return "Another account already uses that email."
+        }
+
+        updated.displayName = trimmedName
+        updated.email = normalizedEmail
+        updated.phoneNumber = trimmedPhone.isEmpty ? nil : trimmedPhone
+        updated.campusName = campusName
+
+        if let index = credentials.firstIndex(where: { $0.account.id == updated.id }) {
+            credentials[index] = LocalCredential(
+                account: updated,
+                passwordDigest: credentials[index].passwordDigest
+            )
+            saveCredentials()
+        }
+        setActive(updated)
+        return nil
     }
 
     func signOut() {
