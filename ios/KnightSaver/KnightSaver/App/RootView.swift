@@ -75,9 +75,12 @@ struct RootView: View {
                     case .explore:
                         ExploreView(activeReservations: $activeReservations, student: account.knightPass)
                     case .map:
-                        // When KnightMap is built, read live pins from the shared store:
-                        // `businessStore.mapPins` (bag + latitude/longitude), not sample data.
-                        PlaceholderView(title: "KnightMap", subtitle: "Live campus pickup locations will appear here.", icon: "map.fill")
+                        // Reads live bags from the shared store (`businessStore.mapPins`).
+                        KnightMapView(
+                            activeReservations: $activeReservations,
+                            student: account.knightPass,
+                            onManageReservation: { selectedTab = .profile }
+                        )
                     case .impact:
                         ImpactView(student: account.knightPass)
                     case .business:

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import MapKit
 import UIKit
 
 struct BagDetailView: View {
@@ -126,7 +127,7 @@ struct BagDetailView: View {
 
                 Spacer()
 
-                Button("Directions") { }
+                Button("Directions") { openWalkingDirections() }
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
                     .frame(minHeight: 44)
@@ -134,6 +135,14 @@ struct BagDetailView: View {
             .padding(15)
             .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
+    }
+
+    /// Walking directions in Apple Maps to the pickup spot (KnightMap shows the route in-app).
+    private func openWalkingDirections() {
+        let coordinate = CLLocationCoordinate2D(latitude: bag.latitude, longitude: bag.longitude)
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        item.name = bag.location
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 
     private var pastReveals: some View {
