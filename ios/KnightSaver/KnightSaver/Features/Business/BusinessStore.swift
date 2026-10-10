@@ -157,8 +157,20 @@ final class BusinessStore: ObservableObject {
             pickupWindow: listing.pickupWindowText,
             availableCount: listing.isReservable ? listing.remainingQuantity : 0,
             price: listing.price,
-            description: listing.publicDescription
+            description: listing.isSurprise ? listing.publicDescription : contentsDescription(for: listing)
         )
+    }
+
+    /// Rescue Bags (not a surprise) tell students what's inside.
+    private func contentsDescription(for listing: BusinessListing) -> String {
+        let bags = listing.bagSplit.filter { !$0.isEmpty }
+        guard let first = bags.first else { return listing.publicDescription }
+        if bags.allSatisfy({ $0.hasSameContents(as: first) }) {
+            return "Each bag: \(first.summaryText)."
+        }
+        let sizes = bags.map { $0.totalUnits }
+        let names = listing.inventory.map { $0.name.lowercased() }.joined(separator: ", ")
+        return "Bags of \(sizes.min() ?? 0)–\(sizes.max() ?? 0) items from: \(names)."
     }
 
     /// A student reserves (or joins the waitlist when the bag is fully reserved).
@@ -274,7 +286,8 @@ final class BusinessStore: ObservableObject {
             longitude: profile.longitude,
             inventory: inventory,
             bagSplit: allocation.bags,
-            unallocated: allocation.leftover
+            unallocated: allocation.leftover,
+            isSurprise: plan.isSurprise
         )
         listings.append(listing)
         if plan.createdByAI {
