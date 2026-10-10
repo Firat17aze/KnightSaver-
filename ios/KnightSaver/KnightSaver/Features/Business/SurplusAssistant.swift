@@ -95,7 +95,8 @@ enum SurplusAssistant {
 
         let price = extractPrice(from: &working)
         let times = extractPickupTimes(from: &working, now: now, calendar: calendar)
-        notes.append(contentsOf: times.notes)
+        // The "No pickup time heard" case gets its own, more helpful note below.
+        notes.append(contentsOf: times.notes.filter { !$0.hasPrefix("No pickup") })
         let inventory = extractInventory(from: working)
 
         if inventory.isEmpty {
