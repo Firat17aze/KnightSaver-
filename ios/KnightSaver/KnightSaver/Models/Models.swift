@@ -44,7 +44,8 @@ enum BagBrand: String, CaseIterable, Hashable {
 }
 
 struct SurpriseBag: Identifiable, Hashable {
-    let id = UUID()
+    /// Bags published from Business use their listing id, so they keep the same identity when updated.
+    var id = UUID()
     let business: String
     let location: String
     let brand: BagBrand
@@ -121,6 +122,8 @@ struct SurpriseBag: Identifiable, Hashable {
 enum ReservationStatus: String, Hashable {
     case confirmed = "Confirmed"
     case waitlistOffer = "Waitlist offer"
+    case waitlisted = "Waitlisted"
+    case verified = "Pickup verified"
 }
 
 struct KnightPass: Hashable {
@@ -142,7 +145,8 @@ struct KnightPass: Hashable {
 }
 
 struct ActiveReservation: Identifiable, Hashable {
-    let id = UUID()
+    /// Matches the BusinessReservation id for reservations from the shared BusinessStore.
+    var id = UUID()
     let bag: SurpriseBag
     let status: ReservationStatus
     let paymentStatus: String

@@ -6,12 +6,13 @@ It is already added to `KnightSaver.xcodeproj` and shown from `RootView` with `B
 
 ## What's on the page
 
-One scrollable dashboard with **+ List surplus** pinned above the shared tab bar:
+One scrollable dashboard:
 
-1. **Current Surprise Bags**: status, remaining/total, price, pickup interval, staff-only inventory, **Edit listing** (voice or manual), **Pause/Resume**, close/cancel, and a compact rating summary.
-2. **Reserved pickups**: authorized, waitlisted and offer-sent reservations, with **Verify pickup**.
-3. **Today's verified rescues**: only pickups verified with a Knight Pass scan.
-4. **Impact report**: bags collected, measured weight, estimated weight, estimated CO₂e, revenue, completion rate and average rating. Estimates are labeled.
+- **Header**: "Restaurant", the **Scan Knight Pass** button (styled like the Knight Pass card), and a full-width gold **List surplus** button under it.
+- **Current Surprise Bags**: status, bags left, price, pickup interval, and a staff-only packing note from the AI bag split ("Each bag: 2 bagels, 1 pastry, 1 sandwich", or "Bag 1: …" when bags differ). Also **Edit listing** (voice or manual), **Pause/Resume** and close/cancel.
+- **Reserved pickups**: authorized, waitlisted and offer-sent reservations, with **Verify pickup**.
+- **Today's verified rescues**: one "Today's total" row. Tap it to see each verified pickup's price.
+- **Impact report**: bags collected, revenue, measured weight, estimated weight, estimated CO₂e, completion rate and average rating. Estimates are tagged EST.
 
 ## Flows
 
@@ -29,7 +30,8 @@ One scrollable dashboard with **+ List surplus** pinned above the shared tab bar
 
 ## Demo notes
 
-- Demo data is for Knightro's Kitchen, and pickup times are relative to when the app opens.
+- Demo data is for Knightro's Kitchen (students see that name; the dashboard header says "Restaurant"). Pickup times are relative to when the app opens.
+- Reserved pickups starts with two students: Alex Knight (KS-4821) and Jordan P.
 - **Alex Knight's** reservation uses `KnightPass.sample`, so scanning the Knight Pass from Profile on a second phone verifies it.
 - The Simulator has no camera. Use the **Demo scans** buttons in the scanner.
 - The "…" menu on a reservation simulates student actions:
@@ -51,11 +53,14 @@ One scrollable dashboard with **+ List surplus** pinned above the shared tab bar
 | `BusinessModels.swift` | Listing, reservation, payment, feedback, impact and event types |
 | `BusinessUI.swift` | Small UI pieces styled with `KnightTheme` |
 
-## Connecting the student side (next step)
+## Shared with the student side
 
-- `BusinessStore.surpriseBagsForExplore` returns live listings as `[SurpriseBag]`. To make Explore and KnightMap update instantly:
-  - Create one `BusinessStore` in `RootView`.
-  - Pass it to `BusinessDashboardView(store:)`.
-  - Have Explore read `surpriseBagsForExplore`.
-- Status values follow business.md: `SurpriseBagStatus` and `PickupStatus`. The student side's `ReservationStatus` can move to `PickupStatus` when the two sides are merged.
+`RootView` owns one `BusinessStore` (`@StateObject`). It is passed to `BusinessDashboardView(store:)` and put in the environment for Explore and Profile. The data survives tab switches.
+
+- **Explore** shows `store.surpriseBagsForExplore` first, then the sample restaurants (the sample for this business is hidden to avoid a duplicate). Publishing, editing, pausing, closing, cancelling or selling out updates the card and the open bag details right away. Each bag's `id` is its listing id.
+- **Reserve / Join waitlist** on a live bag calls `store.reserve(bagID:studentName:passToken:)`. It lowers the bags left, appears in Business › Reserved pickups, and shows in Profile › My pickups.
+- **Cancel** in Profile calls `store.cancelReservation(id:)`. That releases the payment hold and frees the bag or offers it to the waitlist.
+- **Verify pickup** in Business changes the student's reservation in Profile to "Pickup verified" and hides the cancel button.
+- **KnightMap** (still a placeholder) must read `store.mapPins`: each pin has a bag plus latitude and longitude.
+- The student is `KnightPass.sample` until authentication exists.
 - `store.events` logs the integration events from business.md ("Listing published", "Pickup verified", …).
