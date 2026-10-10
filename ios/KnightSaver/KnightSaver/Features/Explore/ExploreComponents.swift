@@ -724,6 +724,30 @@ struct FilterChip: View {
     }
 }
 
+struct FilterMenuChip: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: isSelected ? "checkmark" : icon)
+                .font(.system(size: 13, weight: .bold))
+            Text(title)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+        }
+        .foregroundStyle(isSelected ? KnightTheme.ink : KnightTheme.muted)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 44)
+        .background(isSelected ? KnightTheme.gold : KnightTheme.surface, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(isSelected ? KnightTheme.ink.opacity(0.12) : KnightTheme.line, lineWidth: 1)
+        }
+        .contentShape(Capsule())
+    }
+}
+
 struct SurpriseBagCard: View {
     let bag: SurpriseBag
 
@@ -791,29 +815,33 @@ struct BrandBanner: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                bag.brand.primary
+                if UIImage(named: bag.bannerAssetName) != nil {
+                    Image(bag.bannerAssetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                } else {
+                    bag.brand.primary
+                }
 
-                Circle()
-                    .fill(bag.brand.secondary.opacity(0.22))
-                    .frame(width: proxy.size.width * 0.75)
-                    .offset(x: proxy.size.width * 0.36, y: -proxy.size.height * 0.34)
-
-                RoundedRectangle(cornerRadius: 38, style: .continuous)
-                    .fill(bag.brand.secondary.opacity(0.16))
-                    .frame(width: proxy.size.width * 0.62, height: 72)
-                    .rotationEffect(.degrees(-10))
-                    .offset(x: -proxy.size.width * 0.31, y: proxy.size.height * 0.31)
+                LinearGradient(
+                    colors: [.black.opacity(0.5), .clear, .black.opacity(0.16)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
 
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("CAMPUS PICKUP")
+                        Text("SURPRISE PICKUP")
                             .font(.system(size: 10, weight: .black, design: .rounded))
                             .tracking(1.6)
-                            .foregroundStyle(bag.brand.secondary)
+                            .foregroundStyle(.white.opacity(0.9))
                         Text(bag.brand.mark)
-                            .font(.system(size: 58, weight: .black, design: .rounded))
+                            .font(.system(size: 42, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.7)
+                            .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
                     }
                     Spacer()
                 }

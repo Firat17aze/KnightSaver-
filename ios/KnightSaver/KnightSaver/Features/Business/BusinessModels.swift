@@ -209,6 +209,8 @@ struct BusinessListing: Identifiable, Hashable {
     var pickupAddress: String
     var latitude: Double
     var longitude: Double
+    /// Chosen once at publication so Explore does not reshuffle artwork while scrolling.
+    var bannerAssetName: String
     /// Staff-only record of what went into the bags.
     var inventory: [SurplusItem]
     /// Staff-only: what to put in each bag (from SurplusAssistant.allocate).
@@ -230,6 +232,7 @@ struct BusinessListing: Identifiable, Hashable {
         pickupAddress: String,
         latitude: Double,
         longitude: Double,
+        bannerAssetName: String = ListingBannerCatalog.random(),
         inventory: [SurplusItem],
         bagSplit: [[SurplusItem]]? = nil,
         unallocated: [SurplusItem] = [],
@@ -248,6 +251,7 @@ struct BusinessListing: Identifiable, Hashable {
         self.pickupAddress = pickupAddress
         self.latitude = latitude
         self.longitude = longitude
+        self.bannerAssetName = bannerAssetName
         self.inventory = inventory
         self.isSurprise = isSurprise
         if let bagSplit {
