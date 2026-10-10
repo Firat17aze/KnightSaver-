@@ -203,7 +203,6 @@ struct BizMethodButton: View {
 struct BizStatTile: View {
     let title: String
     let value: String
-    let note: String
     var isEstimate = false
 
     var body: some View {
@@ -229,12 +228,8 @@ struct BizStatTile: View {
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text(note)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(KnightTheme.muted)
-                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
         .padding(14)
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {

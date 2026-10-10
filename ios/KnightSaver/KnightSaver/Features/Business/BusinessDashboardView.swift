@@ -1,15 +1,15 @@
 import SwiftUI
 
 /// The fourth navigation destination: one focused, scrollable business dashboard.
-/// RootView shows it with `BusinessDashboardView()`.
+/// RootView owns the shared BusinessStore and passes it in, so the data survives
+/// tab switches and the student side sees the same listings and reservations.
 struct BusinessDashboardView: View {
-    @StateObject private var store: BusinessStore
+    @ObservedObject var store: BusinessStore
     @State private var sheet: BusinessSheet?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Pass a shared store to connect other tabs. Without one it uses demo data.
-    init(store: BusinessStore? = nil) {
-        _store = StateObject(wrappedValue: store ?? BusinessStore.demo())
+    init(store: BusinessStore) {
+        _store = ObservedObject(wrappedValue: store)
     }
 
     var body: some View {
@@ -27,9 +27,6 @@ struct BusinessDashboardView: View {
         }
         .scrollIndicators(.hidden)
         .background(KnightTheme.paper)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            listSurplusButton
-        }
         .overlay(alignment: .top) {
             toastView
         }
@@ -43,60 +40,40 @@ struct BusinessDashboardView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
-                BrandMark(brand: store.profile.brand, size: 50)
+                Image(systemName: "storefront.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(KnightTheme.goldDeep)
+                    .frame(width: 50, height: 50)
+                    .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(store.isDemo ? "BUSINESS · DEMO VIEW" : "BUSINESS")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(KnightTheme.goldDeep)
-                    Text(store.profile.name)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                    Text("Restaurant")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    HStack(spacing: 6) {
-                        Image(systemName: "mappin.and.ellipse")
-                        Text(store.profile.pickupAddress)
-                        Text("·")
-                        Image(systemName: "star.fill")
-                            .foregroundStyle(KnightTheme.goldDeep)
-                        Text(String(format: "%.1f", store.profile.rating) + " (\(store.profile.feedbackCount))")
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(KnightTheme.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 0)
             }
+            .accessibilityElement(children: .combine)
+
+            ScanKnightPassButton {
+                sheet = .scan(expected: nil)
+            }
+            .padding(.top, 4)
 
             Button {
-                sheet = .scan(expected: nil)
+                sheet = .listSurplus
             } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(KnightTheme.gold)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Scan Knight Pass")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                        Text("Verify a student's pickup")
-                            .font(.system(size: 12, weight: .medium))
-                            .opacity(0.75)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 64)
-                .background(KnightTheme.ink, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                BizPrimaryLabel(title: "List surplus", icon: "plus")
             }
             .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
-            .accessibilityHint("Opens the camera to scan a student's Knight Pass")
+            .accessibilityLabel("List surplus")
+            .accessibilityHint("Publish new Surprise Bags with AI or manually")
         }
     }
 
@@ -106,7 +83,6 @@ struct BusinessDashboardView: View {
         VStack(alignment: .leading, spacing: 14) {
             BizSectionHeader(
                 title: "Current Surprise Bags",
-                subtitle: "Live in Explore and KnightMap",
                 trailing: "\(store.listings.filter { $0.isReservable }.count) available"
             )
             if store.listings.isEmpty {
@@ -115,7 +91,6 @@ struct BusinessDashboardView: View {
                 ForEach(store.currentListings) { listing in
                     SurpriseBagListingCard(
                         listing: listing,
-                        brand: store.profile.brand,
                         waitlistCount: store.waitlistCount(for: listing.id),
                         onEdit: { sheet = .edit(listing.id) },
                         onPauseToggle: { store.setPaused(listing.state != .paused, listingID: listing.id) },
@@ -123,9 +98,6 @@ struct BusinessDashboardView: View {
                         onCancel: { store.cancelListing(listingID: listing.id) }
                     )
                 }
-            }
-            if !store.feedback.isEmpty {
-                FeedbackSummaryCard(feedback: store.feedback)
             }
         }
     }
@@ -160,44 +132,9 @@ struct BusinessDashboardView: View {
 
     private var verifiedRescuesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BizSectionHeader(
-                title: "Today's verified rescues",
-                subtitle: "Only pickups confirmed with a Knight Pass scan",
-                trailing: "\(store.todaysVerifiedRescues.count)"
-            )
-            if store.todaysVerifiedRescues.isEmpty {
-                emptyCard(icon: "checkmark.seal", text: "Verified pickups will appear here.")
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(store.todaysVerifiedRescues.enumerated()), id: \.element.id) { index, rescue in
-                        if index > 0 {
-                            Divider().overlay(KnightTheme.line)
-                        }
-                        VerifiedRescueRow(reservation: rescue)
-                            .padding(.vertical, 12)
-                    }
-                }
-                .bizCard()
-            }
+            BizSectionHeader(title: "Today's verified rescues")
+            TodaysTotalCard(rescues: store.todaysVerifiedRescues, total: store.todaysVerifiedTotal)
         }
-    }
-
-    // MARK: - + List surplus
-
-    private var listSurplusButton: some View {
-        Button {
-            sheet = .listSurplus
-        } label: {
-            BizPrimaryLabel(title: "List surplus", icon: "plus")
-                .shadow(color: KnightTheme.ink.opacity(0.12), radius: 12, x: 0, y: 6)
-        }
-        .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
-        .padding(.horizontal, KnightTheme.screenPadding)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(KnightTheme.paper.opacity(0.94))
-        .accessibilityLabel("List surplus")
-        .accessibilityHint("Publish new Surprise Bags with AI or manually")
     }
 
     // MARK: - Toast
@@ -270,11 +207,88 @@ enum BusinessSheet: Identifiable, Hashable {
     }
 }
 
+// MARK: - Scan Knight Pass button
+
+/// The one bold element on the page. Same family as the Knight Pass card in Profile
+/// (dark diagonal gradient, faint gold ring, gold wordmark, KnightLogo, 22pt corners,
+/// thin white border), but shaped as a wide action with a gold chevron so it reads as a button.
+struct ScanKnightPassButton: View {
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("KNIGHTSAVER")
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(2.2)
+                        .foregroundStyle(KnightTheme.gold)
+                        .padding(.bottom, 4)
+                    Text("Scan Knight Pass")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("Verify a student's pickup")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.68))
+                }
+
+                Spacer(minLength: 8)
+
+                Image("KnightLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 58, height: 58)
+                    .accessibilityHidden(true)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(KnightTheme.ink)
+                    .frame(width: 38, height: 38)
+                    .background(KnightTheme.gold, in: Circle())
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
+            .background {
+                GeometryReader { proxy in
+                    ZStack {
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.055, green: 0.053, blue: 0.05),
+                                Color(red: 0.14, green: 0.125, blue: 0.095)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        Circle()
+                            .stroke(KnightTheme.gold.opacity(0.14), lineWidth: 1)
+                            .frame(width: proxy.size.width * 0.62)
+                            .offset(x: proxy.size.width * 0.38, y: -proxy.size.height * 0.62)
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(.white.opacity(0.14), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.18), radius: 16, x: 0, y: 8)
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Scan Knight Pass")
+        .accessibilityHint("Verify a student's pickup with the camera")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
 // MARK: - Listing card
 
 struct SurpriseBagListingCard: View {
     let listing: BusinessListing
-    let brand: BagBrand
     let waitlistCount: Int
     let onEdit: () -> Void
     let onPauseToggle: () -> Void
@@ -286,7 +300,6 @@ struct SurpriseBagListingCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                BrandMark(brand: brand, size: 44)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(listing.label)
                         .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -303,23 +316,27 @@ struct SurpriseBagListingCard: View {
                 BizMetaRow(icon: "clock.fill", text: "Pickup \(listing.pickupWindowText)")
                 BizMetaRow(icon: "bag.fill", text: "\(listing.remainingQuantity) of \(listing.totalQuantity) bags left"
                            + (waitlistCount > 0 ? " · \(waitlistCount) on waitlist" : ""))
-                BizMetaRow(icon: "mappin.and.ellipse", text: listing.pickupAddress)
             }
 
-            if !listing.inventory.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.top, 2)
-                    Text("Staff only: \(listing.inventory.summaryText)")
-                        .font(.system(size: 12, weight: .medium))
-                        .fixedSize(horizontal: false, vertical: true)
+            let packingLines = listing.staffPackingLines
+            if !packingLines.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("STAFF ONLY", systemImage: "lock.fill")
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .tracking(0.9)
+                        .foregroundStyle(KnightTheme.muted)
+                    ForEach(Array(packingLines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(KnightTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .foregroundStyle(KnightTheme.muted)
-                .padding(10)
+                .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(KnightTheme.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityLabel("Staff only inventory: \(listing.inventory.summaryText)")
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Staff only. " + packingLines.joined(separator: ". "))
             }
 
             if isOpen {
@@ -359,45 +376,6 @@ struct SurpriseBagListingCard: View {
         }
         .bizCard()
         .opacity(isOpen ? 1 : 0.62)
-    }
-}
-
-// MARK: - Feedback summary
-
-struct FeedbackSummaryCard: View {
-    let feedback: [PickupFeedback]
-
-    private var average: Double {
-        Double(feedback.reduce(0) { $0 + $1.overall }) / Double(max(1, feedback.count))
-    }
-
-    private var reserveAgainShare: Int {
-        Int((Double(feedback.filter { $0.wouldReserveAgain }.count) / Double(max(1, feedback.count)) * 100).rounded())
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(KnightTheme.goldDeep)
-                Text(String(format: "%.1f from verified pickups", average))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                Spacer(minLength: 0)
-                Text("\(reserveAgainShare)% would reserve again")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(KnightTheme.muted)
-            }
-            if let latest = feedback.max(by: { $0.submittedAt < $1.submittedAt }) {
-                Text("“\(latest.comment)”")
-                    .font(.system(size: 13, weight: .medium))
-                    .italic()
-                    .foregroundStyle(KnightTheme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .bizCard()
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -494,35 +472,80 @@ struct ReservedPickupCard: View {
     }
 }
 
-// MARK: - Verified rescue row
+// MARK: - Today's total
 
-struct VerifiedRescueRow: View {
-    let reservation: BusinessReservation
+/// One row with today's verified total. Tapping it shows each verified pickup's price.
+struct TodaysTotalCard: View {
+    let rescues: [BusinessReservation]
+    let total: Double
+
+    @State private var isExpanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(KnightTheme.green)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                Text("\(reservation.studentDisplayName) · \(reservation.quantity) bag\(reservation.quantity == 1 ? "" : "s")")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                Text("\(reservation.code) · verified \(reservation.verifiedAt.map { PickupTime.time($0) } ?? "")")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted)
-                HStack(spacing: 6) {
-                    BizChip(text: "Payment captured", tint: KnightTheme.green)
-                    BizChip(text: "Verified rescue", tint: KnightTheme.goldDeep, icon: "checkmark")
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
                 }
+            } label: {
+                HStack(spacing: 12) {
+                    Text("Today's total")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Spacer(minLength: 8)
+                    Text(PickupTime.money(total))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(KnightTheme.ink)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(KnightTheme.goldDeep)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: 0)
-            Text(PickupTime.money(reservation.total))
-                .font(.system(size: 15, weight: .black, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Today's total, \(PickupTime.money(total))")
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            .accessibilityHint(isExpanded ? "Hides the individual pickups" : "Shows the price of each verified pickup")
+            .accessibilityAddTraits(.isButton)
+
+            if isExpanded {
+                VStack(spacing: 0) {
+                    if rescues.isEmpty {
+                        Divider().overlay(KnightTheme.line)
+                        Text("No verified pickups yet today.")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(KnightTheme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 12)
+                    } else {
+                        ForEach(rescues) { rescue in
+                            Divider().overlay(KnightTheme.line)
+                            HStack {
+                                Text(rescue.verifiedAt.map { PickupTime.time($0) } ?? "")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(KnightTheme.muted)
+                                Spacer()
+                                Text(PickupTime.money(rescue.total))
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(KnightTheme.ink)
+                            }
+                            .padding(.vertical, 11)
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                }
+                .padding(.top, 6)
+                .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .accessibilityElement(children: .combine)
+        .bizCard()
+        .clipped()
     }
 }
 
@@ -540,25 +563,14 @@ struct BusinessImpactSection: View {
             BizSectionHeader(title: "Impact report", subtitle: "Updates only after a verified pickup")
 
             LazyVGrid(columns: columns, spacing: 12) {
-                BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)",
-                            note: "Verified Surprise Bags")
-                BizStatTile(title: "Revenue recovered", value: PickupTime.money(impact.revenueRecovered),
-                            note: "Payments captured")
-                BizStatTile(title: "Measured weight", value: kg(impact.measuredWeightKg),
-                            note: "Bags weighed by staff")
-                BizStatTile(title: "Estimated weight", value: kg(impact.estimatedWeightKg),
-                            note: "From staff inventory", isEstimate: true)
-                BizStatTile(title: "CO₂e avoided", value: kg(impact.estimatedCO2eKg),
-                            note: "Estimated from food weight", isEstimate: true)
-                BizStatTile(title: "Pickup completion", value: percent(impact.pickupCompletionRate),
-                            note: "Verified ÷ due pickups")
-                BizStatTile(title: "Average rating", value: rating(impact.averageRating),
-                            note: "\(impact.ratingCount) verified review\(impact.ratingCount == 1 ? "" : "s")")
+                BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
+                BizStatTile(title: "Revenue recovered", value: PickupTime.money(impact.revenueRecovered))
+                BizStatTile(title: "Measured weight", value: kg(impact.measuredWeightKg))
+                BizStatTile(title: "Estimated weight", value: kg(impact.estimatedWeightKg), isEstimate: true)
+                BizStatTile(title: "CO₂e avoided", value: kg(impact.estimatedCO2eKg), isEstimate: true)
+                BizStatTile(title: "Pickup completion", value: percent(impact.pickupCompletionRate))
+                BizStatTile(title: "Average rating", value: rating(impact.averageRating))
             }
-
-            Text("Estimated values are never shown as measured data.")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(KnightTheme.muted)
         }
     }
 
@@ -578,5 +590,5 @@ struct BusinessImpactSection: View {
 }
 
 #Preview("Business") {
-    BusinessDashboardView()
+    BusinessDashboardView(store: .demo())
 }
