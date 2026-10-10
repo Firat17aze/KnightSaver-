@@ -107,14 +107,13 @@ struct ExploreView: View {
 
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    KnightSaverBrandBar()
-                        .padding(.bottom, 12)
-                    header
-                        .padding(.horizontal, KnightTheme.screenPadding)
-
-                    searchField
-                        .padding(.horizontal, KnightTheme.screenPadding)
+                LazyVStack(alignment: .leading, spacing: 30) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        KnightSaverBrandBar()
+                        header
+                        searchField
+                    }
+                    .padding(.horizontal, KnightTheme.screenPadding)
 
                     if currentShelves.isEmpty {
                         EmptyExploreState(searchText: searchText) {
@@ -127,8 +126,8 @@ struct ExploreView: View {
                         }
                     }
                 }
-                .padding(.top, 10)
-                .padding(.bottom, 34)
+                .padding(.top, 8)
+                .padding(.bottom, 28)
             }
             .scrollIndicators(.hidden)
             .background(KnightTheme.paper)
@@ -156,40 +155,40 @@ struct ExploreView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            Button {
-                showLocationPicker = true
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(KnightTheme.goldDeep)
-                        .frame(width: 34, height: 34)
-                        .background(KnightTheme.gold.opacity(0.24), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        Button {
+            showLocationPicker = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(KnightTheme.goldDeep)
+                    .frame(width: 36, height: 36)
+                    .background(KnightTheme.gold.opacity(0.24), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("PICKUP NEAR")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .tracking(1.2)
-                            .foregroundStyle(KnightTheme.muted)
-                        HStack(spacing: 5) {
-                            Text(pickupLocationTitle)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .lineLimit(1)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                        }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PICKUP NEAR")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(KnightTheme.muted)
+                    Text(pickupLocationTitle)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
-                    }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
-            }
-            .buttonStyle(.plain)
-            .frame(minHeight: 48)
-            .accessibilityLabel("Pickup area, \(pickupLocationTitle)")
-            .accessibilityHint("Change or refresh your pickup location")
 
-            Spacer(minLength: 12)
+                Spacer(minLength: 8)
+
+                Text("Change")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.goldDeep)
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .frame(minHeight: 48)
+        .accessibilityLabel("Pickup area, \(pickupLocationTitle)")
+        .accessibilityHint("Change or refresh your pickup location")
     }
 
     private var searchField: some View {
@@ -228,48 +227,62 @@ struct ExploreView: View {
     }
 
     private func shelfView(_ shelf: ExploreShelf) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(shelf.title)
                         .font(.system(size: 22, weight: .black, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
+                        .lineLimit(1)
                     Text(shelf.subtitle)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 12)
+                Spacer(minLength: 0)
 
                 Text("\(shelf.bags.count)")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.muted)
+                    .foregroundStyle(KnightTheme.ink)
+                    .frame(minWidth: 28, minHeight: 28)
+                    .padding(.horizontal, 4)
+                    .background(KnightTheme.surface, in: Capsule())
+                    .overlay {
+                        Capsule().stroke(KnightTheme.line, lineWidth: 1)
+                    }
+                    .accessibilityLabel("\(shelf.bags.count) bags")
             }
             .padding(.horizontal, KnightTheme.screenPadding)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 18) {
+                LazyHStack(alignment: .top, spacing: Self.cardSpacing) {
                     ForEach(shelf.bags) { bag in
                         Button {
                             selectedBag = bag
                         } label: {
                             SurpriseBagCard(bag: bag)
-                                .containerRelativeFrame(.horizontal) { availableWidth, _ in
-                                    min(320, max(274, availableWidth - 92))
-                                }
                         }
                         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+                        // Width follows the screen (minus the page gutters), leaving a peek of
+                        // the next card so the shelf reads as scrollable on every iPhone size.
+                        .containerRelativeFrame(.horizontal) { availableWidth, _ in
+                            min(Self.maxCardWidth, availableWidth - Self.nextCardPeek)
+                        }
                         .accessibilityLabel("\(bag.business), Surprise Bag, \(bag.availabilityText), \(bag.formattedPrice), pickup \(bag.pickupWindow)")
                     }
                 }
                 .scrollTargetLayout()
             }
-            .contentMargins(.horizontal, 46, for: .scrollContent)
+            .contentMargins(.horizontal, KnightTheme.screenPadding, for: .scrollContent)
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
         }
     }
+
+    private static let cardSpacing: CGFloat = 14
+    private static let nextCardPeek: CGFloat = 40
+    private static let maxCardWidth: CGFloat = 340
 
     private func reserve(_ bag: SurpriseBag) {
         if businessStore.isLiveBag(bag) {
