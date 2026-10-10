@@ -2,14 +2,15 @@
 
 ## Position inside the shared app
 
-KnightSaver is one app with four bottom-navigation sections:
+KnightSaver is one app with five bottom-navigation sections:
 
 1. **Explore**
 2. **My Rescues**
 3. **Impact**
 4. **Business**
+5. **Profile**
 
-The business dashboard is the fourth section. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
+The business dashboard occupies only the fourth button in the shared navigation. The fifth button opens the user's profile and settings. The business dashboard is the fourth section. It is one simple, scrollable page connected to the same listings, reservations, payments, waitlists, pickups, and impact data used by the student sections.
 
 For a real deployment, the **Business** section requires an authorized staff or manager account. During the hackathon, it may be shown as a clearly labeled demo business view.
 
@@ -17,7 +18,7 @@ For a real deployment, the **Business** section requires an authorized staff or 
 
 **+ List surplus**
 
-This button remains immediately above the shared four-item navigation while the **Business** section is selected.
+This button remains immediately above the shared five-item navigation while the **Business** section is selected.
 
 When tapped, staff choose one of two methods:
 
@@ -28,7 +29,7 @@ Staff always review and confirm a listing before it is published. AI cannot inve
 
 ## Simplified business page
 
-The business page contains only four important sections.
+The business page contains only four important sections and does not add any internal bottom-navigation buttons.
 
 ### 1. Current listings
 
