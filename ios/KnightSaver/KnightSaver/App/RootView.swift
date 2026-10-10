@@ -29,8 +29,8 @@ enum AppTab: String, CaseIterable, Identifiable {
         }
     }
 
-    static func available(for role: AccountRole) -> [AppTab] {
-        role == .business ? allCases : allCases.filter { $0 != .business }
+    static func available(for _: AccountRole) -> [AppTab] {
+        allCases
     }
 }
 
@@ -73,11 +73,9 @@ struct RootView: View {
                     case .impact:
                         PlaceholderView(title: "Your impact", subtitle: "Verified rescues and EcoKnight AI live here.", icon: "leaf.fill")
                     case .business:
-                        if account.role == .business {
-                            BusinessDashboardView(store: businessStore)
-                        } else {
-                            PlaceholderView(title: "Business access", subtitle: "An approved business account is required.", icon: "lock.fill")
-                        }
+                        // Keep the complete five-tab prototype available to reviewers.
+                        // Reinstate the business-role gate when production auth is connected.
+                        BusinessDashboardView(store: businessStore)
                     case .profile:
                         ProfileView(
                             account: account,

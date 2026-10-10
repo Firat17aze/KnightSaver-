@@ -324,7 +324,10 @@ struct AuthenticationView: View {
 
     private func submit() {
         if mode == .signIn {
-            store.signIn(email: email, password: password)
+            // Temporary prototype behavior: let reviewers enter immediately without
+            // creating credentials. Restore `signIn(email:password:)` when the backend
+            // authentication flow is ready.
+            store.useDemo(.student)
         } else {
             store.register(
                 role: role,
