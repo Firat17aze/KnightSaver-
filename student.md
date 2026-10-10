@@ -20,8 +20,8 @@ KnightSaver is one shared app, not two separate apps. The bottom navigation cont
    - See portions collected, money saved, and food weight.
    - Review recent rescue activity.
 4. **Business**
-   - Opens the business dashboard created by the business-side teammate.
-   - Shows live listings, pickup queue, waitlists, payments, and verified impact.
+   - Opens the simplified dashboard created by the business-side teammate.
+   - Shows AI listing, current listings, reserved spots, today's rescues, and the impact report.
    - Keeps all business operations on one scrollable screen.
    - Shows a persistent **+ List surplus** button above the shared bottom navigation.
 
@@ -118,51 +118,58 @@ The app shows only the contextual action that matches the student's current stat
 
 ## Business
 
-The fourth navigation section loads the business-side teammate's single-page dashboard inside the same KnightSaver app.
+The fourth navigation section loads the business-side teammate's simplified dashboard inside the same KnightSaver app.
 
-It contains:
+It contains only the most important hackathon features:
 
-1. **Location and status**
-   - Current business location.
-   - Pickup service open or closed.
-   - Closing time.
-2. **Right now**
-   - Portions available.
-   - Portions reserved.
-   - Students arriving.
-   - Portions collected.
-3. **Live listings**
-   - Food name.
-   - Remaining quantity.
-   - Price.
-   - Pickup deadline.
-   - Listing status.
-4. **Pickup queue**
-   - Student name.
-   - Reserved item.
-   - Payment status.
-   - Contextual **Verify pickup** action.
-5. **Waitlist**
-   - Number of students waiting.
-   - Active offers.
-   - Released portions after cancellations.
-6. **Today's verified impact**
-   - Portions rescued.
-   - Food weight.
-   - Revenue recovered.
-   - Student savings.
-   - Pickup completion rate.
-7. **Recent activity**
-   - Listing published.
-   - Reservation created.
-   - Payment authorized.
-   - Student cancellation.
-   - Payment released.
-   - Pickup verified.
-   - Payment captured.
-8. **Persistent business action**
-   - **+ List surplus** stays above the shared four-item navigation.
-   - It opens **Speak listing**, **Quick form**, and **Use template**.
+### AI listing and editing
+
+- **+ List surplus** stays immediately above the shared four-item navigation.
+- **Speak with AI** converts a staff voice description into an editable listing draft.
+- **Enter manually** opens a short listing form.
+- Existing listings can be changed with **Edit with voice** or **Edit manually**.
+- Staff review every AI-proposed change before it updates the live listing.
+- AI does not invent allergens or approve food safety.
+
+### Current listings
+
+- Food currently available to students.
+- Remaining quantity.
+- Price.
+- Pickup deadline.
+- Available, fully reserved, paused, or closed status.
+- Contextual **Edit listing** action.
+
+### Reserved spots
+
+- Students expected for pickup.
+- Reserved item and quantity.
+- Pickup deadline.
+- Authorized payment status.
+- Waitlist status.
+- Contextual **Verify pickup** action.
+
+If a student cancels, the payment authorization is released and the portion is offered to the waitlist.
+
+### Today’s rescues
+
+- Pickups verified by staff today.
+- Food and quantity collected.
+- Pickup time.
+- Payment captured status.
+- Verified rescue status.
+
+A reservation appears here only after the business verifies the student's QR pickup pass.
+
+### Impact report
+
+- Verified portions rescued.
+- Measured or estimated food weight.
+- Revenue recovered.
+- Student savings.
+- Pickup completion rate.
+
+The impact report updates only after verified pickup. Measured and estimated weight stay clearly labeled.
 
 ## Student-to-business communication
 
@@ -202,9 +209,11 @@ Both sides use the same listings, quantities, reservations, payments, waitlists,
 
 ### Business-side developer
 
-- Build one business dashboard screen.
+- Build one simplified business dashboard screen.
+- Include AI/manual listing, current listings, reserved spots, today’s rescues, and the impact report.
 - Provide it as the content for the fourth **Business** section.
 - Keep **+ List surplus** above the shared navigation so it does not cover the four tabs.
+- Support voice or manual editing with staff confirmation before changes go live.
 - Use the same shared listings, reservations, payments, waitlists, pickup verification, and impact data.
 - Confirm that student actions update the business dashboard.
 
