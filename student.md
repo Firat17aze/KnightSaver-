@@ -1,8 +1,8 @@
 # KnightSaver Student Experience
 
-## One app with four bottom-navigation sections
+## One app with five bottom-navigation sections
 
-KnightSaver is one shared app, not two separate apps. The bottom navigation contains four sections:
+KnightSaver is one shared app, not two separate apps. The bottom navigation contains five sections:
 
 1. **Explore**
    - Discover available surplus food.
@@ -24,8 +24,11 @@ KnightSaver is one shared app, not two separate apps. The bottom navigation cont
    - Shows AI listing, current listings, reserved spots, today's rescues, and the impact report.
    - Keeps all business operations on one scrollable screen.
    - Shows a persistent **+ List surplus** button above the shared bottom navigation.
+5. **Profile**
+   - Manages account information, food preferences, notifications, payment settings, and app support.
+   - Shows the user's student or authorized business role.
 
-The same four-item navigation shell is shared by both developers. The student-side developer owns **Explore**, **My Rescues**, **Impact**, and the shared navigation shell. The business-side developer owns the content inside **Business**.
+The same five-item navigation shell is shared by both developers. The student-side developer owns **Explore**, **My Rescues**, **Impact**, **Profile**, and the shared navigation shell. The business-side developer owns the content inside **Business**.
 
 For a real deployment, the **Business** section must require an authorized staff or manager account. For the hackathon demonstration, the fourth section can be accessible as a clearly labeled demo business view.
 
@@ -37,12 +40,13 @@ For a real deployment, the **Business** section must require an authorized staff
 | 2 | **My Rescues** | Manage reservations, waitlists, payments, and pickup passes |
 | 3 | **Impact** | View verified personal savings and rescue history |
 | 4 | **Business** | Open the single-page business operations dashboard |
+| 5 | **Profile** | Manage account, preferences, notifications, payment settings, and support |
 
-The selected section should be visually clear. Switching sections must not erase active reservations, payment status, waitlist offers, or live business updates because all four sections use the same shared backend and database.
+The selected section should be visually clear. Switching sections must not erase active reservations, payment status, waitlist offers, profile settings, or live business updates because all five sections use the same shared backend and database.
 
 ## Contextual student bottom action
 
-The shared four-item navigation remains visible, but the selected listing or reservation may show one additional contextual action immediately above it:
+The shared five-item navigation remains visible, but the selected listing or reservation may show one additional contextual action immediately above it:
 
 - **Reserve with Apple Pay** — Authorizes payment and secures an available portion.
 - **Join waitlist** — Appears when all portions are reserved.
@@ -116,6 +120,52 @@ The app shows only the contextual action that matches the student's current stat
 - Recent rescue activity.
 - Payment receipt history connected to completed rescues.
 
+## Profile
+
+The fifth navigation section contains account and preference settings. It should remain short and should not duplicate the detailed rescue history already available in **My Rescues** or **Impact**.
+
+### Account
+
+- Profile photo or initials.
+- Full name.
+- UCF email.
+- Student, staff, or manager role.
+- Authorized business location when applicable.
+
+### Food preferences
+
+- Vegetarian, vegan, halal, kosher, or other selected preferences.
+- Allergies entered by the user.
+- Default maximum walking distance.
+- Preferred pickup area.
+
+Preferences help filter listings but do not replace business-confirmed dietary and allergen information.
+
+### Notifications
+
+- Reservation confirmations.
+- Pickup reminders.
+- Waitlist offers.
+- Offer-expiration warnings.
+- Cancellation, payment release, capture, and refund updates.
+
+### Payment settings
+
+- Apple Pay availability or connected status.
+- Default payment option.
+- Link to payment and refund history.
+
+KnightSaver does not store full card details. Apple Pay or the payment provider handles sensitive payment credentials.
+
+### App and support
+
+- Accessibility preferences.
+- Help and pickup instructions.
+- Report a problem.
+- Privacy information.
+- Terms.
+- Sign out.
+
 ## Business
 
 The fourth navigation section loads the business-side teammate's simplified dashboard inside the same KnightSaver app.
@@ -124,7 +174,7 @@ It contains only the most important hackathon features:
 
 ### AI listing and editing
 
-- **+ List surplus** stays immediately above the shared four-item navigation.
+- **+ List surplus** stays immediately above the shared five-item navigation.
 - **Speak with AI** converts a staff voice description into an editable listing draft.
 - **Enter manually** opens a short listing form.
 - Existing listings can be changed with **Edit with voice** or **Edit manually**.
@@ -201,8 +251,8 @@ Both sides use the same listings, quantities, reservations, payments, waitlists,
 
 ### Student-side developer
 
-- Build the shared four-item bottom navigation.
-- Build **Explore**, **My Rescues**, and **Impact**.
+- Build the shared five-item bottom navigation.
+- Build **Explore**, **My Rescues**, **Impact**, and **Profile**.
 - Provide the route or section where the business dashboard will be mounted.
 - Use the shared listing, reservation, waitlist, payment, pickup, and impact states.
 - Confirm that business actions update the student experience.
@@ -219,4 +269,4 @@ Both sides use the same listings, quantities, reservations, payments, waitlists,
 
 ### Joint integration requirement
 
-The fourth tab is not a separate app or duplicated project. It is one section inside the shared KnightSaver app. Both developers must agree on the same data fields, status names, and end-to-end demonstration flow before merging their work.
+The fourth **Business** tab is not a separate app or duplicated project. It is one section inside the shared KnightSaver app. Both developers must agree on the same data fields, status names, and end-to-end demonstration flow before merging their work.
