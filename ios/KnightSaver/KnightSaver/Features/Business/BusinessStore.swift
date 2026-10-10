@@ -109,6 +109,8 @@ final class BusinessStore: ObservableObject {
             estimatedWeightKg: estimated,
             estimatedCO2eKg: (measured + estimated) * BusinessRules.estimatedCO2eKgPerFoodKg,
             revenueRecovered: verified.reduce(0.0) { $0 + $1.total },
+            verifiedPickups: verified.count,
+            pickupsDue: due,
             pickupCompletionRate: due == 0 ? nil : Double(verified.count) / Double(due),
             averageRating: ratings.isEmpty ? nil : ratings.reduce(0, +) / Double(ratings.count),
             ratingCount: ratings.count

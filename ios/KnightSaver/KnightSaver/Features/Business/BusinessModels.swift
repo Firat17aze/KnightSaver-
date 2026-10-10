@@ -71,6 +71,10 @@ enum BusinessRules {
     static let estimatedKgPerItem = 0.15
     /// Rough CO₂e avoided per kg of food rescued. Always shown as an estimate.
     static let estimatedCO2eKgPerFoodKg = 2.5
+    /// CO₂e goal shown on the Impact report bar.
+    static let co2eGoalKg = 10.0
+    /// Average car emissions per km, for the "km not driven" comparison. Estimate only.
+    static let co2eKgPerCarKm = 0.17
     /// Public text students see. It must never promise contents.
     static let defaultPublicDescription = "A mix of today's surplus items."
     /// How early / late a Knight Pass scan still counts for a pickup window.
@@ -496,6 +500,10 @@ struct BusinessImpact: Hashable {
     var estimatedWeightKg: Double
     var estimatedCO2eKg: Double
     var revenueRecovered: Double
+    /// Verified pickups (one per reservation, a reservation can hold several bags).
+    var verifiedPickups: Int
+    /// Verified plus missed pickups.
+    var pickupsDue: Int
     /// nil until at least one pickup was due.
     var pickupCompletionRate: Double?
     /// nil until verified students leave a rating.

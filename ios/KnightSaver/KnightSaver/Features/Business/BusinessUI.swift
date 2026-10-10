@@ -204,31 +204,45 @@ struct BizStatTile: View {
     let title: String
     let value: String
     var isEstimate = false
+    var icon: String? = nil
+    var caption: String? = nil
+    /// 0...1. Shows a thin gold bar under the value.
+    var progress: Double? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(KnightTheme.goldDeep)
+                        .accessibilityHidden(true)
+                }
                 Text(title)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(KnightTheme.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                 if isEstimate {
-                    Text("Est.")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(KnightTheme.goldDeep)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(KnightTheme.gold.opacity(0.18), in: Capsule())
-                        .accessibilityLabel("estimate")
+                    BizEstimateTag()
                 }
             }
             Text(value)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            if let progress {
+                BizProgressBar(progress: progress, tint: KnightTheme.gold, height: 5)
+            }
+            if let caption {
+                Text(caption)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(KnightTheme.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 15)
@@ -239,6 +253,41 @@ struct BizStatTile: View {
                 .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Small "Est." chip next to estimated numbers.
+struct BizEstimateTag: View {
+    var body: some View {
+        Text("Est.")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(KnightTheme.goldDeep)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(KnightTheme.gold.opacity(0.18), in: Capsule())
+            .accessibilityLabel("estimate")
+    }
+}
+
+/// Rounded progress bar: a soft track with a colored fill.
+struct BizProgressBar: View {
+    let progress: Double
+    var tint: Color = KnightTheme.green
+    var height: CGFloat = 8
+
+    var body: some View {
+        GeometryReader { proxy in
+            let clamped = min(max(progress, 0), 1)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(KnightTheme.ink.opacity(0.08))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: clamped > 0 ? max(height, proxy.size.width * clamped) : 0)
+            }
+        }
+        .frame(height: height)
+        .accessibilityHidden(true)
     }
 }
 
