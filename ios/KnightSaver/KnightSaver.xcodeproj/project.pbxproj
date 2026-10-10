@@ -15,6 +15,14 @@
 		A10000000000000000000007 /* DetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* DetailViews.swift */; };
 		A10000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* Assets.xcassets */; };
 		A10000000000000000000009 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* ProfileView.swift */; };
+		A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B01 /* BusinessDashboardView.swift */; };
+		A10000000000000000000B02 /* BusinessModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B02 /* BusinessModels.swift */; };
+		A10000000000000000000B03 /* BusinessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B03 /* BusinessStore.swift */; };
+		A10000000000000000000B04 /* BusinessUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B04 /* BusinessUI.swift */; };
+		A10000000000000000000B05 /* EditListingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B05 /* EditListingFlow.swift */; };
+		A10000000000000000000B06 /* ListSurplusFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B06 /* ListSurplusFlow.swift */; };
+		A10000000000000000000B07 /* PassScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B07 /* PassScannerView.swift */; };
+		A10000000000000000000B08 /* SurplusAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B08 /* SurplusAssistant.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +36,14 @@
 		B10000000000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000009 /* KnightSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KnightSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000010 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		B10000000000000000000B01 /* BusinessDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessDashboardView.swift; sourceTree = "<group>"; };
+		B10000000000000000000B02 /* BusinessModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000B03 /* BusinessStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000B04 /* BusinessUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessUI.swift; sourceTree = "<group>"; };
+		B10000000000000000000B05 /* EditListingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditListingFlow.swift; sourceTree = "<group>"; };
+		B10000000000000000000B06 /* ListSurplusFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListSurplusFlow.swift; sourceTree = "<group>"; };
+		B10000000000000000000B07 /* PassScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassScannerView.swift; sourceTree = "<group>"; };
+		B10000000000000000000B08 /* SurplusAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurplusAssistant.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +102,7 @@
 			children = (
 				D10000000000000000000008 /* Explore */,
 				D10000000000000000000009 /* Profile */,
+				D10000000000000000000B01 /* Business */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -110,6 +127,21 @@
 			isa = PBXGroup;
 			children = (B10000000000000000000009 /* KnightSaver.app */,);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000B01 /* Business */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000B01 /* BusinessDashboardView.swift */,
+				B10000000000000000000B02 /* BusinessModels.swift */,
+				B10000000000000000000B03 /* BusinessStore.swift */,
+				B10000000000000000000B04 /* BusinessUI.swift */,
+				B10000000000000000000B05 /* EditListingFlow.swift */,
+				B10000000000000000000B06 /* ListSurplusFlow.swift */,
+				B10000000000000000000B07 /* PassScannerView.swift */,
+				B10000000000000000000B08 /* SurplusAssistant.swift */,
+			);
+			path = Business;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -176,6 +208,14 @@
 				A10000000000000000000006 /* ExploreComponents.swift in Sources */,
 				A10000000000000000000007 /* DetailViews.swift in Sources */,
 				A10000000000000000000009 /* ProfileView.swift in Sources */,
+				A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */,
+				A10000000000000000000B02 /* BusinessModels.swift in Sources */,
+				A10000000000000000000B03 /* BusinessStore.swift in Sources */,
+				A10000000000000000000B04 /* BusinessUI.swift in Sources */,
+				A10000000000000000000B05 /* EditListingFlow.swift in Sources */,
+				A10000000000000000000B06 /* ListSurplusFlow.swift in Sources */,
+				A10000000000000000000B07 /* PassScannerView.swift in Sources */,
+				A10000000000000000000B08 /* SurplusAssistant.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,6 +274,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -260,6 +301,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
