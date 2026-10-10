@@ -259,9 +259,12 @@ struct EditListingFlow: View {
                 HStack {
                     Text("Price per bag")
                     Spacer()
-                    Text("$").foregroundStyle(KnightTheme.muted)
-                    BizDecimalField("5.99", value: $price)
-                        .frame(maxWidth: 80)
+                    // "$" sits right next to the number; the field is only as wide as its text.
+                    HStack(spacing: 1) {
+                        Text("$").foregroundStyle(KnightTheme.muted)
+                        BizDecimalField("5.99", value: $price)
+                            .fixedSize()
+                    }
                 }
                 DatePicker("Pickup starts", selection: $pickupStart, displayedComponents: .hourAndMinute)
                 DatePicker("Pickup ends", selection: $pickupEnd, displayedComponents: .hourAndMinute)
