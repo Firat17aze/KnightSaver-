@@ -275,6 +275,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "KnightSaver uses your location to show nearby UCF pickup options.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -302,6 +303,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "KnightSaver uses your location to show nearby UCF pickup options.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
