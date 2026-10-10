@@ -55,6 +55,9 @@ struct ExploreView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
+                    KnightSaverBrandBar()
+                        .padding(.bottom, 12)
+
                     header
 
                     discoveryControls
@@ -148,8 +151,6 @@ struct ExploreView: View {
                 .accessibilityHint("Change pickup area")
 
                 Spacer()
-
-                KnightMark()
             }
         }
     }
