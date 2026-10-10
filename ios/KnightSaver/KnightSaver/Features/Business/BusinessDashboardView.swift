@@ -47,14 +47,6 @@ struct BusinessDashboardView: View {
                 darkModeButton
             }
 
-            HStack(spacing: 12) {
-                BrandMark(brand: store.profile.brand, size: 50)
-                Text("Restaurant")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-            }
-            .accessibilityElement(children: .combine)
-
             ScanKnightPassButton {
                 sheet = .scan(expected: nil)
             }
@@ -560,21 +552,38 @@ struct BusinessImpactSection: View {
             BizSectionHeader(title: "Impact report", subtitle: "Updates only after a verified pickup")
                 .padding(.bottom, 2)
 
-            // 5 tiles: the headline number spans the full width, the other four form a 2×2 grid,
-            // so no tile sits alone on the last row.
-            BizStatTile(title: "Bags collected", value: "\(impact.bagsCollected)")
+            // The headline: CO₂e avoided with a green bar toward the goal.
+            CO2eImpactCard(impact: impact)
 
+            // Four supporting numbers, 2×2, so no tile sits alone on a row.
             LazyVGrid(columns: columns, spacing: 12) {
-                BizStatTile(title: "Revenue recovered", value: PickupTime.money(impact.revenueRecovered))
-                BizStatTile(title: "CO₂e avoided", value: kg(impact.estimatedCO2eKg), isEstimate: true)
-                BizStatTile(title: "Pickup completion", value: percent(impact.pickupCompletionRate))
-                BizStatTile(title: "Average rating", value: rating(impact.averageRating))
+                BizStatTile(
+                    title: "Bags collected",
+                    value: "\(impact.bagsCollected)",
+                    icon: "bag.fill",
+                    caption: impact.verifiedPickups == 1 ? "1 verified pickup" : "\(impact.verifiedPickups) verified pickups"
+                )
+                BizStatTile(
+                    title: "Revenue recovered",
+                    value: PickupTime.money(impact.revenueRecovered),
+                    icon: "dollarsign.circle.fill",
+                    caption: "Captured at pickup"
+                )
+                BizStatTile(
+                    title: "Pickup completion",
+                    value: percent(impact.pickupCompletionRate),
+                    icon: "checkmark.circle.fill",
+                    caption: impact.pickupsDue == 0 ? "No pickups due yet" : "\(impact.verifiedPickups) of \(impact.pickupsDue) picked up",
+                    progress: impact.pickupCompletionRate
+                )
+                BizStatTile(
+                    title: "Average rating",
+                    value: rating(impact.averageRating),
+                    icon: "star.fill",
+                    caption: impact.ratingCount == 1 ? "1 rating" : "\(impact.ratingCount) ratings"
+                )
             }
         }
-    }
-
-    private func kg(_ value: Double) -> String {
-        String(format: "%.1f kg", value)
     }
 
     private func percent(_ value: Double?) -> String {
@@ -584,7 +593,84 @@ struct BusinessImpactSection: View {
 
     private func rating(_ value: Double?) -> String {
         guard let value else { return "—" }
-        return String(format: "%.1f ★", value)
+        return String(format: "%.1f", value)
+    }
+}
+
+/// CO₂e avoided, with a green progress bar toward the goal and an everyday comparison.
+private struct CO2eImpactCard: View {
+    let impact: BusinessImpact
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isShown = false
+
+    private var goal: Double { BusinessRules.co2eGoalKg }
+    private var progress: Double { goal > 0 ? min(impact.estimatedCO2eKg / goal, 1) : 0 }
+    private var foodKg: Double { impact.measuredWeightKg + impact.estimatedWeightKg }
+    private var kmNotDriven: Int { Int((impact.estimatedCO2eKg / BusinessRules.co2eKgPerCarKm).rounded()) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
+                    .frame(width: 34, height: 34)
+                    .background(KnightTheme.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text("CO₂e avoided")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.ink)
+                BizEstimateTag()
+                Spacer(minLength: 0)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(String(format: "%.1f", impact.estimatedCO2eKg))
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(KnightTheme.ink)
+                Text("kg")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(KnightTheme.muted)
+                Spacer(minLength: 8)
+                Text("≈ \(kmNotDriven) km not driven")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            BizProgressBar(progress: isShown ? progress : 0, tint: KnightTheme.green, height: 10)
+
+            HStack {
+                Text("\(Int((progress * 100).rounded()))% of the \(goalText) kg goal")
+                Spacer(minLength: 8)
+                Text(String(format: "From %.1f kg of food", foodKg))
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(KnightTheme.muted)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+        }
+        .padding(17)
+        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
+        }
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.8).delay(0.1)) {
+                isShown = true
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(
+            format: "CO2e avoided, estimate, %.1f kilograms, %d percent of the %@ kilogram goal, about %d kilometers not driven",
+            impact.estimatedCO2eKg, Int((progress * 100).rounded()), goalText, kmNotDriven
+        ))
+    }
+
+    private var goalText: String {
+        goal.rounded() == goal ? String(Int(goal)) : String(format: "%.1f", goal)
     }
 }
 

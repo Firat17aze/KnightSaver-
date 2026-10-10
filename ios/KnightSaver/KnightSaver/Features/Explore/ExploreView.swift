@@ -189,7 +189,6 @@ struct ExploreView: View {
             .accessibilityHint("Change or refresh your pickup location")
 
             Spacer(minLength: 12)
-            KnightMark()
         }
     }
 
