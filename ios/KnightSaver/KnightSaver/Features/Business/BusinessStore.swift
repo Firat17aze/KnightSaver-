@@ -30,6 +30,7 @@ final class BusinessStore: ObservableObject {
     @Published private(set) var events: [BusinessEvent] = []
     /// Short message shown after an action.
     @Published var toast: String?
+    @Published private(set) var backendStatus = "Demo data"
 
     init(
         profile: BusinessProfile,
@@ -43,6 +44,53 @@ final class BusinessStore: ObservableObject {
         self.listings = listings
         self.reservations = reservations
         self.feedback = feedback
+    }
+
+    /// Replaces the live listing shelf with the database read model. The local demo
+    /// remains available when the network is offline so judges can still use the app.
+    @MainActor
+    func refreshFromBackend() async {
+        do {
+            let remote = try await KnightSaverBackend.shared.fetchLiveListings()
+            guard !remote.isEmpty else {
+                backendStatus = "Connected · no live listings"
+                return
+            }
+            let remoteListings = remote.map { row in
+                BusinessListing(
+                    id: row.id,
+                    price: Double(row.priceCents) / 100,
+                    totalQuantity: row.totalQuantity,
+                    remainingQuantity: row.remainingQuantity,
+                    pickupStart: row.pickupStart,
+                    pickupEnd: row.pickupEnd,
+                    publicDescription: row.publicDescription,
+                    pickupAddress: row.address,
+                    latitude: row.latitude,
+                    longitude: row.longitude,
+                    bannerAssetName: row.bannerAssetName,
+                    inventory: [],
+                    isSurprise: row.isSurprise,
+                    state: .live,
+                    createdAt: row.createdAt,
+                    updatedAt: row.updatedAt
+                )
+            }
+            listings = remoteListings
+            if let first = remote.first {
+                profile.name = first.businessName
+                profile.pickupAddress = first.address
+                profile.latitude = first.latitude
+                profile.longitude = first.longitude
+                profile.rating = first.rating
+                profile.feedbackCount = first.feedbackCount
+                profile.brand = BagBrand(rawValue: first.brandKey) ?? .knightros
+            }
+            isDemo = false
+            backendStatus = "Connected · Supabase"
+        } catch {
+            backendStatus = "Offline demo"
+        }
     }
 
     // MARK: - Reading
