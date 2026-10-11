@@ -2,7 +2,6 @@ import SwiftUI
 
 enum AppTab: String, CaseIterable, Identifiable {
     case explore = "Explore"
-    case map = "Map"
     case impact = "Impact"
     /// Shown as "Kitchen" in the tab bar: where restaurant staff list their surplus.
     case business = "Kitchen"
@@ -13,7 +12,6 @@ enum AppTab: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .explore: "safari"
-        case .map: "map"
         case .impact: "leaf"
         case .business: "storefront"
         case .profile: "person"
@@ -23,7 +21,6 @@ enum AppTab: String, CaseIterable, Identifiable {
     var selectedIcon: String {
         switch self {
         case .explore: "safari.fill"
-        case .map: "map.fill"
         case .impact: "leaf.fill"
         case .business: "storefront.fill"
         case .profile: "person.fill"
@@ -34,7 +31,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     /// business owners run their Kitchen.
     static func available(for role: AccountRole) -> [AppTab] {
         switch role {
-        case .student: [.explore, .map, .impact, .profile]
+        case .student: [.explore, .impact, .profile]
         case .business: [.business, .profile]
         }
     }
@@ -74,13 +71,6 @@ struct RootView: View {
                     switch selectedTab {
                     case .explore:
                         ExploreView(activeReservations: $activeReservations, student: account.knightPass)
-                    case .map:
-                        // Reads live bags from the shared store (`businessStore.mapPins`).
-                        KnightMapView(
-                            activeReservations: $activeReservations,
-                            student: account.knightPass,
-                            onManageReservation: { selectedTab = .profile }
-                        )
                     case .impact:
                         ImpactView(student: account.knightPass)
                     case .business:

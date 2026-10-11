@@ -32,7 +32,7 @@ struct BusinessProfile: Identifiable, Hashable {
 // MARK: - Pickup spots
 
 /// Where students collect a bag. Staff pick one when listing or editing.
-/// Coordinates are approximate campus points for KnightMap.
+/// Coordinates are approximate campus points, used for distance in Explore.
 struct PickupLocation: Identifiable, Hashable {
     let name: String
     let detail: String
@@ -350,15 +350,6 @@ enum BagName {
         }
         return result
     }
-}
-
-/// A live bag on KnightMap. Built from the shared BusinessStore (see `BusinessStore.mapPins`).
-struct KnightMapPin: Identifiable {
-    let bag: SurpriseBag
-    let latitude: Double
-    let longitude: Double
-
-    var id: UUID { bag.id }
 }
 
 // MARK: - Reservations

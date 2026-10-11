@@ -18,7 +18,6 @@ All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see
 
 - One `BusinessStore` is created in `RootView` and shared with Explore, bag details and Profile. There are no parallel copies of listings or reservations.
 - Published bags appear in Explore right away. A student reservation from Explore shows up in Reserved pickups, a cancellation from Profile removes it, and a verified pickup updates the student's status.
-- `businessStore.mapPins` gives KnightMap live pins (bag, latitude, longitude). KnightMap itself is not built yet.
 
 **Page sections (top to bottom)**
 
@@ -47,7 +46,6 @@ All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see
 - The overall rating as a number in the header. Average rating is currently a tile in the Impact report.
 - **Outside pickup window** override in the scanner.
 - A real AI service, payments, a backend and authentication. The business-role gate is off for the prototype, so every account sees Kitchen.
-- KnightMap (the student side), which should read `businessStore.mapPins`.
 
 ### Business-side ownership
 
@@ -63,7 +61,7 @@ The business-side developer owns:
 - One overall restaurant rating displayed near the top of the page.
 - Business-specific demo state and components.
 
-The student-side developer continues to own Explore, KnightMap, Impact, Profile, the shared tab bar, and student reservation management. Do not duplicate cancellation controls on the Business page. A student cancellation disappears from the business pickup queue because both sides read the same reservation state.
+The student-side developer continues to own Explore, Impact, Profile, the shared tab bar, and student reservation management. Do not duplicate cancellation controls on the Business page. A student cancellation disappears from the business pickup queue because both sides read the same reservation state.
 
 ### Visible feature set
 
@@ -82,7 +80,7 @@ Do not add visible payment management, synchronization status, individual feedba
 
 ### State transition rules
 
-- Publishing changes a reviewed draft to **Available** and makes it visible to Explore and KnightMap.
+- Publishing changes a reviewed draft to **Available** and makes it visible in Explore.
 - Reserving reduces remaining quantity once and creates one authorized reservation.
 - Student cancellation removes the reservation from the pickup queue, releases its demo authorization, and restores one unit or advances the waitlist.
 - Pausing keeps the listing visible to staff but prevents new student reservations.
@@ -127,21 +125,18 @@ The Business MVP is done when all of these can be demonstrated without restartin
 
 The Business section lets authorized staff turn uncertain surplus into live pickup-only Surprise Bags, manage listings, verify collection, and produce credible impact records.
 
-The business-side developer owns the content inside the fourth navigation destination, labeled **Kitchen** in the app. The student-side developer owns the shared navigation shell and the other four destinations.
+The business-side developer owns the content inside the **Kitchen** destination. The student-side developer owns the shared navigation shell and the student destinations.
 
 For the hackathon, Business may remain visible as a clearly labeled demo view. In a real deployment, it must require an authorized staff or manager account.
 
 ## Position inside the shared app
 
-KnightSaver uses five bottom-navigation destinations:
+Student accounts see **Explore**, **Impact** and **Profile**. Business accounts see:
 
-1. **Explore**
-2. **Map** (opens **KnightMap**)
-3. **Impact**
-4. **Kitchen** (the Business destination)
-5. **Profile**
+1. **Kitchen** (the Business destination)
+2. **Profile**
 
-Kitchen remains the fourth destination. Do not create a second business navigation bar or a separate business app.
+Kitchen is the business account's first destination. Do not create a second business navigation bar or a separate business app.
 
 The Business page is one focused, scrollable dashboard. Keep **+ List surplus** immediately above the shared bottom navigation while Business is selected.
 
@@ -152,13 +147,12 @@ The Business page is one focused, scrollable dashboard. Keep **+ List surplus** 
 - Businesses set the price, available quantity, pickup location, and exact pickup interval.
 - Student Explore uses restaurant logos or branded banners, not promised food photography.
 - Explore remains discovery-focused; the student's reusable Knight Pass lives in Profile.
-- KnightMap is a dedicated second navigation destination rather than a toggle inside Explore.
 - Do not require an exact food name or category.
 - Do not promise ingredients, allergens, dietary suitability, freshness, or specific contents.
 - Do not provide original-price or student-savings fields for Explore.
-- Business updates must immediately update the student feed and KnightMap.
+- Business updates must immediately update the student feed.
 
-## Business data required by Explore and KnightMap
+## Business data required by Explore
 
 Each published Surprise Bag needs:
 
@@ -172,7 +166,7 @@ Each published Surprise Bag needs:
 - Pickup start time
 - Pickup end time
 - Pickup address
-- Latitude and longitude for KnightMap
+- Latitude and longitude (used for distance in Explore)
 - Optional general description that does not guarantee exact contents
 - Listing status
 - Created and updated timestamps
@@ -321,7 +315,6 @@ AI presents proposed changes. Staff approve them before live data changes.
 Publishing or editing a listing must update:
 
 - Explore feed
-- KnightMap marker
 - Available quantity
 - Pickup interval
 - Student detail view
@@ -398,22 +391,6 @@ Show only the restaurant's overall verified rating as one compact number near th
 
 Only verified pickups may contribute to the overall rating. Detailed feedback may remain in the shared data for future use, but it is outside the one-page Business MVP.
 
-## Business relationship to KnightMap
-
-KnightMap is owned by the student-side developer, but Business supplies the live data.
-
-Business must ensure that each listing has:
-
-- A valid pickup address
-- Valid map coordinates
-- An exact pickup start and end time
-- Current remaining quantity
-- Current status
-
-If a listing is paused, closed, cancelled, or fully reserved, the map marker and student actions must update immediately.
-
-The business side does not need to build routing or directions.
-
 ## Essential business flow
 
 1. Staff taps **+ List surplus**.
@@ -423,7 +400,7 @@ The business side does not need to build routing or directions.
 5. Staff corrects or confirms the interpreted inventory.
 6. AI proposes the number of Surprise Bags and related listing details.
 7. Staff edits, approves, and publishes the plan.
-8. The listing appears in Explore and KnightMap.
+8. The listing appears in Explore.
 9. A student reserves a Surprise Bag.
 10. The reservation appears in Reserved pickups.
 11. A cancellation disappears from Reserved pickups and updates availability in the background.
@@ -447,7 +424,7 @@ The business-side portion of the demo should take approximately 20–35 seconds:
 8. Show today's rescue total increase.
 9. Switch the report between **This week** and **This month**, then show **Export PDF**.
 
-The student demo then shows KnightMap, reservation, EcoKnight AI, Past Surprise Reveals, verified impact, and the Campus Rescue League.
+The student demo then shows reservation, EcoKnight AI, Past Surprise Reveals, verified impact, and the Campus Rescue League.
 
 ## Shared integration contract
 

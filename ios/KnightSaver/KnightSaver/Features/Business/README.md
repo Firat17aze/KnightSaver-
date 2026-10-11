@@ -62,6 +62,5 @@ One scrollable dashboard:
 - **Reserve / Join waitlist** on a live bag calls `store.reserve(bagID:studentName:passToken:)`. It lowers the bags left, appears in Business › Reserved pickups, and shows in Profile › My pickups.
 - **Cancel** in Profile calls `store.cancelReservation(id:)`. That releases the payment hold and frees the bag or offers it to the waitlist.
 - **Verify pickup** in Business changes the student's reservation in Profile to "Pickup verified" and hides the cancel button.
-- **KnightMap** (still a placeholder) must read `store.mapPins`: each pin has a bag plus latitude and longitude.
 - The student is `KnightPass.sample` until authentication exists.
 - `store.events` logs the integration events from business.md ("Listing published", "Pickup verified", …).

@@ -117,7 +117,7 @@ final class BusinessStore: ObservableObject {
         )
     }
 
-    // MARK: - Student side (Explore, bag details, Profile, KnightMap)
+    // MARK: - Student side (Explore, bag details, Profile)
 
     /// Live bags in the student-side format. Paused, closed and cancelled listings are left out.
     /// Each bag's `id` is the listing id, so the same bag keeps its identity across updates.
@@ -138,13 +138,6 @@ final class BusinessStore: ObservableObject {
     /// True when the bag came from this store (not one of the sample restaurants).
     func isLiveBag(_ bag: SurpriseBag) -> Bool {
         listing(id: bag.id) != nil
-    }
-
-    /// Map pins for KnightMap. KnightMap must read these from the shared store.
-    var mapPins: [KnightMapPin] {
-        listings
-            .filter { $0.status == .available || $0.status == .fullyReserved }
-            .map { KnightMapPin(bag: studentBag(for: $0), latitude: $0.latitude, longitude: $0.longitude) }
     }
 
     func studentBag(for listing: BusinessListing) -> SurpriseBag {
@@ -302,7 +295,7 @@ final class BusinessStore: ObservableObject {
             log(.aiBagPlanApproved, "\(plan.bagCount) bags at \(PickupTime.money(plan.price))")
         }
         log(.listingPublished, "\(plan.bagCount) Surprise Bags, \(listing.pickupWindowText)")
-        toast = "\(plan.bagCount) Surprise Bags are live in Explore and KnightMap."
+        toast = "\(plan.bagCount) Surprise Bags are live in Explore."
         return listing
     }
 
@@ -346,7 +339,7 @@ final class BusinessStore: ObservableObject {
         let offered = offerToWaitlist(listingID: listingID)
         log(.listingUpdated, "\(listing.label), \(listing.pickupWindowText), \(listing.remainingQuantity) left")
         toast = offered.isEmpty
-            ? "Listing updated in Explore and KnightMap."
+            ? "Listing updated in Explore."
             : "Listing updated. Offer sent to \(offered.joined(separator: ", "))."
     }
 

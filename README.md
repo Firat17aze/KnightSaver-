@@ -8,12 +8,11 @@ The product is designed around one simple loop:
 
 ## What we are building
 
-KnightSaver is one shared iOS app with five primary areas:
+KnightSaver is one shared iOS app with four primary areas:
 
 | Area | Purpose |
 |---|---|
 | **Explore** | Find available Surprise Bags, search participating businesses, filter results, and reserve a pickup. |
-| **Map / KnightMap** | See live pickup locations across campus and open the same reservation flow used by Explore. |
 | **Impact** | View verified rescue impact, Campus Rescue League progress, Past Reveals, and EcoKnight AI after pickup. |
 | **Business** | Let authorized staff publish surplus, manage reservations, scan student passes, and verify pickups. |
 | **Profile** | Manage the student account and open the reusable Knight Pass. |
@@ -50,7 +49,7 @@ The repository includes a native SwiftUI prototype targeting iOS 17 and later.
 
 ### Implemented
 
-- Shared five-item bottom navigation
+- Shared bottom navigation
 - Explore campus-location context
 - Search, availability filters, and sorting
 - Branded Surprise Bag cards
@@ -69,7 +68,6 @@ The repository includes a native SwiftUI prototype targeting iOS 17 and later.
 - Apple Pay authorization and payment capture
 - Signed Apple Wallet pass generation and updates
 - Staff QR scanner and server-side pickup validation
-- KnightMap implementation
 - Business publishing and reservation dashboard
 - EcoKnight AI and verified post-pickup flows
 - Campus Rescue League, verified impact, reviews, and Past Reveal uploads
@@ -123,7 +121,7 @@ These documents describe the target product. The **Current iOS prototype** secti
 2. Build authentication and replace local demo data with live listings.
 3. Implement reservation management and the staff scanner using the reusable Knight Pass protocol.
 4. Connect Apple Pay and the signed Apple Wallet pass lifecycle.
-5. Build KnightMap and the Business publishing dashboard.
+5. Build the Business publishing dashboard.
 6. Add verified Impact, EcoKnight AI, Past Reveals, and the Campus Rescue League.
 
 ## Project status

@@ -4,37 +4,32 @@
 
 KnightSaver is a campus-focused, pickup-only Surprise Bag platform. Students reserve surplus food without knowing its exact contents in advance. Businesses determine the number of bags, price, pickup location, and exact pickup interval.
 
-KnightSaver is not a delivery app, menu browser, or savings marketplace. Its student experience is built around five differentiators:
+KnightSaver is not a delivery app, menu browser, or savings marketplace. Its student experience is built around four differentiators:
 
 1. **EcoKnight AI** — Helps students use what they receive and understand their estimated environmental impact.
-2. **KnightMap** — Shows live Surprise Bags around campus and helps students reach pickup locations.
-3. **Campus Rescue League** — Turns verified campus food rescue into a weekly community challenge.
-4. **Past Surprise Reveals** — Shows optional photos, ratings, and comments from previous verified pickups.
-5. **Verified Impact Chain** — Updates impact and leaderboard results only after staff verifies pickup.
+2. **Campus Rescue League** — Turns verified campus food rescue into a weekly community challenge.
+3. **Past Surprise Reveals** — Shows optional photos, ratings, and comments from previous verified pickups.
+4. **Verified Impact Chain** — Updates impact and leaderboard results only after staff verifies pickup.
 
 The product promise is:
 
 > Discover a Surprise Bag, pick it up, use the food, share the experience, and grow the campus impact.
 
-## One app with five bottom-navigation sections
+## Bottom-navigation sections
 
-KnightSaver is one shared app with five bottom-navigation destinations:
+KnightSaver is one shared app. Student accounts see three bottom-navigation destinations:
 
 | Position | Label | Purpose |
 |---|---|---|
 | 1 | **Explore** | Discover and reserve available Surprise Bags |
-| 2 | **Map** | Open the dedicated KnightMap of the whole campus |
-| 3 | **Impact** | Open EcoKnight AI, view verified impact, and join the Campus Rescue League |
-| 4 | **Business** | Open the authorized business dashboard and AI listing tools |
-| 5 | **Profile** | Open the reusable Knight Pass and manage account settings |
+| 2 | **Impact** | Open EcoKnight AI, view verified impact, and join the Campus Rescue League |
+| 3 | **Profile** | Open the reusable Knight Pass and manage account settings |
 
-The visible second-tab label is **Map** so it fits comfortably in the five-item mobile navbar. The screen title is **KnightMap**.
+Business accounts see **Kitchen** (the business dashboard and AI listing tools) and **Profile** instead.
 
-The student-side developer owns **Explore**, **KnightMap**, **Impact**, **Profile**, reservation management, and the shared navigation shell. The business-side developer owns the content inside **Business**.
+The student-side developer owns **Explore**, **Impact**, **Profile**, reservation management, and the shared navigation shell. The business-side developer owns the content inside **Kitchen**.
 
-For the hackathon, Business may remain visible as a clearly labeled demo view. In a real deployment, Business must be visible only to an authorized staff or manager account.
-
-KnightMap is the dedicated second navigation destination. The remaining features stay inside existing sections:
+Every feature lives inside these sections:
 
 - EcoKnight AI is opened from a verified rescue and from Impact.
 - Past Surprise Reveals appear in Surprise Bag details.
@@ -45,7 +40,7 @@ KnightMap is the dedicated second navigation destination. The remaining features
 
 Use a floating white rounded capsule slightly above the bottom safe area.
 
-- Keep five equal-width destinations in one row.
+- Keep the destinations equal-width in one row.
 - Use an icon above each short visible label.
 - Keep labels visible for active and inactive destinations.
 - Give the active destination a soft KnightSaver gold or approved accent background.
@@ -165,7 +160,7 @@ Cards do not show food photography, exact contents, original prices, savings, de
 
 ### 5. Surprise Bag details
 
-Opening a card or map marker shows:
+Opening a card shows:
 
 - Restaurant logo or banner
 - Restaurant name and rating
@@ -214,7 +209,7 @@ After successful Apple Pay authorization:
 - Show **Reservation confirmed**.
 - Explain that payment is authorized and captured after staff verifies pickup.
 - Show the confirmed reservation and explain that the reusable Knight Pass is available in Profile.
-- Reduce live availability in Explore, KnightMap, and Business.
+- Reduce live availability in Explore and Business.
 - Provide **Manage reservation** and **Continue exploring**.
 
 ### Required Explore states
@@ -249,63 +244,6 @@ Build first:
 - Past Reveals preview
 
 Do not prioritize delivery tracking, menus, food categories, tipping, promotional banners, or complicated pre-pickup personalization.
-
-## KnightMap
-
-KnightMap is the dedicated second navigation destination and shows the whole campus as a live pickup surface.
-
-### Primary job
-
-Help a student see where Surprise Bags are available across campus, inspect a location, and get directions without mixing the map into the Explore card feed.
-
-### Map layout
-
-- Use the student's detected location when permission is granted.
-- Show a whole-campus map with live participating-business markers.
-- Use restaurant logos or clear branded markers.
-- Distinguish available, fully reserved, paused, and closed locations without relying on color alone.
-- Keep map controls and selected-location content clear of the floating bottom navbar.
-- Provide a manual campus-area fallback when location permission is unavailable.
-
-### Selected business
-
-Tapping a marker opens a bottom sheet showing:
-
-- Restaurant logo
-- Restaurant name and rating
-- Available Surprise Bag quantity
-- Pickup interval
-- Distance
-- Current price
-- Current availability
-- **View Surprise Bag**
-- **Get directions**
-
-The student can open the same Surprise Bag details and reservation flow used by Explore.
-
-Directions may open the device's preferred mapping application. When reliable walking-route data is available, KnightMap may also show:
-
-- Walking-route duration
-- A calculated **Leave by** time
-- Whether the pickup is reachable before the interval ends
-
-These calculations use only current time, location, walking-route data, and the business pickup interval. KnightSaver does not pretend to know a student's class schedule.
-
-### Reservation awareness
-
-If the student has an active reservation, visually identify its business marker and allow the student to open reservation management from the selected-marker sheet.
-
-### KnightMap states
-
-KnightMap must handle:
-
-1. Available businesses across campus
-2. Selected business with available bags
-3. Fully reserved, paused, or closed location
-4. Active-reservation destination
-5. Location permission unavailable
-6. No participating businesses in the visible area
-7. Map or network loading failure
 
 ## EcoKnight AI
 
@@ -466,7 +404,7 @@ From the student side, Business must support:
 - Knight Pass pickup verification
 - Verified impact updates
 
-Changes made in Business must immediately update the Explore feed and KnightMap.
+Changes made in Business must immediately update the Explore feed.
 
 ## Shared data and verified impact chain
 
@@ -475,7 +413,7 @@ Both sides use the same businesses, listings, reservations, waitlists, payments,
 The verified chain is:
 
 1. Business publishes a Surprise Bag.
-2. The bag appears in Explore and KnightMap.
+2. The bag appears in Explore.
 3. Student authorizes payment and reserves.
 4. Availability decreases for both sides.
 5. Student opens the reusable Knight Pass from Profile.
@@ -492,8 +430,8 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 1. Business staff describes the real surplus inventory and pickup constraints to voice AI.
 2. AI shows what it understood and proposes the number of Surprise Bags, price, pickup interval, and public description.
 3. Staff corrects the draft if needed, approves it, and publishes.
-4. The listing appears immediately in Explore and on the dedicated KnightMap tab.
-5. Student opens KnightMap and sees the restaurant logo, rating, distance, availability, and pickup interval.
+4. The listing appears immediately in Explore.
+5. Student opens Explore and sees the restaurant logo, rating, distance, availability, and pickup interval.
 6. Student opens the bag details and reserves with Apple Pay.
 7. The reservation confirmation points the student to the reusable Knight Pass in Profile.
 8. Business scans the Knight Pass and verifies the matching pickup.
@@ -506,8 +444,8 @@ Cancellation releases the payment authorization and may offer the bag to the nex
 
 ### Student-side developer
 
-- Build the shared five-item bottom navigation.
-- Build Explore, reservation management, KnightMap, Impact, Profile with the reusable Knight Pass, EcoKnight AI entry points, Past Reveals, and the Campus Rescue League.
+- Build the shared bottom navigation.
+- Build Explore, reservation management, Impact, Profile with the reusable Knight Pass, EcoKnight AI entry points, Past Reveals, and the Campus Rescue League.
 - Provide the route where the Business dashboard is mounted.
 - Use shared listing, reservation, waitlist, payment, pickup, review, impact, and leaderboard states.
 - Confirm that business actions update the student experience.

@@ -365,7 +365,7 @@ struct BagPlanEditor: View {
             } header: {
                 Text("Pickup location")
             } footer: {
-                Text("Students see this spot on KnightMap and in the bag details.")
+                Text("Students see this spot in the bag details.")
             }
 
             Section {
@@ -414,7 +414,7 @@ struct BagPlanEditor: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
             } footer: {
-                Text("Publishing updates Explore and KnightMap right away.")
+                Text("Publishing updates Explore right away.")
             }
         }
         .scrollContentBackground(.hidden)

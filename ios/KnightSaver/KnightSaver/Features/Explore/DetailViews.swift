@@ -137,7 +137,7 @@ struct BagDetailView: View {
         }
     }
 
-    /// Walking directions in Apple Maps to the pickup spot (KnightMap shows the route in-app).
+    /// Walking directions in Apple Maps to the pickup spot.
     private func openWalkingDirections() {
         let coordinate = CLLocationCoordinate2D(latitude: bag.latitude, longitude: bag.longitude)
         let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
