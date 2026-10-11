@@ -220,7 +220,7 @@ private struct StatusBarBackdrop: View {
 }
 
 /// The tab bar icon. Kitchen uses the custom Sprout Storefront glyph (vector assets
-/// "TabKitchen" / "TabKitchenFill"); the Impact leaf is drawn a little larger.
+/// "TabKitchen" / "TabKitchenFill") with a green sprout; the Impact leaf is drawn a little larger.
 private struct TabGlyph: View {
     let tab: AppTab
     let isSelected: Bool
@@ -231,6 +231,7 @@ private struct TabGlyph: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
+                .foregroundStyle(kitchenColors)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
         } else {
@@ -239,6 +240,23 @@ private struct TabGlyph: View {
                 .frame(height: 22)
                 .accessibilityHidden(true)
         }
+    }
+
+    /// Hard stops, so it's two flat colors: the sprout and its stem (top third of the glyph)
+    /// in green, the building in the tab's text color.
+    private var kitchenColors: LinearGradient {
+        let leaf = isSelected ? KnightTheme.greenOnGold : KnightTheme.green
+        let building = isSelected ? KnightTheme.onAccent : KnightTheme.ink
+        return LinearGradient(
+            stops: [
+                .init(color: leaf, location: 0),
+                .init(color: leaf, location: 0.335),
+                .init(color: building, location: 0.335),
+                .init(color: building, location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }
 

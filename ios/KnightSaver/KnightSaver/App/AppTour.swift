@@ -144,7 +144,10 @@ struct AppTourOverlay: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                LeafSprig(color: KnightTheme.green, accent: KnightTheme.green, vein: KnightTheme.surface, size: 22)
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
+                    .accessibilityHidden(true)
                 Text("\(index + 1) of \(steps.count)")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -254,7 +257,9 @@ struct TourReplayButton: View {
             sessionStore.showsTour = true
         } label: {
             HStack(spacing: 12) {
-                LeafSprig(color: KnightTheme.green, accent: KnightTheme.green, vein: KnightTheme.greenWash, size: 18)
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
                     .frame(width: 36, height: 36)
                     .background(KnightTheme.greenWash, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 Text("Take the tour")

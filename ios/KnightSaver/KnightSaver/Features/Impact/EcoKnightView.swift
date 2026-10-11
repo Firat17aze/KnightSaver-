@@ -3,6 +3,7 @@ import SwiftUI
 /// Nature colors flowing around the EcoKnight bar, like Gemini's moving border: leaf green,
 /// a fresh sprout, Lake Claire blue and UCF sun gold. A crisp line only, no glow or blur.
 /// It turns faster while EcoKnight is listening or answering, and stays still with Reduce Motion.
+/// The turning runs in Core Animation, so SwiftUI doesn't redraw the page every frame.
 struct EcoFlowBorder: View {
     var cornerRadius: CGFloat
     var isBusy = false
@@ -19,25 +20,108 @@ struct EcoFlowBorder: View {
     ]
 
     var body: some View {
-        if reduceMotion {
-            border(angle: .degrees(0))
-        } else {
-            TimelineView(.animation) { context in
-                let seconds = context.date.timeIntervalSinceReferenceDate
-                let lap: Double = isBusy ? 2.4 : 6
-                border(angle: .degrees(seconds.truncatingRemainder(dividingBy: lap) / lap * 360))
-            }
+        FlowBorderLayer(
+            cornerRadius: cornerRadius,
+            lineWidth: lineWidth,
+            colors: Self.colors.map { UIColor($0) },
+            lap: reduceMotion ? nil : (isBusy ? 2.4 : 6)
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct FlowBorderLayer: UIViewRepresentable {
+    let cornerRadius: CGFloat
+    let lineWidth: CGFloat
+    let colors: [UIColor]
+    /// Seconds per turn; nil keeps it still.
+    let lap: Double?
+
+    func makeUIView(context: Context) -> FlowBorderView { FlowBorderView() }
+
+    func updateUIView(_ view: FlowBorderView, context: Context) {
+        view.configure(cornerRadius: cornerRadius, lineWidth: lineWidth, colors: colors, lap: lap)
+    }
+}
+
+/// A conic gradient, larger than the bar, turning behind a mask shaped like the bar's outline.
+final class FlowBorderView: UIView {
+    private let gradient = CAGradientLayer()
+    private let outline = CAShapeLayer()
+    private var cornerRadius: CGFloat = 0
+    private var lineWidth: CGFloat = 2
+    private var colors: [UIColor] = []
+    private var lap: Double?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+        gradient.type = .conic
+        gradient.startPoint = CGPoint(x: 0.5, y: 0.5)
+        gradient.endPoint = CGPoint(x: 0.5, y: 0)
+        layer.addSublayer(gradient)
+        outline.fillColor = nil
+        outline.strokeColor = UIColor.black.cgColor
+        layer.mask = outline
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: FlowBorderView, _) in
+            view.applyColors()
         }
     }
 
-    private func border(angle: Angle) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .strokeBorder(
-                AngularGradient(colors: Self.colors, center: .center, angle: angle),
-                lineWidth: lineWidth
-            )
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func configure(cornerRadius: CGFloat, lineWidth: CGFloat, colors: [UIColor], lap: Double?) {
+        let lapChanged = lap != self.lap
+        self.cornerRadius = cornerRadius
+        self.lineWidth = lineWidth
+        self.colors = colors
+        self.lap = lap
+        applyColors()
+        setNeedsLayout()
+        if lapChanged { spin() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let side = hypot(bounds.width, bounds.height)
+        gradient.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        gradient.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        outline.frame = bounds
+        outline.lineWidth = lineWidth
+        let inset = bounds.insetBy(dx: lineWidth / 2, dy: lineWidth / 2)
+        outline.path = UIBezierPath(roundedRect: inset, cornerRadius: max(0, cornerRadius - lineWidth / 2)).cgPath
+        CATransaction.commit()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        // Core Animation drops animations when a view leaves the window (tab switch).
+        spin()
+    }
+
+    private func applyColors() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        gradient.colors = colors.map { $0.resolvedColor(with: traitCollection).cgColor }
+        CATransaction.commit()
+    }
+
+    /// Starts the turn from wherever the colors are now, so changing speed doesn't jump.
+    private func spin() {
+        let current = (gradient.presentation()?.value(forKeyPath: "transform.rotation.z") as? Double) ?? 0
+        gradient.removeAnimation(forKey: "spin")
+        guard let lap, window != nil else { return }
+        let turn = CABasicAnimation(keyPath: "transform.rotation.z")
+        turn.fromValue = current
+        turn.toValue = current + 2 * Double.pi
+        turn.duration = lap
+        turn.repeatCount = .infinity
+        turn.isRemovedOnCompletion = false
+        gradient.add(turn, forKey: "spin")
     }
 }
 

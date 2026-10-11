@@ -210,14 +210,6 @@ struct ScanKnightPassButton: View {
         Button(action: action) {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 6) {
-                        LeafSprig(color: KnightTheme.sprout, accent: KnightTheme.sprout, vein: KnightTheme.forest, size: 14)
-                        Text("KITCHEN")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(2.2)
-                            .foregroundStyle(KnightTheme.sprout)
-                    }
-                    .padding(.bottom, 4)
                     Text("Scan Knight Pass")
                         .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white)
