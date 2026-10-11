@@ -606,7 +606,7 @@ private struct KnightroPassMark: View {
     }
 }
 
-private struct QRCodeView: View {
+struct QRCodeView: View {
     let value: String
 
     var body: some View {

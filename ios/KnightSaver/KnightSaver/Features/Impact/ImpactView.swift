@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The Impact tab, split in two so each half reads on its own (student.md "Impact"):
-/// "You" is verified personal impact and recent rescues; "Campus" is UCF's weekly goal.
-/// Knight of the Week and the Campus Rescue League live in the Rewards tab.
+/// The Impact tab (student.md "Impact"): UCF's weekly goal on top, then EcoKnight,
+/// the student's verified impact and recent rescues.
+/// Knight of the Week, the Campus Rescue League and the Reward Road live in the Rewards tab.
 struct ImpactView: View {
     let student: KnightPass
 
@@ -11,14 +11,7 @@ struct ImpactView: View {
     @AppStorage("knightsaver.league.nickname") private var storedNickname = ""
     /// Feedback for demo-history rescues (live ones go to the Kitchen store).
     @AppStorage("knightsaver.impact.ratedCodes") private var ratedCodes = ""
-    @State private var section: ImpactSection = .you
     @State private var sheet: ImpactSheet?
-
-    private enum ImpactSection: String, CaseIterable, Identifiable {
-        case you = "You"
-        case campus = "Campus"
-        var id: String { rawValue }
-    }
 
     private enum ImpactSheet: Identifiable {
         case feedback(StudentRescue)
@@ -53,18 +46,12 @@ struct ImpactView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 12) {
                         KnightSaverBrandBar()
-                        EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
+                        CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
                     }
 
-                    Picker("Section", selection: $section) {
-                        ForEach(ImpactSection.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+                    EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
 
-                    switch section {
-                    case .you: youSection(summary: summary)
-                    case .campus: campusSection(summary: summary)
-                    }
+                    youSection(summary: summary)
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 10)
@@ -107,13 +94,6 @@ struct ImpactView: View {
                 .listCard()
             }
         }
-    }
-
-    // MARK: Campus
-
-    @ViewBuilder
-    private func campusSection(summary: StudentImpactSummary) -> some View {
-        CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
     }
 
     // MARK: Feedback

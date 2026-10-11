@@ -17,23 +17,24 @@ The product promise is:
 
 ## Bottom-navigation sections
 
-KnightSaver is one shared app. Student accounts see three bottom-navigation destinations:
+KnightSaver is one shared app. Student accounts see four bottom-navigation destinations:
 
 | Position | Label | Purpose |
 |---|---|---|
 | 1 | **Explore** | Discover and reserve available Surprise Bags |
-| 2 | **Impact** | Open EcoKnight AI, view verified impact, and join the Campus Rescue League |
-| 3 | **Profile** | Open the reusable Knight Pass and manage account settings |
+| 2 | **Impact** | See UCF's weekly goal, open EcoKnight AI, and view verified impact |
+| 3 | **Rewards** | Knight Cash, the Reward Road, Rescue Crew toys, Knight of the Week, the Campus Rescue League and badges |
+| 4 | **Profile** | Open the reusable Knight Pass and manage account settings |
 
 Business accounts see **Kitchen** (the business dashboard and AI listing tools) and **Profile** instead.
 
-The student-side developer owns **Explore**, **Impact**, **Profile**, reservation management, and the shared navigation shell. The business-side developer owns the content inside **Kitchen**.
+The student-side developer owns **Explore**, **Impact**, **Rewards**, **Profile**, reservation management, and the shared navigation shell. The business-side developer owns the content inside **Kitchen**.
 
 Every feature lives inside these sections:
 
 - EcoKnight AI is opened from a verified rescue and from Impact.
 - Past Surprise Reveals appear in Surprise Bag details.
-- Campus Rescue League and Knight of the Week live inside Impact.
+- Knight Cash, the Reward Road, Rescue Crew toys, Campus Rescue League and Knight of the Week live inside Rewards.
 - The reusable Knight Pass lives in Profile and identifies the student at any participating business.
 
 ## Bottom-navigation visual direction
@@ -249,7 +250,7 @@ Do not prioritize delivery tracking, menus, food categories, tipping, promotiona
 
 EcoKnight AI is an environmental rescue assistant grounded in approved environmental guidance and verified KnightSaver data. Do not claim custom model training unless it is actually implemented.
 
-EcoKnight AI is a bar at the top of Impact ("How can I help you?"). Students type a question about food waste, climate, campus habits or their own impact, and the answer opens under the bar.
+EcoKnight AI is a bar in Impact, right under the UCF weekly goal ("How can I help you?"). Students type a question about food waste, climate, campus habits or their own impact, and the answer opens under the bar.
 
 EcoKnight can look up the student's verified impact, recent rescues, campus totals and league standing through read-only tools, only when a question needs them. General environmental numbers come only from a short, sourced fact list in the app.
 
@@ -276,7 +277,7 @@ EcoKnight AI must not:
 
 ## Impact
 
-Impact is based only on completed, staff-verified pickups.
+Impact is based only on completed, staff-verified pickups. It is one page: the UCF weekly goal card on top, then EcoKnight, then the student's own impact and recent rescues.
 
 ### Verified personal impact
 
@@ -328,6 +329,38 @@ At the weekly reset, the eligible leader receives:
 - An in-app winner notification
 
 The reward must not silently remove normal Surprise Bag inventory or leave the participating business uncompensated. A real launch requires sponsor approval and published competition terms. The hackathon may use clearly labeled demo reward data.
+
+## Rewards
+
+Rewards grow with how often a student orders. One staff-verified pickup is one order, however many bags it held. Cancelled, missed or unverified orders earn nothing.
+
+### Knight Cash
+
+Money on the student's account, earned on the Reward Road. The student taps **Pay with QR** and staff scan it at any partner kitchen to take up to the balance off the bill.
+
+### Reward Road
+
+A road of steps by verified orders. Steps alternate between Knight Cash and a Rescue Crew toy:
+
+| Orders | Reward |
+|---|---|
+| 1 | +$1 Knight Cash |
+| 3 | +$2 Knight Cash |
+| 5 | Mystery Capsule (any partner kitchen) |
+| 8 | +$3 Knight Cash |
+| 10 | Cupcake Squire mini figure (Campus Bakery) |
+| 12 | +$4 Knight Cash |
+| 15 | Bookworm Keychain (Library Café) |
+| 18 | +$5 Knight Cash |
+| 20 | Carrot Cavalier squishy (Arena Market) |
+| 25 | +$8 Knight Cash |
+| 30 | Golden Knight plush (Knightro's Kitchen) |
+
+Tiers follow orders: Squire (0 to 4), Knight (5 to 14), Champion (15 to 29), Legend (30+).
+
+### Rescue Crew
+
+Small physical toys kept behind the counter at partner kitchens, one per kitchen plus a mystery capsule. An unlocked toy shows a QR; staff scan it and hand the toy over. One of each per student. Real launch needs partner-funded toy stock; the hackathon uses demo data.
 
 ## Profile
 

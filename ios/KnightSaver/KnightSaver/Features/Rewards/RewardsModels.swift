@@ -83,38 +83,153 @@ enum RewardRules {
     }
 }
 
-/// Where the student stands in the league and who to catch next.
-struct LeagueStanding {
-    let rank: Int?
-    let points: Int
-    let total: Int
-    /// The next student above, when there is one.
-    let target: LeagueEntry?
-    let targetRank: Int?
+// MARK: - Reward Road
 
-    init(entries: [LeagueEntry]) {
-        total = entries.count
-        if let index = entries.firstIndex(where: \.isYou) {
-            rank = index + 1
-            points = entries[index].points
-            // The closest entry with more points (ties share a score, so skip them).
-            if let above = entries[..<index].lastIndex(where: { $0.points > entries[index].points }) {
-                target = entries[above]
-                targetRank = above + 1
-            } else {
-                target = nil
-                targetRank = nil
-            }
-        } else {
-            rank = nil
-            points = 0
-            target = nil
-            targetRank = nil
+// Every staff-verified order moves the student one step along the Reward Road.
+// Steps pay out Knight Cash (money on the account, paid with a QR at the counter)
+// or unlock a small Rescue Crew toy that waits at a partner kitchen.
+
+/// A small toy kept behind the counter at one partner kitchen.
+struct Collectible: Identifiable, Hashable {
+    let id: String
+    let name: String
+    /// What it is, for example "5 cm mini figure".
+    let detail: String
+    let icon: String
+    /// Where to pick it up. Nil means any partner kitchen.
+    let brand: BagBrand?
+    let store: String
+
+    /// "Campus Bakery", or "any partner kitchen" mid-sentence.
+    var pickupPlace: String { brand == nil ? "any partner kitchen" : store }
+}
+
+enum RoadReward: Hashable {
+    case cash(cents: Int)
+    case collectible(Collectible)
+}
+
+struct RoadMilestone: Identifiable, Hashable {
+    /// Verified orders needed to reach this step.
+    let orders: Int
+    let reward: RoadReward
+    var id: Int { orders }
+
+    var title: String {
+        switch reward {
+        case .cash(let cents): "+\(KnightCash.format(cents)) Knight Cash"
+        case .collectible(let toy): toy.name
         }
     }
 
-    var pointsToPass: Int? {
-        guard let target else { return nil }
-        return target.points - points + 1
+    var shortTitle: String {
+        switch reward {
+        case .cash(let cents): KnightCash.format(cents, compact: true)
+        case .collectible(let toy): toy.name.split(separator: " ").last.map(String.init) ?? toy.name
+        }
+    }
+
+    var icon: String {
+        switch reward {
+        case .cash: "dollarsign"
+        case .collectible(let toy): toy.icon
+        }
+    }
+
+    var collectible: Collectible? {
+        if case .collectible(let toy) = reward { return toy }
+        return nil
+    }
+}
+
+enum KnightCash {
+    static func format(_ cents: Int, compact: Bool = false) -> String {
+        if compact && cents % 100 == 0 { return "$\(cents / 100)" }
+        return String(format: "$%d.%02d", cents / 100, cents % 100)
+    }
+}
+
+/// Student tier from verified orders, shown on the wallet.
+enum KnightTier: String {
+    case squire = "Squire"
+    case knight = "Knight"
+    case champion = "Champion"
+    case legend = "Legend"
+
+    init(orders: Int) {
+        switch orders {
+        case ..<5: self = .squire
+        case ..<15: self = .knight
+        case ..<30: self = .champion
+        default: self = .legend
+        }
+    }
+}
+
+enum RewardRoad {
+    /// The Rescue Crew: one toy per partner kitchen, plus a mystery capsule.
+    static let capsule = Collectible(
+        id: "capsule", name: "Mystery Capsule", detail: "A surprise mini toy from the capsule machine",
+        icon: "capsule.fill", brand: nil, store: "Any partner kitchen"
+    )
+    static let cupcake = Collectible(
+        id: "cupcake", name: "Cupcake Squire", detail: "5 cm mini figure",
+        icon: "birthday.cake.fill", brand: .campusBakery, store: "Campus Bakery"
+    )
+    static let bookworm = Collectible(
+        id: "bookworm", name: "Bookworm Keychain", detail: "Soft enamel keychain",
+        icon: "book.fill", brand: .libraryCafe, store: "Library Café"
+    )
+    static let carrot = Collectible(
+        id: "carrot", name: "Carrot Cavalier", detail: "Squishy stress toy",
+        icon: "carrot.fill", brand: .arenaMarket, store: "Arena Market"
+    )
+    static let goldenKnight = Collectible(
+        id: "golden", name: "Golden Knight", detail: "Rare 12 cm plush",
+        icon: "shield.lefthalf.filled", brand: .knightros, store: "Knightro's Kitchen"
+    )
+
+    static let crew = [capsule, cupcake, bookworm, carrot, goldenKnight]
+
+    static let milestones: [RoadMilestone] = [
+        RoadMilestone(orders: 1, reward: .cash(cents: 100)),
+        RoadMilestone(orders: 3, reward: .cash(cents: 200)),
+        RoadMilestone(orders: 5, reward: .collectible(capsule)),
+        RoadMilestone(orders: 8, reward: .cash(cents: 300)),
+        RoadMilestone(orders: 10, reward: .collectible(cupcake)),
+        RoadMilestone(orders: 12, reward: .cash(cents: 400)),
+        RoadMilestone(orders: 15, reward: .collectible(bookworm)),
+        RoadMilestone(orders: 18, reward: .cash(cents: 500)),
+        RoadMilestone(orders: 20, reward: .collectible(carrot)),
+        RoadMilestone(orders: 25, reward: .cash(cents: 800)),
+        RoadMilestone(orders: 30, reward: .collectible(goldenKnight))
+    ]
+
+    /// Knight Cash added to the account so far.
+    static func cashEarnedCents(orders: Int) -> Int {
+        milestones.reduce(0) { total, step in
+            if case .cash(let cents) = step.reward, step.orders <= orders { return total + cents }
+            return total
+        }
+    }
+
+    static func next(after orders: Int) -> RoadMilestone? {
+        milestones.first { $0.orders > orders }
+    }
+
+    /// Orders at the last step reached, or 0 before the first one.
+    static func lastReachedOrders(_ orders: Int) -> Int {
+        milestones.last { $0.orders <= orders }?.orders ?? 0
+    }
+
+    /// Progress from the last step reached to the next one.
+    static func progressToNext(orders: Int) -> Double {
+        guard let next = next(after: orders) else { return 1 }
+        let start = lastReachedOrders(orders)
+        return Double(orders - start) / Double(max(next.orders - start, 1))
+    }
+
+    static func unlockOrders(for toy: Collectible) -> Int {
+        milestones.first { $0.collectible?.id == toy.id }?.orders ?? 0
     }
 }
