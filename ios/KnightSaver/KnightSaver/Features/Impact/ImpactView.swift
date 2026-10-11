@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The third tab, split in two so each half reads on its own (student.md "Impact"):
-/// "You" is verified personal impact and recent rescues;
-/// "Campus" is the weekly goal, Knight of the Week and the Campus Rescue League.
+/// The Impact tab, split in two so each half reads on its own (student.md "Impact"):
+/// "You" is verified personal impact and recent rescues; "Campus" is UCF's weekly goal.
+/// Knight of the Week and the Campus Rescue League live in the Rewards tab.
 struct ImpactView: View {
     let student: KnightPass
 
@@ -12,7 +12,6 @@ struct ImpactView: View {
     /// Feedback for demo-history rescues (live ones go to the Kitchen store).
     @AppStorage("knightsaver.impact.ratedCodes") private var ratedCodes = ""
     @State private var section: ImpactSection = .you
-    @State private var period: LeaguePeriod = .week
     @State private var sheet: ImpactSheet?
 
     private enum ImpactSection: String, CaseIterable, Identifiable {
@@ -23,12 +22,10 @@ struct ImpactView: View {
 
     private enum ImpactSheet: Identifiable {
         case feedback(StudentRescue)
-        case league
 
         var id: String {
             switch self {
             case .feedback(let rescue): return "feedback-\(rescue.id.uuidString)"
-            case .league: return "league"
             }
         }
     }
@@ -84,10 +81,6 @@ struct ImpactView: View {
                         submit(feedback, for: rescue)
                     }
                     .presentationDragIndicator(.visible)
-                case .league:
-                    LeagueSettingsView(joined: $leagueJoined, nickname: $storedNickname, suggested: nickname)
-                        .presentationDetents([.medium])
-                        .presentationDragIndicator(.visible)
                 }
             }
         }
@@ -121,92 +114,6 @@ struct ImpactView: View {
     @ViewBuilder
     private func campusSection(summary: StudentImpactSummary) -> some View {
         CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
-
-        KnightOfTheWeekCard(
-            leader: CampusLeague.entries(period: .week, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsThisWeek()).first
-        )
-
-        leagueSection(summary: summary)
-    }
-
-    private func leagueSection(summary: StudentImpactSummary) -> some View {
-        let yourPoints = period == .week ? summary.pointsThisWeek() : summary.pointsAllTime
-        let entries = CampusLeague.entries(period: period, nickname: leagueJoined ? nickname : nil, yourPoints: yourPoints)
-        let top = Array(entries.prefix(5))
-        let you = entries.enumerated().first { $0.element.isYou }
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 4) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Rescue League")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                        .accessibilityAddTraits(.isHeader)
-                    Text("1 point a day you rescue")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(KnightTheme.muted)
-                }
-                Spacer(minLength: 8)
-                Menu {
-                    Picker("Period", selection: $period) {
-                        ForEach(LeaguePeriod.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(period.rawValue)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 34)
-                    .background(KnightTheme.surface, in: Capsule())
-                    .overlay { Capsule().stroke(KnightTheme.line, lineWidth: 1) }
-                }
-                .accessibilityLabel("Period, \(period.rawValue)")
-                Button {
-                    sheet = .league
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(KnightTheme.ink)
-                        .frame(width: 40, height: 44)
-                }
-                .accessibilityLabel("League settings")
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(top.enumerated()), id: \.element.id) { index, entry in
-                    LeagueRow(rank: index + 1, entry: entry)
-                    if index < top.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 52) }
-                }
-                if let you, you.offset >= 5 {
-                    Divider().overlay(KnightTheme.line)
-                    LeagueRow(rank: you.offset + 1, entry: you.element)
-                }
-            }
-            .listCard()
-
-            if !leagueJoined {
-                Button {
-                    sheet = .league
-                } label: {
-                    Label("Join with a nickname", systemImage: "person.badge.plus")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 46)
-                        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(KnightTheme.line, lineWidth: 1) }
-                }
-                .buttonStyle(.plain)
-            }
-
-            Text("Joining is optional and shows only your nickname. Cancelled, missed or unverified pickups earn nothing.")
-                .font(.system(size: 12))
-                .foregroundStyle(KnightTheme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 
     // MARK: Feedback
@@ -456,142 +363,5 @@ private struct CampusGoalCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct KnightOfTheWeekCard: View {
-    let leader: LeagueEntry?
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("KNIGHT OF THE WEEK", systemImage: "crown.fill")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.gold)
-                    Spacer()
-                    Text("Ends in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-
-                if let leader {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(leader.isYou ? "\(leader.name) (you)" : leader.name)
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Text("\(leader.points) pt\(leader.points == 1 ? "" : "s")")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.gold)
-                    }
-                }
-
-                Label("Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)", systemImage: "gift.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .padding(17)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(KnightTheme.night, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                    .stroke(KnightTheme.line, lineWidth: 1)
-            }
-            .accessibilityElement(children: .combine)
-        }
-    }
-}
-
-private struct LeagueRow: View {
-    let rank: Int
-    let entry: LeagueEntry
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("\(rank)")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(rank <= 3 ? KnightTheme.onAccent : KnightTheme.muted)
-                .frame(width: 28, height: 28)
-                .background(podium, in: Circle())
-            Text(entry.name)
-                .font(.system(size: 15, weight: entry.isYou ? .bold : .medium))
-                .foregroundStyle(KnightTheme.ink)
-                .lineLimit(1)
-            if entry.isYou {
-                Text("You")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.green)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(KnightTheme.green.opacity(0.12), in: Capsule())
-            }
-            Spacer(minLength: 8)
-            Text("\(entry.points.formatted()) pts")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(KnightTheme.ink)
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 52)
-        .background(entry.isYou ? KnightTheme.green.opacity(0.08) : Color.clear)
-        .accessibilityElement(children: .combine)
-    }
-
-    /// Gold, silver and bronze for the top three.
-    private var podium: Color {
-        switch rank {
-        case 1: KnightTheme.gold
-        case 2: KnightTheme.silver
-        case 3: KnightTheme.bronze
-        default: .clear
-        }
-    }
-}
-
-// MARK: - League settings
-
-private struct LeagueSettingsView: View {
-    @Binding var joined: Bool
-    @Binding var nickname: String
-    let suggested: String
-    @Environment(\.dismiss) private var dismiss
-    @State private var draft = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Toggle("Show me in the league", isOn: $joined)
-                        .tint(KnightTheme.green)
-                    if joined {
-                        TextField("Nickname", text: $draft)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                    }
-                } footer: {
-                    Text("Only your nickname is shown, never your real name.")
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(KnightTheme.paper)
-            .navigationTitle("League settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        nickname = String(trimmed.prefix(20))
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
-            .onAppear { draft = nickname.isEmpty ? suggested : nickname }
-        }
     }
 }

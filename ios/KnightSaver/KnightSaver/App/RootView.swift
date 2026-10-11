@@ -3,6 +3,7 @@ import SwiftUI
 enum AppTab: String, CaseIterable, Identifiable {
     case explore = "Explore"
     case impact = "Impact"
+    case rewards = "Rewards"
     /// Shown as "Kitchen" in the tab bar: where restaurant staff list their surplus.
     case business = "Kitchen"
     case profile = "Profile"
@@ -13,6 +14,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .explore: "safari"
         case .impact: "leaf"
+        case .rewards: "trophy"
         case .business: "storefront"
         case .profile: "person"
         }
@@ -22,6 +24,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .explore: "safari.fill"
         case .impact: "leaf.fill"
+        case .rewards: "trophy.fill"
         case .business: "storefront.fill"
         case .profile: "person.fill"
         }
@@ -31,7 +34,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     /// business owners run their Kitchen.
     static func available(for role: AccountRole) -> [AppTab] {
         switch role {
-        case .student: [.explore, .impact, .profile]
+        case .student: [.explore, .impact, .rewards, .profile]
         case .business: [.business, .profile]
         }
     }
@@ -73,6 +76,8 @@ struct RootView: View {
                         ExploreView(activeReservations: $activeReservations, student: account.knightPass)
                     case .impact:
                         ImpactView(student: account.knightPass)
+                    case .rewards:
+                        RewardsView(student: account.knightPass)
                     case .business:
                         BusinessDashboardView(store: businessStore)
                     case .profile where account.role == .business:
