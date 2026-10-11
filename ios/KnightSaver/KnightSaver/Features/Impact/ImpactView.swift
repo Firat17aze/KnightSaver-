@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Impact tab (student.md "Impact"): UCF's weekly goal on top, then EcoKnight,
+/// The Impact tab (student.md "Impact"): EcoKnight on top, then UCF's weekly goal,
 /// the student's verified impact and recent rescues.
 /// Knight of the Week, the Campus Rescue League and the Reward Road live in the Rewards tab.
 struct ImpactView: View {
@@ -46,10 +46,10 @@ struct ImpactView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 12) {
                         KnightSaverBrandBar()
-                        CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
+                        EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
                     }
 
-                    EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
+                    CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
 
                     youSection(summary: summary)
                 }
@@ -127,7 +127,7 @@ private extension View {
         background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
     }
 }

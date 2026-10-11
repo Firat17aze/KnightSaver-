@@ -78,28 +78,18 @@ struct PassScannerView: View {
             BizMetaRow(icon: "person.fill", text: "Collecting: \(expected.studentDisplayName) · \(expected.code) · \(expected.quantity) bag\(expected.quantity == 1 ? "" : "s")")
         }
 
-        ZStack {
-            RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                .fill(KnightTheme.night)
-
+        ScannerViewfinder(isLive: camera == .ready) {
             switch camera {
             case .ready:
                 QRCodeScanner { value in handleScan(value) }
-                    .clipShape(RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
             case .checking:
-                ProgressView().tint(.white)
+                ProgressView().tint(KnightTheme.sprout)
             case .unavailable:
                 cameraMessage(icon: "camera.fill", text: "Camera isn't available here (for example in the Simulator). Use a demo scan below.")
             case .denied:
                 cameraMessage(icon: "camera.badge.ellipsis", text: "Camera access is off. Turn it on in Settings › KnightSaver to scan passes.")
             }
-
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(KnightTheme.gold, lineWidth: 4)
-                .frame(width: 210, height: 210)
-                .allowsHitTesting(false)
         }
-        .frame(height: 320)
         .accessibilityLabel("Camera viewfinder for Knight Pass QR codes")
 
         Text("Point the camera at the QR code on the back of the student's Knight Pass.")
@@ -134,14 +124,14 @@ struct PassScannerView: View {
     private func cameraMessage(icon: String, text: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(KnightTheme.gold)
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(KnightTheme.sprout)
             Text(text)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(KnightTheme.mint)
                 .multilineTextAlignment(.center)
         }
-        .padding(28)
+        .padding(.horizontal, 70)
     }
 
     private func handleScan(_ value: String) {
@@ -179,7 +169,7 @@ struct PassScannerView: View {
         case .alreadyVerified(let reservation):
             statusCard(
                 icon: "checkmark.circle.fill",
-                tint: KnightTheme.lake,
+                tint: KnightTheme.green,
                 title: "Already verified",
                 message: "\(reservation.studentDisplayName)'s pickup (\(reservation.code)) was verified at \(reservation.verifiedAt.map { PickupTime.time($0) } ?? "earlier"). Payment was captured once and won't be charged again."
             )
@@ -322,7 +312,7 @@ struct PassScannerView: View {
         case .alreadyVerified(let reservation):
             statusCard(
                 icon: "checkmark.circle.fill",
-                tint: KnightTheme.lake,
+                tint: KnightTheme.green,
                 title: "Already verified",
                 message: "\(reservation.code) was already verified. Nothing was charged again."
             )
@@ -386,6 +376,60 @@ struct PassScannerView: View {
             camera = .denied
         }
         #endif
+    }
+}
+
+// MARK: - Viewfinder
+
+/// The scanner window: a forest-green frame with leaves tucked into two corners, sprout-green
+/// scan corners with a little sprout on top, and a scan line that sweeps while the camera is live.
+/// Flat colors only.
+private struct ScannerViewfinder<Content: View>: View {
+    var isLive: Bool
+    @ViewBuilder var content: Content
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweep = false
+
+    private let window: CGFloat = 220
+    private let shape = RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
+
+    var body: some View {
+        ZStack {
+            shape.fill(KnightTheme.forest)
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Over the camera too, so the live picture looks framed by leaves.
+            CornerFoliage(back: KnightTheme.fern, front: KnightTheme.sprout, vein: KnightTheme.forest, scale: 1.1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .offset(x: 8, y: 6)
+            CornerFoliage(back: KnightTheme.fern, front: KnightTheme.fern, vein: KnightTheme.forest, scale: 0.9)
+                .rotationEffect(.degrees(180))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .offset(x: -8, y: -6)
+
+            ZStack(alignment: .top) {
+                ScanCorners(color: KnightTheme.sprout, length: 34, lineWidth: 5, radius: 16)
+                if isLive {
+                    Rectangle()
+                        .fill(KnightTheme.sprout)
+                        .frame(height: 3)
+                        .padding(.horizontal, 14)
+                        .offset(y: reduceMotion ? window / 2 : (sweep ? window - 16 : 14))
+                }
+            }
+            .frame(width: window, height: window)
+        }
+        .frame(height: 320)
+        .clipShape(shape)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                sweep = true
+            }
+        }
     }
 }
 

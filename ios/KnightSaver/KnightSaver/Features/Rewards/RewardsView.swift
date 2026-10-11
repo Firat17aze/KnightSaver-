@@ -278,7 +278,7 @@ private extension View {
         background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
     }
 }
@@ -437,7 +437,7 @@ private struct CrewCard: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
     }
@@ -572,7 +572,7 @@ private struct KnightOfTheWeekCard: View {
                          : "Since launch")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.75))
+                        .foregroundStyle(KnightTheme.paleText)
                 }
 
                 HStack(alignment: .bottom, spacing: 10) {
@@ -589,7 +589,7 @@ private struct KnightOfTheWeekCard: View {
                 Label(period == .week ? "Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)" : "Most rescue days since KnightSaver started",
                       systemImage: period == .week ? "gift.fill" : "sparkles")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(KnightTheme.paleText)
             }
             .padding(17)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -637,7 +637,7 @@ private struct PodiumStep: View {
                 .minimumScaleFactor(0.7)
             Text("\(entry.points) pt\(entry.points == 1 ? "" : "s")")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(KnightTheme.paleText)
             Text("\(place)")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.onAccent)

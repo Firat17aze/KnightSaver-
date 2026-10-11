@@ -1,5 +1,46 @@
 import SwiftUI
 
+/// Nature colors flowing around the EcoKnight bar, like Gemini's moving border: leaf green,
+/// a fresh sprout, Lake Claire blue and UCF sun gold. A crisp line only, no glow or blur.
+/// It turns faster while EcoKnight is listening or answering, and stays still with Reduce Motion.
+struct EcoFlowBorder: View {
+    var cornerRadius: CGFloat
+    var isBusy = false
+    var lineWidth: CGFloat = 2
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let colors: [Color] = [
+        KnightTheme.green,
+        KnightTheme.sprout,
+        KnightTheme.lake,
+        KnightTheme.gold,
+        KnightTheme.green
+    ]
+
+    var body: some View {
+        if reduceMotion {
+            border(angle: .degrees(0))
+        } else {
+            TimelineView(.animation) { context in
+                let seconds = context.date.timeIntervalSinceReferenceDate
+                let lap: Double = isBusy ? 2.4 : 6
+                border(angle: .degrees(seconds.truncatingRemainder(dividingBy: lap) / lap * 360))
+            }
+        }
+    }
+
+    private func border(angle: Angle) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .strokeBorder(
+                AngularGradient(colors: Self.colors, center: .center, angle: angle),
+                lineWidth: lineWidth
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
 /// EcoKnight AI as a bar at the top of Impact: "How can I help you?". The student types a
 /// question and the answer opens under the bar, pushing the page down. EcoKnight can look up the student's own
 /// stats with tools when a question needs them. It asks Gemini when a key is set, then Apple's
@@ -42,7 +83,7 @@ struct EcoKnightAskBar: View {
         HStack(spacing: 10) {
             Image(systemName: "sparkles")
                 .font(.system(size: 17))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .accessibilityHidden(true)
 
             TextField("How can I help you?", text: $question)
@@ -73,8 +114,7 @@ struct EcoKnightAskBar: View {
         .frame(height: 54)
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(focused ? KnightTheme.ink.opacity(0.35) : KnightTheme.line, lineWidth: 1)
+            EcoFlowBorder(cornerRadius: 16, isBusy: isAnswering || focused)
         }
         .contentShape(Rectangle())
         .onTapGesture { focused = true }

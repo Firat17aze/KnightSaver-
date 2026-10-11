@@ -203,7 +203,7 @@ struct KnightPassCard: View {
                         Text(pass.displayName.uppercased())
                             .font(.system(size: 13, weight: .medium, design: .default))
                             .tracking(1.5)
-                            .foregroundStyle(.white.opacity(0.92))
+                            .foregroundStyle(.white)
 
                         Spacer()
 
@@ -322,7 +322,7 @@ struct PickupPassOverlay: View {
                                 .foregroundStyle(.white)
                             Text(showsQRCode ? "Ready to scan" : "Tap the pass to reveal your code")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.76))
+                                .foregroundStyle(KnightTheme.paleText)
                         }
 
                         Spacer()
@@ -391,7 +391,7 @@ struct PickupPassOverlay: View {
 
                             Text("This single-use code is tied only to this reservation.")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.68))
+                                .foregroundStyle(KnightTheme.paleText)
                                 .multilineTextAlignment(.center)
                         }
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -485,13 +485,13 @@ struct PickupPassCard: View {
                                 .foregroundStyle(.white)
                             Text(reservation.bag.location)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(KnightTheme.paleText)
                                 .lineLimit(1)
                         }
                         Spacer()
                         Image(systemName: "wave.3.right")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.72))
+                            .foregroundStyle(KnightTheme.paleText)
                             .accessibilityHidden(true)
                     }
                 }
@@ -770,7 +770,7 @@ struct SurpriseBagCard: View {
         .clipShape(RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
     }
 }

@@ -47,6 +47,7 @@ struct ProfileView: View {
                             subtitle: "Your reusable pass for every pickup"
                         )
                         KnightPassButton(pass: pass, action: action)
+                            .tourTarget(.knightPass)
                     }
 
                     pickupsSection
@@ -71,7 +72,10 @@ struct ProfileView: View {
                         ]
                     )
 
-                    SignOutButton(onSignOut: onSignOut)
+                    VStack(spacing: 12) {
+                        TourReplayButton()
+                        SignOutButton(onSignOut: onSignOut)
+                    }
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 16)
@@ -265,7 +269,7 @@ private struct UpcomingPickupCard: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens reservation details")
@@ -355,7 +359,7 @@ private struct ProfileLinkGroup: View {
             .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
         }
     }
@@ -518,7 +522,7 @@ private struct DetailCard<Content: View>: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
     }
 }
@@ -979,9 +983,24 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             DispatchQueue.main.async {
                 guard let self, let placemark = placemarks?.first else { return }
-                self.currentLocationLabel = self.locationLabel(for: placemark, fallback: location.coordinate)
+                let address = self.locationLabel(for: placemark, fallback: location.coordinate)
+                self.currentLocationLabel = address
+                Self.saveAddressIfCurrent(address, for: location)
             }
         }
+    }
+
+    /// Explore, Profile and bag details save the location as soon as it's found, with the
+    /// quick "Near UCF Main Campus" label. The street address arrives a moment later, so put it
+    /// in the saved label too, as long as the saved spot is still this one.
+    private static func saveAddressIfCurrent(_ address: String, for location: CLLocation, defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: "currentPickupLatitude") != nil else { return }
+        let saved = CLLocation(
+            latitude: defaults.double(forKey: "currentPickupLatitude"),
+            longitude: defaults.double(forKey: "currentPickupLongitude")
+        )
+        guard saved.distance(from: location) < 1 else { return }
+        defaults.set(address, forKey: "currentPickupLabel")
     }
 
     private func immediateLocationLabel(for location: CLLocation) -> String {
@@ -1382,6 +1401,7 @@ struct ProfileAvatar: View {
 private struct SignOutButton: View {
     let onSignOut: () -> Void
     @State private var showConfirmation = false
+    @State private var signOutConfirmed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -1399,9 +1419,17 @@ private struct SignOutButton: View {
                 }
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
-        .confirmationDialog("Sign out of KnightSaver?", isPresented: $showConfirmation, titleVisibility: .visible) {
-            Button("Sign out", role: .destructive, action: onSignOut)
+        // An alert, not a confirmationDialog: on iOS 26 the dialog is a popover on the button.
+        .alert("Sign out of KnightSaver?", isPresented: $showConfirmation) {
+            Button("Sign out", role: .destructive) { signOutConfirmed = true }
             Button("Stay signed in", role: .cancel) { }
+        }
+        // Sign out only once the alert has fully closed. Swapping the whole screen while the
+        // alert is still animating away can leave the old screen showing, still signed in.
+        .onChange(of: showConfirmation) { _, isShowing in
+            guard !isShowing, signOutConfirmed else { return }
+            signOutConfirmed = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: onSignOut)
         }
     }
 }
@@ -1442,13 +1470,16 @@ struct BusinessAccountView: View {
                         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                                .stroke(KnightTheme.line, lineWidth: 1)
                         }
                     }
 
                     bagLimitSection
 
-                    SignOutButton(onSignOut: onSignOut)
+                    VStack(spacing: 12) {
+                        TourReplayButton()
+                        SignOutButton(onSignOut: onSignOut)
+                    }
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 16)
@@ -1500,7 +1531,7 @@ struct BusinessAccountView: View {
             .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
             .accessibilityLabel("Max bags per listing, \(businessStore.profile.maxBagsPerListing)")
             .accessibilityHint("Changes the most Surprise Bags one listing can have")

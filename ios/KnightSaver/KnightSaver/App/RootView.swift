@@ -52,6 +52,7 @@ struct RootView: View {
     @State private var showKnightPass = false
     @State private var tabBarHeight: CGFloat = 0
     @StateObject private var profilePhotos = ProfilePhotoStore()
+    @State private var tourIndex = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -105,6 +106,11 @@ struct RootView: View {
                 }
                 .environment(\.tabBarInset, tabBarHeight)
             }
+            // A plain strip behind the status bar, so scrolled content doesn't run under the
+            // clock (the app opts out of iOS 26's blurred edge, see Info.plist).
+            .overlay {
+                StatusBarBackdrop()
+            }
             .overlay(alignment: .bottom) {
                 KnightTabBar(selection: $selectedTab, tabs: AppTab.available(for: account.role))
                     .onGeometryChange(for: CGFloat.self) { proxy in
@@ -126,10 +132,34 @@ struct RootView: View {
                 .zIndex(10)
             }
         }
+        .overlayPreferenceValue(TourTargetKey.self) { anchors in
+            if sessionStore.showsTour {
+                let steps = AppTour.steps(for: account)
+                AppTourOverlay(
+                    steps: steps,
+                    anchors: anchors,
+                    index: $tourIndex,
+                    finishTitle: account.role == .student ? "Start exploring" : "Open my Kitchen",
+                    onFinish: { finishTour(account: account) }
+                )
+                .transition(.opacity)
+                .zIndex(20)
+            }
+        }
         .environmentObject(businessStore)
         .environmentObject(sessionStore)
         .environmentObject(profilePhotos)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: sessionStore.showsTour)
+        .onChange(of: sessionStore.showsTour) { _, isShowing in
+            guard isShowing else { return }
+            showKnightPass = false
+            tourIndex = 0
+            showTourTab(account: account)
+        }
+        .onChange(of: tourIndex) { _, _ in
+            showTourTab(account: account)
+        }
         .onAppear {
             if account.role == .business, let businessName = account.businessName, !businessName.isEmpty {
                 businessStore.profile.name = businessName
@@ -148,10 +178,44 @@ struct RootView: View {
         }
     }
 
+    private func showTourTab(account: AppAccount) {
+        let steps = AppTour.steps(for: account)
+        guard sessionStore.showsTour, steps.indices.contains(tourIndex) else { return }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+            selectedTab = steps[tourIndex].tab
+        }
+    }
+
+    private func finishTour(account: AppAccount) {
+        sessionStore.showsTour = false
+        tourIndex = 0
+        selectedTab = AppTab.available(for: account.role).first ?? .explore
+    }
+
     private func signOut() {
         showKnightPass = false
         selectedTab = .explore
         sessionStore.signOut()
+    }
+}
+
+/// A plain paper strip behind the status bar, so scrolled content doesn't run under the clock.
+/// The app opts out of iOS 26's blurred scroll edge (Info.plist), so it draws its own.
+private struct StatusBarBackdrop: View {
+    private var height: CGFloat {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        return (windows.first(where: \.isKeyWindow) ?? windows.first)?.safeAreaInsets.top ?? 0
+    }
+
+    var body: some View {
+        KnightTheme.paper
+            .frame(height: height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 
@@ -210,6 +274,7 @@ private struct KnightTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .tourTarget(.tab(tab))
                 .accessibilityLabel(tab.rawValue)
                 .accessibilityAddTraits(selection == tab ? .isSelected : [])
             }

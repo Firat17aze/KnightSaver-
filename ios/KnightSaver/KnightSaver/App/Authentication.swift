@@ -57,6 +57,9 @@ final class SessionStore: ObservableObject {
     @Published private(set) var pendingVerificationEmail: String?
     /// When the last code was sent. Supabase allows one code a minute per address.
     @Published private(set) var codeSentAt: Date?
+    /// True right after a new account is created: RootView then shows the app tour once.
+    /// Profile's "Take the tour" sets it again.
+    @Published var showsTour = false
 
     private var pendingSignUp: (name: String, password: String)?
     private let credentialsKey = "knightsaver.localCredentials.v1"
@@ -204,6 +207,7 @@ final class SessionStore: ObservableObject {
             try await KnightSaverBackend.shared.setPassword(pendingSignUp.password, accessToken: session.accessToken)
             try await activate(session, email: email, as: .student)
             cancelVerification()
+            showsTour = account != nil
         } catch {
             errorMessage = "Your email is verified, but we couldn't finish setting up your account. \(error.localizedDescription)"
         }
@@ -243,6 +247,7 @@ final class SessionStore: ObservableObject {
         credentials.append(LocalCredential(account: newAccount, passwordDigest: digest(password)))
         saveCredentials()
         setActive(newAccount)
+        showsTour = true
     }
 
     /// Trimmed details for a new account, or nil with an error message explaining what to fix.
@@ -359,6 +364,7 @@ final class SessionStore: ObservableObject {
     }
 
     func signOut() {
+        showsTour = false
         account = nil
         accessToken = nil
         UserDefaults.standard.removeObject(forKey: activeAccountKey)
@@ -473,7 +479,7 @@ private struct RoleCard: View {
             .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))

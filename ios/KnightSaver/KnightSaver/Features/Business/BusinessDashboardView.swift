@@ -49,6 +49,7 @@ struct BusinessDashboardView: View {
             ScanKnightPassButton {
                 sheet = .scan(expected: nil)
             }
+            .tourTarget(.scanPass)
             .padding(.top, 4)
 
             Button {
@@ -57,6 +58,7 @@ struct BusinessDashboardView: View {
                 BizPrimaryLabel(title: "List surplus", icon: "plus")
             }
             .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
+            .tourTarget(.listSurplus)
             .accessibilityLabel("List surplus")
             .accessibilityHint("Publish new Surprise Bags with AI or manually")
         }
@@ -133,7 +135,7 @@ struct BusinessDashboardView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(KnightTheme.night.opacity(0.92), in: Capsule())
+                .background(KnightTheme.forest, in: Capsule())
                 .padding(.horizontal, KnightTheme.screenPadding)
                 .padding(.top, 6)
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -194,54 +196,72 @@ enum BusinessSheet: Identifiable, Hashable {
 
 // MARK: - Scan Knight Pass button
 
-/// The one bold element on the page. Same shape as the Knight Pass card in Profile
-/// (flat fill, wordmark, KnightLogo, 22pt corners, thin border), in lake blue so it
-/// stands apart from the gold List surplus button under it.
+/// The one bold element on the page: a forest-green card with leaves tucked in from the
+/// bottom-right corner and the knight framed by scan corners, like a QR code waiting to be read.
+/// Flat fills only. The gold List surplus button sits under it.
 struct ScanKnightPassButton: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("KNIGHTSAVER")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(2.2)
-                        .foregroundStyle(KnightTheme.gold)
-                        .padding(.bottom, 4)
+                    HStack(spacing: 6) {
+                        LeafSprig(color: KnightTheme.sprout, accent: KnightTheme.sprout, vein: KnightTheme.forest, size: 14)
+                        Text("KITCHEN")
+                            .font(.system(size: 11, weight: .bold))
+                            .tracking(2.2)
+                            .foregroundStyle(KnightTheme.sprout)
+                    }
+                    .padding(.bottom, 4)
                     Text("Scan Knight Pass")
                         .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Text("Verify a student's pickup")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.78))
+                        .foregroundStyle(KnightTheme.mint)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 4)
 
-                Image("KnightLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 58, height: 58)
-                    .accessibilityHidden(true)
+                ZStack {
+                    ScanCorners(color: KnightTheme.gold, length: 14, lineWidth: 3, radius: 6, showsSprout: false)
+                        .frame(width: 58, height: 58)
+                    Image("KnightLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 42, height: 42)
+                }
+                .accessibilityHidden(true)
 
-                Image(systemName: "chevron.right")
+                Image(systemName: "arrow.right")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(KnightTheme.lakeOnGold)
-                    .frame(width: 38, height: 38)
-                    .background(Color.white, in: Circle())
+                    .foregroundStyle(KnightTheme.forest)
+                    .frame(width: 34, height: 34)
+                    .background(KnightTheme.sprout, in: Circle())
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 16)
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-            .background(KnightTheme.lakeFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+            .background {
+                ZStack(alignment: .bottomTrailing) {
+                    shape.fill(KnightTheme.forest)
+                    CornerFoliage(back: KnightTheme.fern, front: KnightTheme.fern, vein: KnightTheme.forest, scale: 0.9)
+                        .offset(x: 6, y: 4)
+                    // A second, smaller sprig on the far left edge, behind the text.
+                    Leaf(color: KnightTheme.fern, vein: KnightTheme.forest, width: 26, height: 52, angle: 64)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .offset(x: -14, y: 18)
+                }
+                .clipShape(shape)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .contentShape(shape)
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
         .accessibilityElement(children: .ignore)
@@ -565,11 +585,9 @@ private struct CO2eImpactCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                Image(systemName: "leaf.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(KnightTheme.green)
+                LeafSprig(color: KnightTheme.green, accent: KnightTheme.green, vein: KnightTheme.greenWash, size: 20)
                     .frame(width: 34, height: 34)
-                    .background(KnightTheme.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(KnightTheme.greenWash, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 Text("CO₂e avoided")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(KnightTheme.ink)
@@ -609,7 +627,7 @@ private struct CO2eImpactCard: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.8).delay(0.1)) {

@@ -28,9 +28,22 @@ final class VoiceDictation: ObservableObject {
     /// A new engine for every session, so the mic format is read fresh after the audio
     /// session changes (a stale format makes installTap throw and close the app).
     private var audioEngine = AVAudioEngine()
-    private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var session = 0
+    /// Text that is already settled: what was in the box before the mic, plus every finished
+    /// stretch of speech. New words are shown after it.
+    private var committed = ""
+    /// Recognitions that ended with an error and no words, in a row. Stops a broken session
+    /// from restarting forever.
+    private var emptyFailures = 0
+    private var onText: ((String) -> Void)?
+    /// Counts recognition tasks, so a late reply from a finished task is ignored.
+    private var segment = 0
+
+    /// The mic tap runs on an audio thread and feeds whichever request is current. Requests are
+    /// swapped each time the recognizer finishes a stretch of speech, so access is locked.
+    private let requestLock = NSLock()
+    private var liveRequest: SFSpeechAudioBufferRecognitionRequest?
 
     /// Starts listening, or stops if already listening.
     /// `current` is kept and new words are added after it.
@@ -91,12 +104,6 @@ final class VoiceDictation: ObservableObject {
         try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        request.addsPunctuation = true
-        request.contextualStrings = SurplusAssistant.speechHints
-        self.request = request
-
         audioEngine = AVAudioEngine()
         let input = audioEngine.inputNode
         // installTap raises an Objective-C exception (which Swift can't catch) when the format
@@ -111,7 +118,9 @@ final class VoiceDictation: ObservableObject {
         let format = output.sampleRate == hardware.sampleRate && output.channelCount > 0 ? output : hardware
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
-            request.append(buffer)
+            self.requestLock.lock()
+            self.liveRequest?.append(buffer)
+            self.requestLock.unlock()
             let loudness = VoiceDictation.loudness(of: buffer)
             DispatchQueue.main.async {
                 guard self.session == thisSession else { return }
@@ -122,22 +131,60 @@ final class VoiceDictation: ObservableObject {
         audioEngine.prepare()
         try audioEngine.start()
 
-        let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
-        let prefix = trimmed.isEmpty ? "" : trimmed + " "
+        committed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        emptyFailures = 0
+        self.onText = onText
+        listen(with: recognizer, session: thisSession)
+    }
 
+    /// One recognition task. The recognizer ends a task on its own after a pause or about a
+    /// minute of speech. While the mic is still on, the words are kept and a new task picks up
+    /// the next sentence, so staff can talk naturally until they tap stop.
+    private func listen(with recognizer: SFSpeechRecognizer, session thisSession: Int) {
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.addsPunctuation = true
+        request.contextualStrings = SurplusAssistant.speechHints
+        requestLock.lock()
+        liveRequest = request
+        requestLock.unlock()
+        segment += 1
+        let thisSegment = segment
+
+        // The last words heard in this task. A task that ends with an error sends no text, so
+        // these are what gets kept.
+        var heard = ""
         task = recognizer.recognitionTask(with: request) { result, error in
-            let spoken = result?.bestTranscription.formattedString
+            let spoken = result?.bestTranscription.formattedString ?? ""
             let finished = error != nil || (result?.isFinal ?? false)
             DispatchQueue.main.async {
-                guard self.session == thisSession else { return }
-                if let spoken, !spoken.isEmpty {
-                    onText(prefix + spoken)
+                guard self.session == thisSession, self.segment == thisSegment else { return }
+                if !spoken.isEmpty {
+                    heard = spoken
+                    self.onText?(self.joined(self.committed, spoken))
                 }
-                if finished {
+                guard finished else { return }
+                request.endAudio()
+                if heard.isEmpty {
+                    if error != nil { self.emptyFailures += 1 }
+                } else {
+                    self.emptyFailures = 0
+                    self.committed = self.joined(self.committed, heard)
+                }
+                if self.emptyFailures >= 3 || !recognizer.isAvailable {
                     self.stop()
+                } else {
+                    self.listen(with: recognizer, session: thisSession)
                 }
             }
         }
+    }
+
+    private func joined(_ first: String, _ second: String) -> String {
+        let second = second.trimmingCharacters(in: .whitespacesAndNewlines)
+        if first.isEmpty { return second }
+        if second.isEmpty { return first }
+        return first + " " + second
     }
 
     private func tearDown() {
@@ -145,10 +192,13 @@ final class VoiceDictation: ObservableObject {
             audioEngine.stop()
         }
         audioEngine.inputNode.removeTap(onBus: 0)
-        request?.endAudio()
+        requestLock.lock()
+        liveRequest?.endAudio()
+        liveRequest = nil
+        requestLock.unlock()
         task?.cancel()
-        request = nil
         task = nil
+        onText = nil
         level = 0
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -268,7 +318,7 @@ struct BizVoiceComposer: View {
             if voice.status == .denied, let settings = URL(string: UIApplication.openSettingsURLString) {
                 Button("Open Settings") { openURL(settings) }
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.lake)
+                    .foregroundStyle(KnightTheme.green)
             }
         }
         .padding(14)

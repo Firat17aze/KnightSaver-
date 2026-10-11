@@ -6,11 +6,13 @@ enum KnightTheme {
     // (AppAppearance: System, Light or Dark), set by the moon button on Profile and Kitchen.
     static let gold = Color(red: 0.95, green: 0.74, blue: 0.17)
     static let goldDeep = dynamic(light: (0.76, 0.51, 0.05), dark: (0.89, 0.65, 0.18))
-    static let ink = dynamic(light: (0.10, 0.09, 0.08), dark: (0.96, 0.94, 0.90))
-    static let paper = dynamic(light: (0.965, 0.96, 0.945), dark: (0.075, 0.07, 0.06))
-    static let surface = dynamic(light: (1.0, 1.0, 1.0), dark: (0.135, 0.125, 0.11))
-    static let muted = dynamic(light: (0.39, 0.37, 0.33), dark: (0.68, 0.65, 0.59))
-    static let line = dynamic(light: (0.88, 0.87, 0.84), dark: (0.25, 0.23, 0.20))
+    // Dark mode is plain: pure white text on neutral near-black, no warm tint and no
+    // see-through text, so letters stay crisp instead of looking faded.
+    static let ink = dynamic(light: (0.10, 0.09, 0.08), dark: (1.0, 1.0, 1.0))
+    static let paper = dynamic(light: (0.965, 0.96, 0.945), dark: (0.0, 0.0, 0.0))
+    static let surface = dynamic(light: (1.0, 1.0, 1.0), dark: (0.11, 0.11, 0.11))
+    static let muted = dynamic(light: (0.39, 0.37, 0.33), dark: (0.74, 0.74, 0.74))
+    static let line = dynamic(light: (0.88, 0.87, 0.84), dark: (0.23, 0.23, 0.23))
     static let green = dynamic(light: (0.08, 0.43, 0.28), dark: (0.38, 0.78, 0.56))
     static let red = dynamic(light: (0.69, 0.18, 0.14), dark: (0.95, 0.47, 0.40))
 
@@ -25,7 +27,23 @@ enum KnightTheme {
     static let lakeOnGold = Color(red: 0.04, green: 0.36, blue: 0.82)
     static let greenOnGold = Color(red: 0.08, green: 0.43, blue: 0.28)
     /// Neutral tile behind plain icons, in place of gold tints.
-    static let wash = dynamic(light: (0.93, 0.925, 0.905), dark: (0.19, 0.18, 0.16))
+    static let wash = dynamic(light: (0.93, 0.925, 0.905), dark: (0.17, 0.17, 0.17))
+    /// Secondary text on dark fills (passes, banners). Solid, not see-through white.
+    static let paleText = Color(red: 0.84, green: 0.84, blue: 0.84)
+    /// Placeholder text in boxes: a solid lighter gray, never a faded ink.
+    static let placeholder = dynamic(light: (0.60, 0.58, 0.55), dark: (0.52, 0.52, 0.52))
+
+    // The Kitchen (business) side: a kitchen-garden green with flat leaves, in place of blue.
+    /// Deep forest fill for the Scan Knight Pass card and the scanner, with white text on top.
+    static let forest = dynamic(light: (0.09, 0.29, 0.19), dark: (0.07, 0.23, 0.15))
+    /// One step lighter than forest, for leaves drawn on a forest fill.
+    static let fern = dynamic(light: (0.16, 0.42, 0.27), dark: (0.13, 0.36, 0.23))
+    /// Light leaf green on forest: leaves, the scan corners and small marks.
+    static let sprout = Color(red: 0.60, green: 0.83, blue: 0.47)
+    /// Pale green text on forest (subtitles), solid so it stays sharp.
+    static let mint = Color(red: 0.80, green: 0.92, blue: 0.82)
+    /// Green tile behind icons on the Kitchen side.
+    static let greenWash = dynamic(light: (0.89, 0.95, 0.90), dark: (0.08, 0.19, 0.13))
     /// League podium: second and third place next to gold.
     static let silver = Color(red: 0.76, green: 0.78, blue: 0.81)
     static let bronze = Color(red: 0.82, green: 0.55, blue: 0.33)

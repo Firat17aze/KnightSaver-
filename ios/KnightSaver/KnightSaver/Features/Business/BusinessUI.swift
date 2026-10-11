@@ -36,7 +36,7 @@ struct BizCardModifier: ViewModifier {
             .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
     }
 }
@@ -105,7 +105,7 @@ struct BizMetaRow: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(KnightTheme.lake)
+                .foregroundStyle(KnightTheme.green)
                 .frame(width: 22)
                 .accessibilityHidden(true)
             Text(text)
@@ -269,7 +269,7 @@ struct BizStatTile: View {
         .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
     }
@@ -299,7 +299,7 @@ struct BizProgressBar: View {
             let clamped = min(max(progress, 0), 1)
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(KnightTheme.ink.opacity(0.08))
+                    .fill(KnightTheme.wash)
                 Capsule()
                     .fill(tint)
                     .frame(width: clamped > 0 ? max(height, proxy.size.width * clamped) : 0)
@@ -362,7 +362,7 @@ struct BizDictationBox: View {
             if text.isEmpty {
                 Text(isLive ? "Go ahead, I'm listening…" : prompt)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted.opacity(0.7))
+                    .foregroundStyle(KnightTheme.placeholder)
                     .padding(.horizontal, 15)
                     .padding(.vertical, 18)
                     .allowsHitTesting(false)
