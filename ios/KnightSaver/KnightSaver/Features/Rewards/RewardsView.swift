@@ -63,7 +63,13 @@ struct RewardsView: View {
 
                     crewSection(orders: orders)
 
-                    KnightOfTheWeekCard(podium: Array(weekEntries.prefix(3)))
+                    // The podium follows the league's period picker.
+                    KnightOfTheWeekCard(
+                        period: period,
+                        podium: Array((period == .week ? weekEntries : CampusLeague.entries(
+                            period: .allTime, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsAllTime
+                        )).prefix(3))
+                    )
 
                     leagueSection(summary: summary)
 
@@ -790,20 +796,24 @@ private struct RewardQRView: View {
 
 // MARK: - Knight of the Week
 
-/// Dark card with the week's podium: first place in the middle, raised and crowned.
+/// Dark card with the podium: first place in the middle, raised and crowned.
+/// "This week" is Knight of the Week with its countdown and prize; "All time" is the hall of fame.
 private struct KnightOfTheWeekCard: View {
+    let period: LeaguePeriod
     let podium: [LeagueEntry]
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Label("KNIGHT OF THE WEEK", systemImage: "crown.fill")
+                    Label(period == .week ? "KNIGHT OF THE WEEK" : "ALL-TIME LEGENDS", systemImage: period == .week ? "crown.fill" : "trophy.fill")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(KnightTheme.gold)
                     Spacer()
-                    Text("Ends in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))")
+                    Text(period == .week
+                         ? "Ends in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))"
+                         : "Since launch")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.75))
@@ -820,7 +830,8 @@ private struct KnightOfTheWeekCard: View {
                 }
                 .frame(height: 150, alignment: .bottom)
 
-                Label("Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)", systemImage: "gift.fill")
+                Label(period == .week ? "Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)" : "Most rescue days since KnightSaver started",
+                      systemImage: period == .week ? "gift.fill" : "sparkles")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
