@@ -23,7 +23,7 @@ KnightSaver is one shared app. Student accounts see four bottom-navigation desti
 |---|---|---|
 | 1 | **Explore** | Discover and reserve available Surprise Bags |
 | 2 | **Impact** | See UCF's weekly goal, open EcoKnight AI, and view verified impact |
-| 3 | **Rewards** | Knight Cash, Rescue Crew toys, Knight of the Week, the Campus Rescue League and badges |
+| 3 | **Rewards** | Saver Cash, partner rewards, Knight of the Week, the Campus Rescue League and badges |
 | 4 | **Profile** | Open the reusable Knight Pass and manage account settings |
 
 Business accounts see **Kitchen** (the business dashboard and AI listing tools) and **Profile** instead.
@@ -34,7 +34,7 @@ Every feature lives inside these sections:
 
 - EcoKnight AI is opened from a verified rescue and from Impact.
 - Past Surprise Reveals appear in Surprise Bag details.
-- Knight Cash, Rescue Crew toys, Campus Rescue League and Knight of the Week live inside Rewards.
+- Saver Cash, partner rewards, Campus Rescue League and Knight of the Week live inside Rewards.
 - The reusable Knight Pass lives in Profile and identifies the student at any participating business.
 
 ## Bottom-navigation visual direction
@@ -358,33 +358,31 @@ The reward must not silently remove normal Surprise Bag inventory or leave the p
 
 Rewards grow with how often a student orders. One staff-verified pickup is one order, however many bags it held. Cancelled, missed or unverified orders earn nothing.
 
-### Knight Cash
+### Saver Cash
 
-Money on the student's account, earned from verified orders. The wallet shows the balance, the student's tier and how many orders are left to the next reward. The student taps **Pay with QR** and staff scan it at any partner kitchen to take up to the balance off the bill.
+Money on the student's account, earned from verified orders and spent on food at campus partner kitchens. The card shows the balance and how many pickups are left to the next reward. The student taps **Pay** and kitchen staff scan the QR to take up to the balance off the bill. The server refuses to spend more than the balance and never charges the same bill twice.
+
+### Partner rewards
+
+Things that don't belong at a food counter (toys, a keychain, a seed kit, a bike tune-up) come from local shops off campus. These shops don't use KnightSaver, so nothing is scanned: at the counter the student taps **Use at the shop**, confirms, and shows the cashier a one-time screen with a code, the time it was used and a live clock (so a screenshot can't be reused). Each reward can be used once. The hackathon partners are made-up demo shops; a real launch needs signed partners who fund their rewards.
 
 ### Rewards by orders
 
-Rewards unlock by verified orders and alternate between Knight Cash and a Rescue Crew toy:
+Rewards unlock by verified orders and alternate between Saver Cash and a partner reward:
 
 | Orders | Reward |
 |---|---|
-| 1 | +$1 Knight Cash |
-| 3 | +$2 Knight Cash |
-| 5 | Mystery Capsule (any partner kitchen) |
-| 8 | +$3 Knight Cash |
-| 10 | Sprinkle Squire mini figure (Dunkin', Knights Plaza) |
-| 12 | +$4 Knight Cash |
-| 15 | Bookworm Keychain (Barnie's Coffee & Tea, John C. Hitt Library) |
-| 18 | +$5 Knight Cash |
-| 20 | Carrot Cavalier squishy (Subway, Knights Plaza) |
-| 25 | +$8 Knight Cash |
-| 30 | Golden Knight plush (Knightro's) |
-
-Tiers follow orders: Squire (0 to 4), Knight (5 to 14), Champion (15 to 29), Legend (30+).
-
-### Rescue Crew
-
-Small physical toys kept behind the counter at partner kitchens, one per kitchen plus a mystery capsule. An unlocked toy shows a QR; staff scan it and hand the toy over. One of each per student. Real launch needs partner-funded toy stock; the hackathon uses demo data.
+| 1 | +$1 Saver Cash |
+| 3 | +$2 Saver Cash |
+| 5 | Mystery mini toy (Lantern Toys, Waterford Lakes) |
+| 8 | +$3 Saver Cash |
+| 10 | Bookworm keychain (Paper Owl Books, University Blvd) |
+| 12 | +$4 Saver Cash |
+| 15 | Herb seed kit (Sprout & Soil, Oviedo) |
+| 18 | +$5 Saver Cash |
+| 20 | Free bike tune-up (Spoke Line Bikes, Alafaya Trail) |
+| 25 | +$8 Saver Cash |
+| 30 | Golden Knight plush (Lantern Toys, Waterford Lakes) |
 
 ## Profile
 

@@ -111,41 +111,31 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
 }
 
-/// Moon button for the top right of Profile and Kitchen. Tap switches between light and dark;
-/// long press offers "Match iPhone" to follow the system setting again.
-struct ThemeToggleButton: View {
+/// The Dark mode switch in Profile: on is dark, off is light. Until it is first changed, the
+/// app follows the iPhone's setting, and the switch shows what the iPhone is using.
+struct DarkModeToggleRow: View {
     @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let isDark = colorScheme == .dark
-        Button {
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
-                appearance = isDark ? .light : .dark
-            }
-        } label: {
-            Image(systemName: isDark ? "moon.fill" : "moon")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(isDark ? KnightTheme.onAccent : KnightTheme.ink)
-                .frame(width: 44, height: 44)
-                .background(isDark ? KnightTheme.gold : KnightTheme.surface, in: Circle())
-                .overlay {
-                    Circle().stroke(KnightTheme.line, lineWidth: isDark ? 0 : 1)
-                }
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button {
-                appearance = .system
-            } label: {
-                Label("Match iPhone", systemImage: AppAppearance.system.icon)
+        Toggle(isOn: Binding(
+            get: { appearance == .dark || (appearance == .system && colorScheme == .dark) },
+            set: { appearance = $0 ? .dark : .light }
+        )) {
+            HStack(spacing: 13) {
+                Image(systemName: "moon")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(KnightTheme.muted)
+                    .frame(width: 34, height: 34)
+                    .accessibilityHidden(true)
+                Text("Dark mode")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.ink)
             }
         }
-        .accessibilityLabel("Dark mode")
-        .accessibilityValue(isDark ? "On" : "Off")
-        .accessibilityHint("Switches the whole app between light and dark")
+        .tint(KnightTheme.green)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 56)
     }
 }
 

@@ -12,6 +12,10 @@ struct ImpactView: View {
     /// Feedback for demo-history rescues (live ones go to the Kitchen store).
     @AppStorage("knightsaver.impact.ratedCodes") private var ratedCodes = ""
     @State private var sheet: ImpactSheet?
+    /// Recent rescues shown; "Show more" adds the next few.
+    @State private var visibleRescues = Self.rescuesPerPage
+
+    private static let rescuesPerPage = 3
 
     private enum ImpactSheet: Identifiable {
         case feedback(StudentRescue)
@@ -44,10 +48,7 @@ struct ImpactView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        KnightSaverBrandBar()
-                        EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
-                    }
+                    EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
 
                     CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
 
@@ -77,18 +78,45 @@ struct ImpactView: View {
 
     @ViewBuilder
     private func youSection(summary: StudentImpactSummary) -> some View {
-        YourImpactCard(summary: summary)
+        VStack(alignment: .leading, spacing: 10) {
+            YourImpactCard(summary: summary)
+            NavigationLink {
+                CO2eMethodView(summary: summary)
+            } label: {
+                Label("How is CO₂e estimated?", systemImage: "info.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.lake)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
+        }
 
-        let recent = Array(rescues.prefix(5))
+        let all = rescues
+        let recent = Array(all.prefix(visibleRescues))
         if recent.isEmpty {
             FirstRescueCard()
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                BizSectionHeader(title: "Recent rescues")
+                BizSectionHeader(title: "Recent rescues", trailing: "\(all.count) total")
                 VStack(spacing: 0) {
                     ForEach(Array(recent.enumerated()), id: \.element.id) { index, rescue in
                         RescueRow(rescue: rescue)
                         if index < recent.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 64) }
+                    }
+                    if all.count > Self.rescuesPerPage {
+                        Divider().overlay(KnightTheme.line)
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                visibleRescues = recent.count < all.count ? visibleRescues + Self.rescuesPerPage : Self.rescuesPerPage
+                            }
+                        } label: {
+                            Text(recent.count < all.count ? "Show \(min(Self.rescuesPerPage, all.count - recent.count)) more" : "Show less")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(KnightTheme.ink)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .listCard()
@@ -268,16 +296,7 @@ private struct RescueRow: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(ImpactFormat.kg(rescue.foodKg))
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(KnightTheme.ink)
-                Text(rescue.measuredKg == nil ? "Est." : "Weighed")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(rescue.measuredKg == nil ? KnightTheme.muted : KnightTheme.green)
-            }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 60)
@@ -343,5 +362,77 @@ private struct CampusGoalCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - How CO₂e is estimated
+
+/// Explains the CO₂e numbers: the food weight, the factor and its source, a worked example and
+/// the limits. Opened from Impact and from Profile › Help.
+struct CO2eMethodView: View {
+    /// The student's own totals, for a line with their numbers. Nil shows only the example.
+    var summary: StudentImpactSummary?
+
+    private var factor: Double { ImpactRules.co2ePerFoodKg }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Food weight × \(formatted(factor)) = kg CO₂e avoided")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    Text("Every CO₂e number in KnightSaver comes from this one calculation, and only for pickups staff verified.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let summary, summary.bags > 0 {
+                        Divider().overlay(KnightTheme.line)
+                        Text("You: \(ImpactFormat.kg(summary.foodKg)) of food × \(formatted(factor)) ≈ \(ImpactFormat.kg(summary.co2eKg)) CO₂e")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(KnightTheme.green)
+                    }
+                }
+                .bizCard()
+
+                section("1. The food weight",
+                        "When staff weigh a bag at pickup, that weight is used and marked as weighed. Otherwise we estimate \(formatted(BusinessRules.estimatedKgPerItem)) kg per item, about \(formatted(ImpactRules.estimatedKgPerBag)) kg for a typical 3-item bag. That per-item weight is our own assumption, not a measurement, which is why estimated numbers say \u{201C}Est.\u{201D}")
+                section("2. The CO₂e factor",
+                        "Each kilogram of food counts as \(formatted(factor)) kg of CO₂e. This is the world average footprint of food that goes to waste: the FAO estimates about 3.3 billion tonnes of CO₂e for about 1.3 billion tonnes of food wasted a year. It covers growing, processing, transporting and storing the food, but not changes in land use.")
+                section("3. An example",
+                        "One Surprise Bag with 3 items: 3 × \(formatted(BusinessRules.estimatedKgPerItem)) kg = \(formatted(ImpactRules.estimatedKgPerBag)) kg of food. \(formatted(ImpactRules.estimatedKgPerBag)) kg × \(formatted(factor)) ≈ \(formatted(ImpactRules.estimatedKgPerBag * factor)) kg CO₂e.")
+                section("What this doesn't tell you",
+                        "It's an average, not your bag's real footprint: meat and dairy have a much larger footprint than bread or pastries, so a bakery bag is likely below the average and a sandwich with meat above it. It also counts the food's footprint as avoided once it's eaten instead of thrown away, without subtracting your trip to pick it up. Treat the numbers as a fair estimate of the right size, not a measurement.")
+
+                Text("Source: FAO (2013), Food Wastage Footprint: Impacts on Natural Resources.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(KnightTheme.screenPadding)
+            .padding(.bottom, 24)
+        }
+        .background(KnightTheme.paper)
+        .navigationTitle("How CO₂e is estimated")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func section(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+            Text(body)
+                .font(.system(size: 15))
+                .foregroundStyle(KnightTheme.muted)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// 2.5, 0.45, 1.1: no trailing zeros.
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...2)))
     }
 }

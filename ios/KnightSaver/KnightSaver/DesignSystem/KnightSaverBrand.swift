@@ -20,45 +20,28 @@ struct KnightSaverLogo: View {
     }
 }
 
-/// "KnightSaver" with the logo on its left. Sits at the very top of every tab.
-/// Optional trailing content (for example the dark mode button on Business).
-struct KnightSaverBrandBar<Trailing: View>: View {
-    private let trailing: Trailing
+/// "KnightSaver" with the logo on its left, on the sign-in screen. The tabs inside the app
+/// start with their own page title instead.
+struct KnightSaverBrandBar: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    init(@ViewBuilder trailing: () -> Trailing) {
-        self.trailing = trailing()
-    }
-
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            HStack(spacing: 10) {
-                KnightSaverLogo(size: 36)
-                // Plain flat colors, no shadow or effects: pure black/white and UCF gold.
-                HStack(spacing: 0) {
-                    Text("Knight")
-                        .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
-                    Text("Saver")
-                        .foregroundStyle(KnightTheme.gold)
-                }
-                .font(.system(size: 23, weight: .bold, design: .rounded))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+        HStack(spacing: 10) {
+            KnightSaverLogo(size: 36)
+            // Plain flat colors, no shadow or effects: pure black/white and UCF gold.
+            HStack(spacing: 0) {
+                Text("Knight")
+                    .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
+                Text("Saver")
+                    .foregroundStyle(KnightTheme.gold)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("KnightSaver")
-            .accessibilityAddTraits(.isHeader)
-
-            Spacer(minLength: 8)
-
-            trailing
+            .font(.system(size: 23, weight: .bold, design: .rounded))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
         }
         .frame(minHeight: 44)
-    }
-}
-
-extension KnightSaverBrandBar where Trailing == EmptyView {
-    init() {
-        self.init { EmptyView() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("KnightSaver")
+        .accessibilityAddTraits(.isHeader)
     }
 }

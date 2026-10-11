@@ -10,6 +10,7 @@ private enum ProfileRoute: Hashable {
     case notifications
     case pickupPreferences
     case howItWorks
+    case co2Estimates
     case cancellationPolicy
     case help
     case legal
@@ -36,10 +37,7 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        KnightSaverBrandBar { ThemeToggleButton() }
-                        profileHeader
-                    }
+                    profileHeader
 
                     VStack(alignment: .leading, spacing: 12) {
                         ProfileSectionHeader(
@@ -62,10 +60,13 @@ struct ProfileView: View {
                         ]
                     )
 
+                    AppearanceGroup()
+
                     ProfileLinkGroup(
                         title: "Help",
                         rows: [
                             ProfileLinkItem(route: .howItWorks, title: "How KnightSaver works", icon: "questionmark.circle"),
+                            ProfileLinkItem(route: .co2Estimates, title: "How CO₂e is estimated", icon: "leaf"),
                             ProfileLinkItem(route: .cancellationPolicy, title: "Cancellation policy", icon: "calendar.badge.exclamationmark"),
                             ProfileLinkItem(route: .help, title: "Help and support", icon: "message"),
                             ProfileLinkItem(route: .legal, title: "Privacy and terms", icon: "lock.shield")
@@ -171,6 +172,9 @@ struct ProfileView: View {
                     ProfileArticleSection(title: "Verify", body: "Payment, impact, and feedback eligibility update only after staff verifies your pickup.")
                 ]
             )
+        case .co2Estimates:
+            CO2eMethodView(summary: StudentImpactSummary(rescues: businessStore.verifiedRescues(passToken: pass.verificationToken)
+                + (pass.verificationToken == KnightPass.sample.verificationToken ? ImpactDemo.sampleHistory : [])))
         case .cancellationPolicy:
             ProfileArticleView(
                 title: "Cancellation policy",
@@ -361,6 +365,25 @@ private struct ProfileLinkGroup: View {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(KnightTheme.line, lineWidth: 1)
             }
+        }
+    }
+}
+
+/// "Appearance" on Profile, for students and businesses: the Dark mode switch.
+private struct AppearanceGroup: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Appearance")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            DarkModeToggleRow()
+                .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(KnightTheme.line, lineWidth: 1)
+                }
         }
     }
 }
@@ -1448,10 +1471,7 @@ struct BusinessAccountView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        KnightSaverBrandBar { ThemeToggleButton() }
-                        header
-                    }
+                    header
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Business details")
@@ -1475,6 +1495,8 @@ struct BusinessAccountView: View {
                     }
 
                     bagLimitSection
+
+                    AppearanceGroup()
 
                     VStack(spacing: 12) {
                         TourReplayButton()

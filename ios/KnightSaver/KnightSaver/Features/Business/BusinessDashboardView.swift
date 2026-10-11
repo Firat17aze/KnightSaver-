@@ -42,9 +42,10 @@ struct BusinessDashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            KnightSaverBrandBar {
-                ThemeToggleButton()
-            }
+            Text("Kitchen")
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+                .accessibilityAddTraits(.isHeader)
 
             ScanKnightPassButton {
                 sheet = .scan(expected: nil)

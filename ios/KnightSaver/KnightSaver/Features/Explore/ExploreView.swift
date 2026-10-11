@@ -121,7 +121,6 @@ struct ExploreView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 30) {
                     VStack(alignment: .leading, spacing: 16) {
-                        KnightSaverBrandBar()
                         header
                         searchField
                     }
@@ -286,25 +285,25 @@ struct ExploreView: View {
                             SurpriseBagCard(bag: bag)
                         }
                         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
-                        // Width follows the screen (minus the page gutters), leaving a peek of
-                        // the next card so the shelf reads as scrollable on every iPhone size.
-                        .containerRelativeFrame(.horizontal) { availableWidth, _ in
-                            min(Self.maxCardWidth, availableWidth - Self.nextCardPeek)
-                        }
+                        // Fills the space between the shelf margins, so the card sits centered and
+                        // the cards on both sides peek in by the same amount.
+                        .containerRelativeFrame(.horizontal)
                         .accessibilityLabel("\(bag.business), Surprise Bag, \(bag.availabilityText), \(bag.formattedPrice), pickup \(bag.pickupWindow)")
                     }
                 }
                 .scrollTargetLayout()
             }
-            .contentMargins(.horizontal, KnightTheme.screenPadding, for: .scrollContent)
+            .contentMargins(.horizontal, Self.shelfMargin, for: .scrollContent)
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
         }
     }
 
     private static let cardSpacing: CGFloat = 14
-    private static let nextCardPeek: CGFloat = 40
-    private static let maxCardWidth: CGFloat = 340
+    /// How much of the previous and next card shows on each side.
+    private static let cardPeek: CGFloat = 20
+    /// Equal on both sides; snapping lines each card up with it, so every card ends up centered.
+    private static let shelfMargin: CGFloat = cardSpacing + cardPeek
 
     /// "Current location" was only saved once when picked. Refresh it when Explore opens
     /// (at most every two minutes) so distances follow the student around campus.

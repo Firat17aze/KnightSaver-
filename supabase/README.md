@@ -33,6 +33,29 @@ Dashboard setup, once:
 
 Each business has `businesses.max_bags_per_listing` (1–100, default 10): the most Surprise Bags one listing may have. Managers set it from the app's Profile tab through `set_max_bags_per_listing`, and the app reads it with `get_business_settings`. A trigger on `listings` refuses any new listing above the limit and any edit that grows a listing past it, so neither the AI proposal nor manual entry can beat it. Apply it by running `migrations/202610120001_business_bag_limit.sql` in the SQL Editor.
 
+## Rewards
+
+`migrations/202610130001_rewards.sql` backs the app's Rewards tab. Everything counts staff-verified pickups only (one `impact_events` row per verified pickup):
+
+- **Saver Cash**: `reward_milestones` says what each number of pickups unlocks. Earned cash isn't stored, it follows from the pickups; `saver_cash_spends` records what staff took off bills, so the balance is earned minus spent.
+- **Partner rewards**: toys, a keychain, a seed kit and a bike tune-up from shops off campus (`reward_partners`, demo names). The shops don't use KnightSaver: the student calls `redeem_partner_reward` at the counter and shows the one-time code, recorded once in `partner_reward_redemptions`.
+- **Campus Rescue League**: one point per campus-local day with a verified pickup. Only students who joined are listed, by nickname. `league_demo_entries` holds hackathon rivals so the board isn't empty; delete them before launch. Raw `leaderboard_events` rows are now readable only by their owner.
+- Students call `get_my_rewards()`, `get_league('week' | 'all_time')`, `set_league_profile(opt_in, nickname)` and `redeem_partner_reward(reward_id)`.
+- Kitchen staff scan the student's Saver Cash QR and call `scan_rewards` and `redeem_saver_cash` (idempotent per bill, can't overspend). Both default to the staff member's own location.
+
+The same migration fixes `get_knight_pass_token` and `scan_knight_pass`: they called pgcrypto without its `extensions.` schema, so on Supabase they failed with "function gen_random_bytes(integer) does not exist" and the app fell back to a random pass token.
+
+`seed_rewards_demo.sql` (optional, hackathon only) gives `alex@ucf.edu` six earlier verified pickups at Knightro's and joins Alex to the league as "Sir Alex", so the server-backed Rewards tab has something to show.
+
+## Applying the migrations
+
+Run these in the SQL Editor, in order. Each is safe to run again:
+
+1. `migrations/202610110001_ucf_student_emails.sql`
+2. `migrations/202610120001_business_bag_limit.sql`
+3. `migrations/202610130001_rewards.sql`
+4. Optional: `seed_rewards_demo.sql` (after both demo accounts have signed in once)
+
 Critical writes are RPC-only:
 
 - `reserve_listing` locks inventory so the final bag cannot be oversold.

@@ -1,19 +1,24 @@
 import SwiftUI
 
-/// The Rewards tab: Knight Cash, the Rescue Crew toys, Knight of the Week,
-/// the Campus Rescue League and badges. Everything here counts staff-verified pickups only.
+/// The Rewards tab: Saver Cash (spent at campus partner kitchens), partner rewards from shops off
+/// campus, the Campus Rescue League (with Knight of the Week) and badges. Everything counts staff-verified pickups only. Supabase accounts read
+/// their numbers from the server (`get_my_rewards`, `get_league`); local accounts use the
+/// phone's own pickup history.
 struct RewardsView: View {
     let student: KnightPass
 
     @EnvironmentObject var businessStore: BusinessStore
+    @EnvironmentObject var sessionStore: SessionStore
     @AppStorage("knightsaver.league.joined") private var leagueJoined = true
     @AppStorage("knightsaver.league.nickname") private var storedNickname = ""
+    /// Partner rewards used in the local demo: "id|seconds|code" entries. Server accounts keep these on the server.
+    @AppStorage("knightsaver.rewards.redeemed") private var localRedemptions = ""
     @State private var period: LeaguePeriod = .week
     @State private var showSettings = false
     @State private var selectedBadge: RewardBadge?
-    /// Rescue Crew toys the student has picked up, by id.
-    @AppStorage("knightsaver.rewards.collected") private var collectedIDs = ""
     @State private var qrSheet: RewardQR?
+    @State private var server: RewardsSnapshot?
+    @State private var serverBoards: [LeaguePeriod: LeagueBoard] = [:]
 
     private var isDemoStudent: Bool { student.verificationToken == KnightPass.sample.verificationToken }
 
@@ -24,66 +29,81 @@ struct RewardsView: View {
         return (live + history).sorted { $0.verifiedAt > $1.verifiedAt }
     }
 
-    private var nickname: String {
-        if !storedNickname.isEmpty { return storedNickname }
+    private var suggestedNickname: String {
         let first = student.displayName.split(separator: " ").first.map(String.init) ?? "Knight"
-        return "Sir \(first)"
+        return "Sir \(first.prefix(1).uppercased() + first.dropFirst())"
+    }
+
+    private var localSnapshot: RewardsSnapshot {
+        let rescues = rescues
+        let summary = StudentImpactSummary(rescues: rescues)
+        return RewardsSnapshot(
+            stats: BadgeStats(rescues: rescues),
+            cashEarnedCents: RewardRoad.cashEarnedCents(orders: rescues.count),
+            cashSpentCents: 0,
+            redeemed: Self.parseRedemptions(localRedemptions),
+            pointsThisWeek: summary.pointsThisWeek(),
+            pointsAllTime: summary.pointsAllTime,
+            leagueJoined: leagueJoined,
+            nickname: storedNickname.isEmpty ? suggestedNickname : storedNickname
+        )
+    }
+
+    private func board(_ period: LeaguePeriod, for data: RewardsSnapshot) -> LeagueBoard {
+        if server != nil, let board = serverBoards[period] { return board }
+        return LeagueBoard.demo(
+            period: period,
+            nickname: data.leagueJoined ? data.nickname : nil,
+            yourPoints: period == .week ? data.pointsThisWeek : data.pointsAllTime
+        )
     }
 
     var body: some View {
-        let allRescues = rescues
-        let summary = StudentImpactSummary(rescues: allRescues)
-        let weekEntries = CampusLeague.entries(period: .week, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsThisWeek())
-        let badges = RewardRules.badges(rescues: allRescues, summary: summary, wonKnightOfTheWeek: weekEntries.first?.isYou == true)
-        // One verified pickup is one order, however many bags it held.
-        let orders = allRescues.count
+        let data = server ?? localSnapshot
+        let weekBoard = board(.week, for: data)
+        let badges = RewardRules.badges(data.stats, isKnightOfTheWeek: weekBoard.leader?.entry.isYou == true)
 
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        KnightSaverBrandBar()
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Rewards")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundStyle(KnightTheme.ink)
-                                .accessibilityAddTraits(.isHeader)
-                            Text("The more you order, the more you earn.")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(KnightTheme.muted)
-                        }
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rewards")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Earned from staff-verified pickups")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(KnightTheme.muted)
                     }
 
-                    KnightCashCard(orders: orders, balanceCents: RewardRoad.cashEarnedCents(orders: orders)) {
+                    SaverCashCard(pickups: data.stats.pickups, balanceCents: data.cashBalanceCents) {
                         qrSheet = .cash
                     }
 
-                    crewSection(orders: orders)
+                    partnerSection(data)
 
-                    // The podium follows the league's period picker.
-                    KnightOfTheWeekCard(
-                        period: period,
-                        podium: Array((period == .week ? weekEntries : CampusLeague.entries(
-                            period: .allTime, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsAllTime
-                        )).prefix(3))
-                    )
-
-                    leagueSection(summary: summary)
+                    leagueSection(board: period == .week ? weekBoard : board(.allTime, for: data), joined: data.leagueJoined)
 
                     badgeSection(badges)
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
-                .padding(.top, 10)
+                .padding(.top, 16)
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
             .reservesTabBarSpace()
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
+            .refreshable { await loadFromServer() }
+            .task(id: sessionStore.accessToken) { await loadFromServer() }
             .sheet(isPresented: $showSettings) {
-                LeagueSettingsView(joined: $leagueJoined, nickname: $storedNickname, suggested: nickname)
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
+                LeagueSettingsView(
+                    joined: data.leagueJoined,
+                    nickname: data.nickname ?? suggestedNickname,
+                    onSave: saveLeagueSettings
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
             .sheet(item: $selectedBadge) { badge in
                 BadgeDetailView(badge: badge)
@@ -91,152 +111,192 @@ struct RewardsView: View {
                     .presentationDragIndicator(.visible)
             }
             .sheet(item: $qrSheet) { sheet in
-                rewardQRSheet(sheet, orders: orders)
+                rewardSheet(sheet, data: data)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
         }
     }
 
-    // MARK: Knight Cash and toys
+    // MARK: Server
 
-    private var collected: Set<String> {
-        Set(collectedIDs.split(separator: ",").map(String.init))
+    /// Loads the student's rewards and both league boards. Keeps the local numbers when the
+    /// account isn't on the server or the server can't be reached.
+    private func loadFromServer() async {
+        guard let accessToken = sessionStore.accessToken else {
+            server = nil
+            serverBoards = [:]
+            return
+        }
+        do {
+            async let rewards = KnightSaverBackend.shared.fetchRewards(accessToken: accessToken)
+            async let week = KnightSaverBackend.shared.fetchLeague(period: "week", accessToken: accessToken)
+            async let allTime = KnightSaverBackend.shared.fetchLeague(period: "all_time", accessToken: accessToken)
+            let (loadedRewards, loadedWeek, loadedAllTime) = try await (rewards, week, allTime)
+            server = RewardsSnapshot(loadedRewards)
+            serverBoards = [.week: LeagueBoard(loadedWeek), .allTime: LeagueBoard(loadedAllTime)]
+        } catch {
+            server = nil
+            serverBoards = [:]
+        }
     }
 
-    private func markCollected(_ toy: Collectible) {
-        guard !collected.contains(toy.id) else { return }
-        collectedIDs = (collectedIDs.isEmpty ? "" : collectedIDs + ",") + toy.id
+    /// Returns an error to show in the settings sheet, or nil once saved.
+    private func saveLeagueSettings(joined: Bool, nickname: String) async -> String? {
+        let trimmed = String(nickname.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        if joined && trimmed.count < 2 { return "Use a nickname of at least 2 characters." }
+        guard server != nil, let accessToken = sessionStore.accessToken else {
+            leagueJoined = joined
+            storedNickname = trimmed
+            return nil
+        }
+        do {
+            try await KnightSaverBackend.shared.setLeagueProfile(optIn: joined, nickname: trimmed, accessToken: accessToken)
+            await loadFromServer()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 
-    /// Short code printed under each QR, so staff can type it if the camera struggles.
+    // MARK: Partner rewards
+
+    private static func parseRedemptions(_ stored: String) -> [String: PartnerRedemption] {
+        var result: [String: PartnerRedemption] = [:]
+        for entry in stored.split(separator: ",") {
+            let parts = entry.split(separator: "|").map(String.init)
+            guard parts.count == 3, let seconds = Double(parts[1]) else { continue }
+            result[parts[0]] = PartnerRedemption(code: parts[2], redeemedAt: Date(timeIntervalSince1970: seconds))
+        }
+        return result
+    }
+
+    /// Uses a partner reward: on the server for Supabase accounts, on this phone for the local demo.
+    /// Returns an error to show, or nil once used.
+    private func redeem(_ reward: PartnerReward) async -> String? {
+        if server != nil, let accessToken = sessionStore.accessToken {
+            do {
+                _ = try await KnightSaverBackend.shared.redeemPartnerReward(rewardID: reward.id, accessToken: accessToken)
+                await loadFromServer()
+                return nil
+            } catch {
+                return error.localizedDescription
+            }
+        }
+        guard Self.parseRedemptions(localRedemptions)[reward.id] == nil else { return nil }
+        let code = "KS-" + String(UUID().uuidString.prefix(6))
+        let entry = "\(reward.id)|\(Int(Date().timeIntervalSince1970))|\(code)"
+        localRedemptions = localRedemptions.isEmpty ? entry : localRedemptions + "," + entry
+        return nil
+    }
+
+    /// Short code printed under the Saver Cash QR, so staff can type it if the camera struggles.
     private func counterCode(_ suffix: String) -> String {
         let tail = String(student.verificationToken.suffix(4)).uppercased()
         return "KS-\(tail)-\(suffix.uppercased())"
     }
 
-    private func crewSection(orders: Int) -> some View {
+    private func partnerSection(_ data: RewardsSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             BizSectionHeader(
-                title: "Rescue Crew",
-                subtitle: "Little toys waiting behind partner counters",
-                trailing: "\(RewardRoad.crew.filter { collected.contains($0.id) }.count) of \(RewardRoad.crew.count)"
+                title: "Partner rewards",
+                subtitle: "From local shops off campus",
+                trailing: "\(data.redeemed.count) of \(RewardRoad.partnerRewards.count)"
             )
 
-            ScrollView(.horizontal) {
-                HStack(spacing: 12) {
-                    ForEach(RewardRoad.crew) { toy in
-                        let unlockAt = RewardRoad.unlockOrders(for: toy)
-                        let isReady = orders >= unlockAt && !collected.contains(toy.id)
-                        Button {
-                            qrSheet = .collectible(toy)
-                        } label: {
-                            CrewCard(toy: toy, unlockAt: unlockAt, orders: orders, isCollected: collected.contains(toy.id))
-                        }
-                        .buttonStyle(.plain)
-                        // Only a toy ready to pick up opens its QR.
-                        .allowsHitTesting(isReady)
+            VStack(spacing: 0) {
+                ForEach(Array(RewardRoad.partnerRewards.enumerated()), id: \.element.id) { index, reward in
+                    PartnerRewardRow(
+                        reward: reward,
+                        unlockAt: RewardRoad.unlockOrders(for: reward),
+                        pickups: data.stats.pickups,
+                        isUsed: data.redeemed[reward.id] != nil
+                    ) {
+                        qrSheet = .partner(reward)
+                    }
+                    if index < RewardRoad.partnerRewards.count - 1 {
+                        Divider().overlay(KnightTheme.line).padding(.leading, 70)
                     }
                 }
-                .padding(.vertical, 2)
             }
-            .scrollIndicators(.hidden)
-            .scrollClipDisabled()
+            .rewardsListCard()
         }
     }
 
     @ViewBuilder
-    private func rewardQRSheet(_ sheet: RewardQR, orders: Int) -> some View {
+    private func rewardSheet(_ sheet: RewardQR, data: RewardsSnapshot) -> some View {
         switch sheet {
         case .cash:
             RewardQRView(
-                eyebrow: "Knight Cash",
-                title: KnightCash.format(RewardRoad.cashEarnedCents(orders: orders)),
-                subtitle: "Pay at any partner kitchen counter",
+                eyebrow: "Saver Cash",
+                title: SaverCash.format(data.cashBalanceCents),
+                subtitle: "Pay at any campus partner kitchen",
                 payload: "knightsaver://cash/\(student.verificationToken)",
                 code: counterCode("CASH"),
-                tint: KnightTheme.green,
-                icon: "dollarsign",
-                note: "Staff scan this and take up to your balance off the bill. Your balance updates after the scan.",
-                onCollected: nil
+                note: "Staff scan this and take up to your balance off the bill. Your balance updates after the scan."
             )
-        case .collectible(let toy):
-            RewardQRView(
-                eyebrow: "Rescue Crew",
-                title: toy.name,
-                subtitle: "Pick up at \(toy.pickupPlace)",
-                payload: "knightsaver://reward/\(student.verificationToken)/\(toy.id)",
-                code: counterCode(String(toy.id.prefix(4))),
-                tint: toy.brand?.secondary ?? KnightTheme.gold,
-                icon: toy.icon,
-                note: "\(toy.detail). Show this at the counter and staff hand it over. One per student.",
-                onCollected: collected.contains(toy.id) ? nil : { markCollected(toy) }
-            )
+        case .partner(let reward):
+            PartnerRewardSheet(
+                reward: reward,
+                unlockAt: RewardRoad.unlockOrders(for: reward),
+                pickups: data.stats.pickups,
+                redemption: data.redeemed[reward.id]
+            ) {
+                await redeem(reward)
+            }
         }
     }
 
     // MARK: League
 
-    private func leagueSection(summary: StudentImpactSummary) -> some View {
-        let yourPoints = period == .week ? summary.pointsThisWeek() : summary.pointsAllTime
-        let entries = CampusLeague.entries(period: period, nickname: leagueJoined ? nickname : nil, yourPoints: yourPoints)
-        let top = Array(entries.prefix(5))
-        let you = entries.enumerated().first { $0.element.isYou }
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 4) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Rescue League")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                        .accessibilityAddTraits(.isHeader)
-                    Text("1 point a day you rescue")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(KnightTheme.muted)
-                }
-                Spacer(minLength: 8)
-                Menu {
-                    Picker("Period", selection: $period) {
-                        ForEach(LeaguePeriod.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(period.rawValue)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 34)
-                    .background(KnightTheme.surface, in: Capsule())
-                    .overlay { Capsule().stroke(KnightTheme.line, lineWidth: 1) }
-                }
-                .accessibilityLabel("Period, \(period.rawValue)")
+    private func leagueSection(board: LeagueBoard, joined: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                BizSectionHeader(title: "Rescue League", subtitle: "1 point for each day you pick up")
                 Button {
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(KnightTheme.ink)
-                        .frame(width: 40, height: 44)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
+                        .frame(width: 44, height: 44)
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("League settings")
             }
 
+            Picker("Period", selection: $period) {
+                ForEach(LeaguePeriod.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+
             VStack(spacing: 0) {
-                ForEach(Array(top.enumerated()), id: \.element.id) { index, entry in
-                    LeagueRow(rank: index + 1, entry: entry)
-                    if index < top.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 52) }
-                }
-                if let you, you.offset >= 5 {
+                if period == .week, let leader = board.leader {
+                    KnightOfTheWeekRow(leader: leader, endsAt: board.weekEndsAt)
                     Divider().overlay(KnightTheme.line)
-                    LeagueRow(rank: you.offset + 1, entry: you.element)
+                }
+                ForEach(Array(board.top.enumerated()), id: \.element.id) { index, standing in
+                    LeagueRow(standing: standing)
+                    if index < board.top.count - 1 {
+                        Divider().overlay(KnightTheme.line).padding(.leading, 54)
+                    }
+                }
+                if let you = board.you, !board.top.contains(you) {
+                    Divider().overlay(KnightTheme.line)
+                    LeagueRow(standing: you)
+                }
+                if board.top.isEmpty {
+                    Text("No one has joined the league yet.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                        .frame(maxWidth: .infinity, minHeight: 56)
                 }
             }
             .rewardsListCard()
 
-            Text("Joining is optional and shows only your nickname. Cancelled, missed or unverified pickups earn nothing.")
+            Text(joined
+                 ? "Others see only your nickname. Cancelled, missed or unverified pickups earn nothing."
+                 : "You're not in the league. Join from the settings button; only your nickname is shown.")
                 .font(.system(size: 12))
                 .foregroundStyle(KnightTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -247,18 +307,9 @@ struct RewardsView: View {
 
     private func badgeSection(_ badges: [RewardBadge]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Badges")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer()
-                Text("\(badges.filter(\.isEarned).count) of \(badges.count)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.muted)
-            }
+            BizSectionHeader(title: "Badges", trailing: "\(badges.filter(\.isEarned).count) of \(badges.count)")
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 18) {
                 ForEach(badges) { badge in
                     Button {
                         selectedBadge = badge
@@ -268,7 +319,7 @@ struct RewardsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
         }
     }
 }
@@ -283,184 +334,307 @@ private extension View {
     }
 }
 
-// MARK: - Knight Cash
+// MARK: - Server data
+
+extension RewardsSnapshot {
+    init(_ remote: RemoteRewards) {
+        self.init(
+            stats: BadgeStats(
+                pickups: remote.orders,
+                bags: remote.bags,
+                kitchens: remote.kitchens,
+                weeklyStreak: remote.weeklyStreak,
+                measuredKg: remote.measuredKg,
+                co2eKg: remote.co2eKg,
+                hasNightPickup: remote.nightPickup
+            ),
+            cashEarnedCents: remote.cashEarnedCents,
+            cashSpentCents: remote.cashSpentCents,
+            redeemed: Dictionary(
+                remote.redeemed.map { ($0.rewardID, PartnerRedemption(code: $0.code, redeemedAt: $0.redeemedAt)) },
+                uniquingKeysWith: { first, _ in first }
+            ),
+            pointsThisWeek: remote.pointsThisWeek,
+            pointsAllTime: remote.pointsAllTime,
+            leagueJoined: remote.leagueOptIn,
+            nickname: remote.leagueNickname
+        )
+    }
+}
+
+extension LeagueBoard {
+    init(_ remote: RemoteLeague) {
+        func standing(_ row: RemoteLeague.Row) -> LeagueStanding {
+            LeagueStanding(rank: row.rank, entry: LeagueEntry(name: row.nickname, points: row.points, isYou: row.isYou))
+        }
+        self.init(top: remote.entries.map(standing), you: remote.you.map(standing), weekEndsAt: remote.weekEndsAt)
+    }
+}
+
+// MARK: - Saver Cash
 
 private enum RewardQR: Identifiable {
     case cash
-    case collectible(Collectible)
+    case partner(PartnerReward)
 
     var id: String {
         switch self {
         case .cash: "cash"
-        case .collectible(let toy): "toy-\(toy.id)"
+        case .partner(let reward): "partner-\(reward.id)"
         }
     }
 }
 
-/// The wallet: Knight Cash earned from verified orders, paid with a QR at the counter.
-private struct KnightCashCard: View {
-    let orders: Int
+/// Saver Cash: money earned from verified pickups, paid with a QR at the counter.
+private struct SaverCashCard: View {
+    let pickups: Int
     let balanceCents: Int
     let onPay: () -> Void
 
     var body: some View {
-        let next = RewardRoad.next(after: orders)
-        let tier = KnightTier(orders: orders)
+        let next = RewardRoad.next(after: pickups)
 
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
-                // Flat gold coin with a K, the wallet's mark.
-                Text("K")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.onAccent)
-                    .frame(width: 40, height: 40)
-                    .background(KnightTheme.gold, in: Circle())
-                    .overlay { Circle().stroke(KnightTheme.goldDeep, lineWidth: 2).padding(3) }
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Knight Cash")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                    Text("Spend it at any partner kitchen")
-                        .font(.system(size: 12, weight: .medium))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Saver Cash")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(KnightTheme.muted)
+                    Text(SaverCash.format(balanceCents))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(KnightTheme.ink)
+                        .contentTransition(.numericText())
+                        .accessibilityLabel("Saver Cash balance \(SaverCash.format(balanceCents))")
                 }
                 Spacer(minLength: 8)
-                Label(tier.rawValue, systemImage: "shield.lefthalf.filled")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.lake)
-                    .padding(.horizontal, 9)
-                    .frame(minHeight: 26)
-                    .background(KnightTheme.lake.opacity(0.12), in: Capsule())
-                    .accessibilityLabel("\(tier.rawValue) tier")
-            }
-
-            HStack(alignment: .lastTextBaseline) {
-                Text(KnightCash.format(balanceCents))
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(KnightTheme.ink)
-                    .contentTransition(.numericText())
-                    .accessibilityLabel("Balance \(KnightCash.format(balanceCents))")
-                Spacer(minLength: 8)
                 Button(action: onPay) {
-                    Label("Pay with QR", systemImage: "qrcode")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Label("Pay", systemImage: "qrcode")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.onAccent)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 18)
                         .frame(minHeight: 44)
-                        .background(KnightTheme.gold, in: Capsule())
+                        .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(balanceCents == 0)
-                .opacity(balanceCents == 0 ? 0.5 : 1)
+                .opacity(balanceCents == 0 ? 0.45 : 1)
+                .accessibilityHint("Shows a QR code for the counter")
             }
+
+            Text("\(pickups) verified pickup\(pickups == 1 ? "" : "s") · spend it at any partner kitchen")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(KnightTheme.muted)
 
             Divider().overlay(KnightTheme.line)
 
             if let next {
-                let toGo = next.orders - orders
+                let toGo = next.orders - pickups
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: next.icon)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(KnightTheme.green)
-                        Text("\(toGo) more order\(toGo == 1 ? "" : "s") to \(next.title)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(KnightTheme.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                    }
-                    BizProgressBar(progress: RewardRoad.progressToNext(orders: orders), tint: KnightTheme.green, height: 8)
+                    Text("\(toGo) more pickup\(toGo == 1 ? "" : "s") to \(next.title)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(KnightTheme.ink)
+                    BizProgressBar(progress: RewardRoad.progressToNext(orders: pickups), tint: KnightTheme.green, height: 6)
                 }
                 .accessibilityElement(children: .combine)
             } else {
-                Label("Every reward unlocked. Legend.", systemImage: "crown.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                Text("You've unlocked every reward.")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
             }
         }
         .bizCard()
     }
 }
 
-// MARK: - Rescue Crew
+// MARK: - Partner rewards
 
-/// A toy box: brand colors once unlocked, a dim silhouette until then.
-private struct CrewCard: View {
-    let toy: Collectible
+/// One partner reward: the shop's color once unlocked, plain until then.
+private struct PartnerRewardRow: View {
+    let reward: PartnerReward
     let unlockAt: Int
-    let orders: Int
-    let isCollected: Bool
+    let pickups: Int
+    let isUsed: Bool
+    let onOpen: () -> Void
 
     var body: some View {
-        let unlocked = orders >= unlockAt
-        // The mystery capsule has no kitchen, so it gets the app's gold.
-        let primary = toy.brand?.primary ?? KnightTheme.gold
-        let secondary = toy.brand?.secondary ?? KnightTheme.onAccent
+        let unlocked = pickups >= unlockAt
 
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(unlocked ? primary : KnightTheme.wash)
-                Image(systemName: toy.icon)
-                    .font(.system(size: 38, weight: .bold))
-                    .foregroundStyle(unlocked ? secondary : KnightTheme.muted.opacity(0.35))
-                if !unlocked {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 11, weight: .bold))
+        Button(action: onOpen) {
+            HStack(spacing: 14) {
+                Image(systemName: reward.icon)
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(unlocked && !isUsed ? reward.partner.onTint : KnightTheme.placeholder)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        unlocked && !isUsed ? reward.partner.tint : KnightTheme.wash,
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(reward.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(KnightTheme.ink)
+                        .lineLimit(1)
+                    Text(reward.place)
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
-                        .frame(width: 24, height: 24)
-                        .background(KnightTheme.surface, in: Circle())
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(8)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                if isUsed {
+                    Label("Used", systemImage: "checkmark")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.muted)
+                } else if unlocked {
+                    Text("Use")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.onAccent)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 34)
+                        .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } else {
+                    Text("At \(unlockAt) pickups")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
                 }
             }
-            .frame(height: 96)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(toy.name)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                Text(toy.store)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted)
-                    .lineLimit(1)
-            }
-
-            status(unlocked: unlocked)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 66)
+            .contentShape(Rectangle())
         }
-        .padding(10)
-        .frame(width: 148)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(KnightTheme.line, lineWidth: 1)
-        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityHint(isUsed ? "Shows when it was used" : unlocked ? "Use it at the shop" : "Unlocks at \(unlockAt) verified pickups")
     }
+}
 
-    @ViewBuilder
-    private func status(unlocked: Bool) -> some View {
-        if isCollected {
-            Label("Collected", systemImage: "checkmark.seal.fill")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.green)
-                .frame(minHeight: 26)
-        } else if unlocked {
-            Label("Show QR", systemImage: "qrcode")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.onAccent)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 26)
-                .background(KnightTheme.gold, in: Capsule())
-        } else {
-            Text("\(unlockAt - orders) more order\(unlockAt - orders == 1 ? "" : "s")")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(KnightTheme.muted)
-                .frame(minHeight: 26)
+/// A partner reward. Off-campus shops don't scan anything: at the counter the student taps
+/// "Use at the shop", and the cashier sees a one-time screen with a code and a live clock.
+private struct PartnerRewardSheet: View {
+    let reward: PartnerReward
+    let unlockAt: Int
+    let pickups: Int
+    let redemption: PartnerRedemption?
+    let onRedeem: () async -> String?
+
+    @State private var confirm = false
+    @State private var isWorking = false
+    @State private var error: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                Image(systemName: reward.icon)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(reward.partner.onTint)
+                    .frame(width: 64, height: 64)
+                    .background(reward.partner.tint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(.top, 30)
+                    .accessibilityHidden(true)
+
+                VStack(spacing: 6) {
+                    Text(reward.name)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                        .multilineTextAlignment(.center)
+                    Text(reward.detail)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(KnightTheme.muted)
+                        .multilineTextAlignment(.center)
+                    Label(reward.place, systemImage: reward.partner.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(KnightTheme.lake)
+                        .padding(.top, 4)
+                }
+                .padding(.horizontal, 24)
+
+                if let redemption {
+                    RedeemedCard(redemption: redemption, place: reward.place)
+                        .padding(.horizontal, KnightTheme.screenPadding)
+                } else if pickups >= unlockAt {
+                    Text("Use it at the \(reward.partner.name) counter: tap the button there and show the screen to the cashier. It works once.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(KnightTheme.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 24)
+                    Button {
+                        confirm = true
+                    } label: {
+                        Text(isWorking ? "Using…" : "Use at the shop")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.onAccent)
+                            .frame(maxWidth: .infinity, minHeight: 54)
+                            .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isWorking)
+                    .padding(.horizontal, KnightTheme.screenPadding)
+                } else {
+                    Text("Unlocks at \(unlockAt) verified pickups. \(unlockAt - pickups) to go.")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+
+                if let error {
+                    Text(error)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(KnightTheme.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 30)
+        }
+        .background(KnightTheme.paper)
+        .alert("Use it now?", isPresented: $confirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Use now") {
+                Task {
+                    isWorking = true
+                    error = await onRedeem()
+                    isWorking = false
+                }
+            }
+        } message: {
+            Text("Only tap this at the \(reward.partner.name) counter. The reward can be used once.")
+        }
+    }
+}
+
+/// What the cashier checks: the code, when it was used, and a live clock so a screenshot can't be reused.
+private struct RedeemedCard: View {
+    let redemption: PartnerRedemption
+    let place: String
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            VStack(spacing: 10) {
+                Label("Used", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.green)
+                Text(redemption.code)
+                    .font(.system(size: 30, weight: .bold, design: .monospaced))
+                    .tracking(2)
+                    .foregroundStyle(KnightTheme.ink)
+                    .textSelection(.enabled)
+                Text("Used \(redemption.redeemedAt.formatted(date: .abbreviated, time: .shortened)) at \(place)")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
+                    .multilineTextAlignment(.center)
+                Text(context.date.formatted(date: .omitted, time: .standard))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(KnightTheme.muted)
+                    .accessibilityLabel("Current time")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(18)
+            .background(KnightTheme.greenWash, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
     }
 }
@@ -473,23 +647,12 @@ private struct RewardQRView: View {
     let subtitle: String
     let payload: String
     let code: String
-    let tint: Color
-    let icon: String
     let note: String
-    /// Set for toys not picked up yet.
-    let onCollected: (() -> Void)?
-
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(KnightTheme.onAccent)
-                        .frame(width: 52, height: 52)
-                        .background(tint, in: Circle())
+                VStack(spacing: 6) {
                     Text(eyebrow)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(KnightTheme.muted)
@@ -502,7 +665,7 @@ private struct RewardQRView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
                 }
-                .padding(.top, 26)
+                .padding(.top, 30)
 
                 // QR on white in both appearances so counter scanners read it.
                 QRCodeView(value: payload)
@@ -528,20 +691,6 @@ private struct RewardQRView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 24)
 
-                if let onCollected {
-                    Button {
-                        onCollected()
-                        dismiss()
-                    } label: {
-                        Label("I got it, mark as collected", systemImage: "checkmark.seal.fill")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.ink)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, KnightTheme.screenPadding)
-                }
             }
             .frame(maxWidth: .infinity)
             .padding(.bottom, 30)
@@ -550,176 +699,100 @@ private struct RewardQRView: View {
     }
 }
 
-// MARK: - Knight of the Week
+// MARK: - League rows and settings
 
-/// Dark card with the podium: first place in the middle, raised and crowned.
-/// "This week" is Knight of the Week with its countdown and prize; "All time" is the hall of fame.
-private struct KnightOfTheWeekCard: View {
-    let period: LeaguePeriod
-    let podium: [LeagueEntry]
+/// The first line of this week's league: who leads, what they win and when the week closes.
+private struct KnightOfTheWeekRow: View {
+    let leader: LeagueStanding
+    let endsAt: Date
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Label(period == .week ? "KNIGHT OF THE WEEK" : "ALL-TIME LEGENDS", systemImage: period == .week ? "crown.fill" : "trophy.fill")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.gold)
-                    Spacer()
-                    Text(period == .week
-                         ? "Ends in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))"
-                         : "Since launch")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+            HStack(spacing: 12) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.goldDeep)
+                    .frame(width: 28)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Knight of the Week: \(leader.entry.isYou ? "you" : leader.entry.name)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(KnightTheme.ink)
+                        .lineLimit(1)
+                    Text("Wins a free Surprise Bag from \(ImpactDemo.weeklySponsor) · ends in \(ImpactFormat.countdown(to: endsAt, now: context.date))")
+                        .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
-                        .foregroundStyle(KnightTheme.paleText)
+                        .foregroundStyle(KnightTheme.muted)
+                        .lineLimit(2)
                 }
-
-                HStack(alignment: .bottom, spacing: 10) {
-                    ForEach([1, 0, 2], id: \.self) { index in
-                        if index < podium.count {
-                            PodiumStep(place: index + 1, entry: podium[index])
-                        } else {
-                            Color.clear.frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .frame(height: 150, alignment: .bottom)
-
-                Label(period == .week ? "Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)" : "Most rescue days since KnightSaver started",
-                      systemImage: period == .week ? "gift.fill" : "sparkles")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(KnightTheme.paleText)
+                Spacer(minLength: 0)
             }
-            .padding(17)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(KnightTheme.night, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
-                    .stroke(KnightTheme.line, lineWidth: 1)
-            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .accessibilityElement(children: .combine)
         }
     }
 }
 
-private struct PodiumStep: View {
-    let place: Int
-    let entry: LeagueEntry
-
-    private var color: Color {
-        switch place {
-        case 1: KnightTheme.gold
-        case 2: KnightTheme.silver
-        default: KnightTheme.bronze
-        }
-    }
-
-    private var height: CGFloat {
-        switch place {
-        case 1: 74
-        case 2: 52
-        default: 38
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 6) {
-            if place == 1 {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(KnightTheme.gold)
-            }
-            Text(entry.isYou ? "\(entry.name) (you)" : entry.name)
-                .font(.system(size: place == 1 ? 14 : 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text("\(entry.points) pt\(entry.points == 1 ? "" : "s")")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(KnightTheme.paleText)
-            Text("\(place)")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.onAccent)
-                .frame(maxWidth: .infinity)
-                .frame(height: height)
-                .background(color, in: UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10, style: .continuous))
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Place \(place), \(entry.name), \(entry.points) points")
-    }
-}
-
-// MARK: - League rows and settings
-
 private struct LeagueRow: View {
-    let rank: Int
-    let entry: LeagueEntry
+    let standing: LeagueStanding
 
     var body: some View {
+        let entry = standing.entry
         HStack(spacing: 12) {
-            Text("\(rank)")
+            Text("\(standing.rank)")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(rank <= 3 ? KnightTheme.onAccent : KnightTheme.muted)
-                .frame(width: 28, height: 28)
-                .background(podium, in: Circle())
+                .foregroundStyle(standing.rank <= 3 ? KnightTheme.ink : KnightTheme.muted)
+                .frame(width: 28)
             Text(entry.name)
                 .font(.system(size: 15, weight: entry.isYou ? .bold : .medium))
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
             if entry.isYou {
-                Text("You")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.green)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(KnightTheme.green.opacity(0.12), in: Capsule())
+                Text("you")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
             }
             Spacer(minLength: 8)
-            Text("\(entry.points.formatted()) pts")
+            Text("\(entry.points.formatted()) pt\(entry.points == 1 ? "" : "s")")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(KnightTheme.ink)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .frame(minHeight: 52)
-        .background(entry.isYou ? KnightTheme.green.opacity(0.08) : Color.clear)
+        .background(entry.isYou ? KnightTheme.wash : Color.clear)
         .accessibilityElement(children: .combine)
-    }
-
-    /// Gold, silver and bronze for the top three.
-    private var podium: Color {
-        switch rank {
-        case 1: KnightTheme.gold
-        case 2: KnightTheme.silver
-        case 3: KnightTheme.bronze
-        default: .clear
-        }
+        .accessibilityLabel("Rank \(standing.rank), \(entry.name)\(entry.isYou ? ", you" : ""), \(entry.points) points")
     }
 }
 
 private struct LeagueSettingsView: View {
-    @Binding var joined: Bool
-    @Binding var nickname: String
-    let suggested: String
+    let joined: Bool
+    let nickname: String
+    let onSave: (_ joined: Bool, _ nickname: String) async -> String?
+
     @Environment(\.dismiss) private var dismiss
-    @State private var draft = ""
+    @State private var draftJoined = true
+    @State private var draftNickname = ""
+    @State private var error: String?
+    @State private var isSaving = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Show me in the league", isOn: $joined)
+                    Toggle("Show me in the league", isOn: $draftJoined)
                         .tint(KnightTheme.green)
-                    if joined {
-                        TextField("Nickname", text: $draft)
+                    if draftJoined {
+                        TextField("Nickname", text: $draftNickname)
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
                     }
                 } footer: {
-                    Text("Only your nickname is shown, never your real name.")
+                    Text(error ?? "Only your nickname is shown, never your real name.")
+                        .foregroundStyle(error == nil ? KnightTheme.muted : KnightTheme.red)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -727,56 +800,49 @@ private struct LeagueSettingsView: View {
             .navigationTitle("League settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        nickname = String(trimmed.prefix(20))
-                        dismiss()
+                    Button(isSaving ? "Saving…" : "Save") {
+                        Task {
+                            isSaving = true
+                            error = await onSave(draftJoined, draftNickname)
+                            isSaving = false
+                            if error == nil { dismiss() }
+                        }
                     }
                     .fontWeight(.semibold)
+                    .disabled(isSaving)
                 }
             }
-            .onAppear { draft = nickname.isEmpty ? suggested : nickname }
+            .onAppear {
+                draftJoined = joined
+                draftNickname = nickname
+            }
         }
     }
 }
 
 // MARK: - Badges
 
+/// Earned badges are filled green; locked ones are an outline.
 private struct BadgeTile: View {
     let badge: RewardBadge
 
     var body: some View {
         VStack(spacing: 7) {
-            ZStack {
-                Circle()
-                    .fill(badge.isEarned ? KnightTheme.gold : KnightTheme.wash)
-                if !badge.isEarned {
-                    // Progress ring around a locked badge.
-                    Circle()
-                        .trim(from: 0, to: badge.progress)
-                        .stroke(KnightTheme.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .padding(1.5)
+            Image(systemName: badge.icon)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(badge.isEarned ? KnightTheme.green : KnightTheme.placeholder)
+                .frame(width: 54, height: 54)
+                .background(badge.isEarned ? KnightTheme.greenWash : KnightTheme.surface, in: Circle())
+                .overlay {
+                    Circle().stroke(badge.isEarned ? Color.clear : KnightTheme.line, lineWidth: 1)
                 }
-                Image(systemName: badge.icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(badge.isEarned ? KnightTheme.onAccent : KnightTheme.muted)
-            }
-            .frame(width: 58, height: 58)
-            .overlay(alignment: .bottomTrailing) {
-                if !badge.isEarned {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(KnightTheme.muted)
-                        .frame(width: 20, height: 20)
-                        .background(KnightTheme.surface, in: Circle())
-                        .overlay { Circle().stroke(KnightTheme.line, lineWidth: 1) }
-                }
-            }
 
             Text(badge.title)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(badge.isEarned ? KnightTheme.ink : KnightTheme.muted)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -784,7 +850,7 @@ private struct BadgeTile: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(badge.title), \(badge.isEarned ? "earned" : "locked, \(badge.progressText)")")
+        .accessibilityLabel("\(badge.title), \(badge.isEarned ? "earned" : "not earned yet, \(badge.progressText)")")
         .accessibilityHint(badge.detail)
     }
 }
@@ -794,14 +860,15 @@ private struct BadgeDetailView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            ZStack {
-                Circle().fill(badge.isEarned ? KnightTheme.gold : KnightTheme.wash)
-                Image(systemName: badge.icon)
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(badge.isEarned ? KnightTheme.onAccent : KnightTheme.muted)
-            }
-            .frame(width: 92, height: 92)
-            .padding(.top, 28)
+            Image(systemName: badge.icon)
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(badge.isEarned ? KnightTheme.green : KnightTheme.placeholder)
+                .frame(width: 88, height: 88)
+                .background(badge.isEarned ? KnightTheme.greenWash : KnightTheme.surface, in: Circle())
+                .overlay {
+                    Circle().stroke(badge.isEarned ? Color.clear : KnightTheme.line, lineWidth: 1)
+                }
+                .padding(.top, 28)
 
             Text(badge.title)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
@@ -811,13 +878,13 @@ private struct BadgeDetailView: View {
                 .foregroundStyle(KnightTheme.muted)
 
             if badge.isEarned {
-                Label("Earned", systemImage: "checkmark.seal.fill")
+                Text("Earned")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.green)
             } else {
                 VStack(spacing: 6) {
-                    BizProgressBar(progress: badge.progress, tint: KnightTheme.green, height: 8)
-                        .frame(width: 200, height: 8)
+                    BizProgressBar(progress: badge.progress, tint: KnightTheme.green, height: 6)
+                        .frame(width: 200, height: 6)
                     Text(badge.progressText)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(KnightTheme.muted)

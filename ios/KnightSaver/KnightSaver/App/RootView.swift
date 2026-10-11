@@ -299,10 +299,6 @@ private struct PlaceholderView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            KnightSaverBrandBar()
-                .padding(.horizontal, KnightTheme.screenPadding)
-                .padding(.top, 10)
-
             Spacer(minLength: 0)
             placeholderContent
             Spacer(minLength: 0)

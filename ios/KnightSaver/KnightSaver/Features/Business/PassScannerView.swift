@@ -14,6 +14,8 @@ struct PassScannerView: View {
         case scanning
         case result(PassScanResult)
         case done(VerifyOutcome)
+        /// A Saver Cash QR from the student's Rewards tab.
+        case reward(RewardQRCode)
     }
 
     private enum CameraState {
@@ -49,6 +51,8 @@ struct PassScannerView: View {
                         resultView(result)
                     case .done(let outcome):
                         doneView(outcome)
+                    case .reward(let code):
+                        RewardCounterPanel(code: code) { phase = .scanning }
                     }
                 }
                 .padding(KnightTheme.screenPadding)
@@ -136,6 +140,11 @@ struct PassScannerView: View {
 
     private func handleScan(_ value: String) {
         guard phase == .scanning else { return }
+        if let reward = RewardQRCode(scanned: value) {
+            haptic(.success)
+            phase = .reward(reward)
+            return
+        }
         let result = store.scan(value)
         switch result {
         case .single(let reservation):
@@ -519,6 +528,150 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         lastValue = value
         lastScanDate = Date()
         onCode?(value)
+    }
+}
+
+// MARK: - Rewards at the counter
+
+/// The QR a student shows from Rewards to pay with Saver Cash: "knightsaver://cash/<pass token>".
+/// Partner rewards are used at shops off campus, so kitchens only see Saver Cash.
+struct RewardQRCode: Hashable {
+    let passToken: String
+
+    init?(scanned value: String) {
+        let parts = value.split(separator: "/").map(String.init)
+        guard parts.count == 3, parts[0] == "knightsaver:", parts[1] == "cash" else { return nil }
+        passToken = parts[2]
+    }
+}
+
+/// Staff take Saver Cash off the bill. The server checks the balance, so the counter can't
+/// overspend, and the same bill can't be charged twice.
+private struct RewardCounterPanel: View {
+    let code: RewardQRCode
+    let onScanAgain: () -> Void
+
+    @EnvironmentObject private var session: SessionStore
+    @State private var scan: RemoteRewardScan?
+    @State private var amountText = ""
+    @State private var result: String?
+    @State private var error: String?
+    @State private var isWorking = false
+    /// One per bill, so a retry after a dropped connection can't charge twice.
+    @State private var billKey = UUID().uuidString
+
+    private var amountCents: Int? {
+        guard let value = Double(amountText.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: ".")),
+              value > 0 else { return nil }
+        return Int((value * 100).rounded())
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if session.accessToken == nil {
+                Text("Saver Cash is kept on the KnightSaver server. Sign in to the Kitchen with your server account to accept it.")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(KnightTheme.ink)
+                    .bizCard()
+            } else if let scan {
+                details(scan)
+            } else if error == nil {
+                ProgressView("Checking the pass…")
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            }
+
+            if let result {
+                Label(result, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.green)
+            }
+            if let error {
+                Text(error)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(KnightTheme.red)
+            }
+
+            Button(action: onScanAgain) {
+                BizSecondaryLabel(title: "Scan another code", icon: "qrcode.viewfinder")
+            }
+            .buttonStyle(.plain)
+        }
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private func details(_ scan: RemoteRewardScan) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(scan.studentDisplayName)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+            Text("\(scan.verifiedPickups) verified pickups · \(SaverCash.format(scan.cashBalanceCents)) Saver Cash")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(KnightTheme.muted)
+        }
+
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Amount to take off the bill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(KnightTheme.ink)
+            HStack(spacing: 10) {
+                TextField("0.00", text: $amountText)
+                    .keyboardType(.decimalPad)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .padding(.horizontal, 14)
+                    .frame(height: 52)
+                    .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                            .stroke(KnightTheme.line, lineWidth: 1)
+                    }
+                Button("Use all") {
+                    amountText = String(format: "%.2f", Double(scan.cashBalanceCents) / 100)
+                }
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+                .disabled(scan.cashBalanceCents == 0)
+            }
+            Button {
+                Task { await redeem() }
+            } label: {
+                BizPrimaryLabel(title: amountCents.map { "Take \(SaverCash.format($0)) off" } ?? "Take Saver Cash off", icon: "dollarsign")
+            }
+            .buttonStyle(.plain)
+            .disabled(amountCents == nil || isWorking)
+            .opacity(amountCents == nil || isWorking ? 0.45 : 1)
+        }
+        .bizCard()
+    }
+
+    private func load() async {
+        guard let accessToken = session.accessToken else { return }
+        do {
+            scan = try await KnightSaverBackend.shared.scanRewards(passToken: code.passToken, accessToken: accessToken)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func redeem() async {
+        guard let accessToken = session.accessToken, let amountCents else { return }
+        isWorking = true
+        defer { isWorking = false }
+        error = nil
+        do {
+            let done = try await KnightSaverBackend.shared.redeemSaverCash(
+                passToken: code.passToken, amountCents: amountCents, idempotencyKey: billKey, accessToken: accessToken
+            )
+            result = done.kind == "already_redeemed"
+                ? "This bill was already paid. \(SaverCash.format(done.balanceCents)) left."
+                : "Took \(SaverCash.format(done.amountCents)) off. \(SaverCash.format(done.balanceCents)) Saver Cash left."
+            billKey = UUID().uuidString
+            amountText = ""
+            await load()
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 }
 

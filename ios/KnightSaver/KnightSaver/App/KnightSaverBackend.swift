@@ -108,6 +108,103 @@ struct BackendBusinessSettings: Decodable, Hashable {
     }
 }
 
+/// The student's rewards from `get_my_rewards`, counted from staff-verified pickups.
+struct RemoteRewards: Decodable, Hashable {
+    let orders: Int
+    let bags: Int
+    let kitchens: Int
+    let weeklyStreak: Int
+    let measuredKg: Double
+    let co2eKg: Double
+    let nightPickup: Bool
+    let cashEarnedCents: Int
+    let cashSpentCents: Int
+    /// Partner rewards already used at the shop.
+    let redeemed: [RemotePartnerRedemption]
+    let pointsThisWeek: Int
+    let pointsAllTime: Int
+    let leagueOptIn: Bool
+    let leagueNickname: String?
+
+    enum CodingKeys: String, CodingKey {
+        case orders, bags, kitchens, redeemed
+        case weeklyStreak = "weekly_streak"
+        case measuredKg = "measured_kg"
+        case co2eKg = "co2e_kg"
+        case nightPickup = "night_pickup"
+        case cashEarnedCents = "cash_earned_cents"
+        case cashSpentCents = "cash_spent_cents"
+        case pointsThisWeek = "points_this_week"
+        case pointsAllTime = "points_all_time"
+        case leagueOptIn = "league_opt_in"
+        case leagueNickname = "league_nickname"
+    }
+}
+
+/// A partner reward used at the shop, from `get_my_rewards` or `redeem_partner_reward`.
+struct RemotePartnerRedemption: Decodable, Hashable {
+    let rewardID: String
+    let code: String
+    let redeemedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case rewardID = "reward_id"
+        case redeemedAt = "redeemed_at"
+    }
+}
+
+/// One period of the Campus Rescue League from `get_league`: nicknames only.
+struct RemoteLeague: Decodable, Hashable {
+    struct Row: Decodable, Hashable {
+        let rank: Int
+        let nickname: String
+        let points: Int
+        let isYou: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case rank, nickname, points
+            case isYou = "is_you"
+        }
+    }
+
+    let entries: [Row]
+    let you: Row?
+    let weekEndsAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case entries, you
+        case weekEndsAt = "week_ends_at"
+    }
+}
+
+/// A student's Saver Cash at this counter, from `scan_rewards` (kitchen staff only).
+struct RemoteRewardScan: Decodable, Hashable {
+    let studentDisplayName: String
+    let verifiedPickups: Int
+    let cashBalanceCents: Int
+
+    enum CodingKeys: String, CodingKey {
+        case studentDisplayName = "student_display_name"
+        case verifiedPickups = "verified_pickups"
+        case cashBalanceCents = "cash_balance_cents"
+    }
+}
+
+/// Saver Cash taken off a bill, from `redeem_saver_cash`.
+struct RemoteCashRedemption: Decodable, Hashable {
+    /// "redeemed", or "already_redeemed" when the same bill was sent again.
+    let kind: String
+    let amountCents: Int
+    let balanceCents: Int
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case amountCents = "amount_cents"
+        case balanceCents = "balance_cents"
+    }
+}
+
 enum BackendError: LocalizedError {
     case invalidResponse
     case server(String)
@@ -275,6 +372,85 @@ actor KnightSaverBackend {
             accessToken: accessToken
         )
         return try decoder.decode(Int.self, from: data)
+    }
+
+    /// The signed-in student's Saver Cash, toys, badge counts and league settings.
+    func fetchRewards(accessToken: String) async throws -> RemoteRewards {
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/get_my_rewards"),
+            method: "POST",
+            body: Data("{}".utf8),
+            accessToken: accessToken
+        )
+        return try decoder.decode(RemoteRewards.self, from: data)
+    }
+
+    /// `period` is "week" or "all_time".
+    func fetchLeague(period: String, accessToken: String) async throws -> RemoteLeague {
+        let body = try JSONSerialization.data(withJSONObject: ["p_period": period])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/get_league"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+        return try decoder.decode(RemoteLeague.self, from: data)
+    }
+
+    /// Joins or leaves the league. The database checks the nickname is 2–20 characters and free.
+    func setLeagueProfile(optIn: Bool, nickname: String, accessToken: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["p_opt_in": optIn, "p_nickname": nickname])
+        _ = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/set_league_profile"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+    }
+
+    // MARK: Rewards at the counter (staff)
+
+    /// Reads a student's Saver Cash QR at this kitchen: who it is and their balance.
+    func scanRewards(passToken: String, accessToken: String) async throws -> RemoteRewardScan {
+        let body = try JSONSerialization.data(withJSONObject: ["p_token": passToken])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/scan_rewards"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+        return try decoder.decode(RemoteRewardScan.self, from: data)
+    }
+
+    /// Takes Saver Cash off a bill. Reuse `idempotencyKey` when retrying the same bill.
+    func redeemSaverCash(passToken: String, amountCents: Int, idempotencyKey: String, accessToken: String) async throws -> RemoteCashRedemption {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "p_token": passToken,
+            "p_amount_cents": amountCents,
+            "p_idempotency_key": idempotencyKey
+        ])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/redeem_saver_cash"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+        return try decoder.decode(RemoteCashRedemption.self, from: data)
+    }
+
+    // MARK: Partner rewards (student)
+
+    /// The student uses a partner reward at the shop counter. Returns the one-time code the cashier
+    /// sees; using it again returns the same code and time.
+    func redeemPartnerReward(rewardID: String, accessToken: String) async throws -> RemotePartnerRedemption {
+        let body = try JSONSerialization.data(withJSONObject: ["p_reward_id": rewardID])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/redeem_partner_reward"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+        return try decoder.decode(RemotePartnerRedemption.self, from: data)
     }
 
     private func request(
