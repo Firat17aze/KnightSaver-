@@ -97,7 +97,7 @@ enum SurplusAssistant {
     static let speechHints = [
         "bagels", "cookies", "pastries", "croissants", "muffins", "sandwiches", "wraps",
         "salads", "donuts", "Surprise Bag", "Rescue Bag", "pickup", "bags", "per bag",
-        "Student Union", "Memory Mall", "Knight Pass"
+        "Knightro's", "Student Union", "Memory Mall", "Knight Pass"
     ]
 
 

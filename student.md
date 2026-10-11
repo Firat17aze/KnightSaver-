@@ -151,7 +151,7 @@ Each feed card shows:
 
 Example content hierarchy:
 
-> **Knightro's Kitchen** — 4.7  
+> **Knightro's** — 4.7  
 > Surprise Bag  
 > 0.4 mi  
 > Pickup 7:00–7:30 PM  
@@ -228,6 +228,30 @@ Explore must handle:
 9. Another student reserved the final bag first
 10. Listing cancelled or paused by the business
 11. Loading or connection failure
+
+### Campus places
+
+Explore lists UCF's real dining places. Names and locations come from UCF Business Services' dining list and the UCF campus map. Their Surprise Bags are demo listings until each place joins KnightSaver.
+
+| Place | Where | Address |
+|---|---|---|
+| Knightro's | Dining hall · North campus | 4000 Central Florida Blvd, Orlando, FL 32816 |
+| Starbucks | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Smoothie King | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Huey Magoo's | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Panda Express | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Qdoba | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Which Wich | Student Union | 12715 Pegasus Cir, Bldg 52, Orlando, FL 32816 |
+| Barnie's Coffee & Tea | John C. Hitt Library | 12701 Pegasus Dr, Orlando, FL 32816 |
+| Chick-fil-A | John T. Washington Center | Aquarius Agora Dr, Bldg 26, Orlando, FL 32816 |
+| Foxtail Coffee | Knights Plaza | 4201 E Plaza Dr, Orlando, FL 32816 |
+| Burger U | Knights Plaza | 4233 E Plaza Dr, Orlando, FL 32816 |
+| Domino's | Knights Plaza | Knights Plaza, Suite G, E Plaza Dr, Orlando, FL 32816 |
+| Dunkin' | Knights Plaza | E Plaza Dr, Orlando, FL 32816 |
+| Subway | Knights Plaza | E Plaza Dr, Orlando, FL 32816 |
+| '63 South | Dining hall · South campus | 4000 Central Florida Blvd, Orlando, FL 32816 |
+| Smalls Sliders | Gemini Blvd · next to the RWC | 4000 Central Florida Blvd, Orlando, FL 32816 |
+| Einstein Bros. Bagels | Business Administration I | Business Administration I, Bldg 45, 4000 Central Florida Blvd, Orlando, FL 32816 |
 
 ### Explore MVP
 
@@ -348,13 +372,13 @@ Rewards unlock by verified orders and alternate between Knight Cash and a Rescue
 | 3 | +$2 Knight Cash |
 | 5 | Mystery Capsule (any partner kitchen) |
 | 8 | +$3 Knight Cash |
-| 10 | Cupcake Squire mini figure (Campus Bakery) |
+| 10 | Sprinkle Squire mini figure (Dunkin', Knights Plaza) |
 | 12 | +$4 Knight Cash |
-| 15 | Bookworm Keychain (Library Café) |
+| 15 | Bookworm Keychain (Barnie's Coffee & Tea, John C. Hitt Library) |
 | 18 | +$5 Knight Cash |
-| 20 | Carrot Cavalier squishy (Arena Market) |
+| 20 | Carrot Cavalier squishy (Subway, Knights Plaza) |
 | 25 | +$8 Knight Cash |
-| 30 | Golden Knight plush (Knightro's Kitchen) |
+| 30 | Golden Knight plush (Knightro's) |
 
 Tiers follow orders: Squire (0 to 4), Knight (5 to 14), Champion (15 to 29), Legend (30+).
 

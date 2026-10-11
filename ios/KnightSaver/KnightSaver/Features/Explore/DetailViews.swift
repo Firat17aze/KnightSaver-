@@ -120,7 +120,7 @@ struct BagDetailView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bag.location)
                         .font(.system(size: 15, weight: .bold))
-                    Text("UCF Main Campus · Pickup only")
+                    Text(bag.address.isEmpty ? "UCF Main Campus · Pickup only" : bag.address)
                         .font(.system(size: 13))
                         .foregroundStyle(KnightTheme.muted)
                 }
@@ -141,7 +141,7 @@ struct BagDetailView: View {
     private func openWalkingDirections() {
         let coordinate = CLLocationCoordinate2D(latitude: bag.latitude, longitude: bag.longitude)
         let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-        item.name = bag.location
+        item.name = bag.business
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 

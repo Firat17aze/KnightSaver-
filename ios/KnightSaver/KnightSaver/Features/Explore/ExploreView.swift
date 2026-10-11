@@ -37,6 +37,8 @@ struct ExploreView: View {
         return bags.filter { bag in
             bag.business.localizedCaseInsensitiveContains(query)
                 || bag.location.localizedCaseInsensitiveContains(query)
+                // Street part only: every address ends in "Orlando, FL 32816".
+                || (bag.address.components(separatedBy: ", Orlando").first ?? "").localizedCaseInsensitiveContains(query)
                 || "Surprise Bag".localizedCaseInsensitiveContains(query)
         }
     }
@@ -96,6 +98,13 @@ struct ExploreView: View {
                 title: "Later today",
                 subtitle: "Plan your next campus pickup",
                 bags: later
+            ),
+            // Every place, A to Z, so none is hidden by the eight-card shelves.
+            ExploreShelf(
+                id: "all",
+                title: "All on campus",
+                subtitle: "Every UCF place on KnightSaver, A to Z",
+                bags: bags.sorted { $0.business.sortKey < $1.business.sortKey }
             )
         ]
         .filter { !$0.bags.isEmpty }
@@ -373,5 +382,12 @@ struct ExploreView: View {
             coordinate = (28.6024, -81.2001)
         }
         return CLLocation(latitude: coordinate.0, longitude: coordinate.1)
+    }
+}
+
+private extension String {
+    /// Ignores a leading apostrophe, case and accents, so "'63 South" sorts first, ahead of A–Z.
+    var sortKey: String {
+        trimmingCharacters(in: CharacterSet(charactersIn: "'’")).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 }

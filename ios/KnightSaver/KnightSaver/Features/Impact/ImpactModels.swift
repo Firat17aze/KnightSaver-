@@ -120,12 +120,12 @@ enum ImpactDemo {
             return Calendar.current.date(bySettingHour: hour, minute: 20, second: 0, of: day) ?? day
         }
         let samples: [(Int, Int, String, BagBrand, String, Int, Double?)] = [
-            (2, 18, "Campus Bakery", .campusBakery, "Memory Mall", 1, 0.55),
-            (5, 17, "Library Café", .libraryCafe, "John C. Hitt Library", 1, nil),
-            (9, 19, "Knightro's Kitchen", .knightros, "Student Union · Level 1", 1, 0.48),
-            (15, 20, "Arena Market", .arenaMarket, "Addition Financial Arena", 2, nil),
-            (23, 18, "Campus Bakery", .campusBakery, "Memory Mall", 1, nil),
-            (30, 19, "Knightro's Kitchen", .knightros, "Student Union · Level 1", 1, nil)
+            (2, 18, "Starbucks", .starbucks, "Student Union", 1, 0.55),
+            (5, 17, "Barnie's Coffee & Tea", .barnies, "John C. Hitt Library", 1, nil),
+            (9, 19, "Knightro's", .knightros, "Dining hall · North campus", 1, 0.48),
+            (15, 21, "Domino's", .dominos, "Knights Plaza", 2, nil),
+            (23, 18, "Smoothie King", .smoothieKing, "Student Union", 1, nil),
+            (30, 19, "'63 South", .sixtyThreeSouth, "Dining hall · South campus", 1, nil)
         ]
         return samples.enumerated().map { index, sample in
             StudentRescue(
@@ -169,7 +169,7 @@ enum ImpactDemo {
         ("SirScraps", 61), ("BagelBaron", 57), ("LadyLeftover", 49), ("MossKnight", 44),
         ("Gr8Rescuer", 38), ("CroissantQuest", 31), ("NightOwlNom", 22)
     ]
-    static let weeklySponsor = "Knightro's Kitchen"
+    static let weeklySponsor = "Knightro's"
 }
 
 // MARK: - Campus Rescue League

@@ -25,7 +25,7 @@ All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see
 2. **+ List surplus**, with two paths:
    - **Speak with AI**: a large microphone button turns speech into text live (Speech framework, `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`). Staff can also type, or tap **Use example (demo)**. Next comes **What I understood** (editable items, pickup times, price, missing or uncertain notes), then the proposed plan.
    - **Enter manually**: staff type the items, then plan the bags.
-   - The plan lets staff edit the number of bags, price, pickup times and the public description, and choose the pickup spot from five campus locations.
+   - The plan lets staff edit the number of bags, price, pickup times and the public description, and choose the pickup spot from six campus locations.
    - **The lineup · staff only** lists each bag by a knight-themed name and shows how the items are split. A **Surprise Bag** switch keeps contents secret; turned off, the listing becomes a **Rescue Bag** whose contents students can see.
    - Nothing is published until staff tap **Approve and publish**.
    - The AI is Gemini (`SurplusAI`), with the local rule-based parser (`SurplusAssistant.swift`) as the offline fallback. Either way: one bag per 3 items, $5.99 when no price is said.
@@ -38,7 +38,7 @@ All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see
    - **CO₂e avoided** card with an "Est." tag, a green bar toward a 10 kg goal and a "≈ km not driven" comparison (0.17 kg CO₂e per car-km).
    - Four tiles: **Bags collected**, **Revenue recovered**, **Pickup completion** (with a small bar) and **Average rating**.
 
-**Demo data**: Knightro's Kitchen with two live listings, three reserved pickups (Alex Knight's matches the Profile Knight Pass) and three pickups already verified today.
+**Demo data**: Knightro's (UCF's north campus dining hall) with two live listings, three reserved pickups (Alex Knight's matches the Profile Knight Pass) and three pickups already verified today.
 
 ### Not built yet
 

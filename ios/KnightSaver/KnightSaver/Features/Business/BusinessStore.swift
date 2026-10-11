@@ -255,7 +255,9 @@ final class BusinessStore: ObservableObject {
             bannerAssetName: listing.bannerAssetName,
             availableCount: listing.isReservable ? listing.remainingQuantity : 0,
             price: listing.price,
-            description: listing.isSurprise ? listing.publicDescription : contentsDescription(for: listing)
+            description: listing.isSurprise ? listing.publicDescription : contentsDescription(for: listing),
+            // Every campus pickup spot shares UCF's official street address.
+            address: "4000 Central Florida Blvd, Orlando, FL 32816"
         )
     }
 
@@ -685,7 +687,7 @@ final class BusinessStore: ObservableObject {
 // MARK: - Demo data
 
 extension BusinessStore {
-    /// One evening at Knightro's Kitchen. Times are relative to "now" so the demo always works.
+    /// One evening at Knightro's. Times are relative to "now" so the demo always works.
     /// Reserved pickups has three students. Alex Knight's reservation uses the token in
     /// KnightPass.sample, so scanning the Knight Pass from Profile verifies it.
     static func demo(now: Date = Date()) -> BusinessStore {

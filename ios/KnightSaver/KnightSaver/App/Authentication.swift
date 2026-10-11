@@ -123,7 +123,7 @@ final class SessionStore: ObservableObject {
             displayName: displayName,
             email: session.user.email ?? email,
             role: resolvedRole,
-            businessName: resolvedRole == .business ? "Knightro's Kitchen" : nil,
+            businessName: resolvedRole == .business ? "Knightro's" : nil,
             campusName: "UCF Main Campus",
             passToken: passToken
         )
@@ -306,7 +306,7 @@ final class SessionStore: ObservableObject {
                 displayName: "Jordan Manager",
                 email: "manager@knightros.example",
                 role: .business,
-                businessName: "Knightro's Kitchen",
+                businessName: "Knightro's",
                 phoneNumber: "(407) 555-0188",
                 campusName: "UCF Main Campus",
                 passToken: "demo-business-session"

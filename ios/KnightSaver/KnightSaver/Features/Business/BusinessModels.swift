@@ -22,11 +22,11 @@ struct BusinessProfile: Identifiable, Hashable {
 
     static let demo = BusinessProfile(
         id: UUID(),
-        name: "Knightro's Kitchen",
+        name: "Knightro's",
         brand: .knightros,
-        pickupAddress: "Student Union · Level 1",
-        latitude: 28.6016,
-        longitude: -81.2005,
+        pickupAddress: "Knightro's · Front entrance",
+        latitude: 28.60741,
+        longitude: -81.19678,
         rating: 4.8,
         feedbackCount: 126
     )
@@ -46,8 +46,9 @@ struct PickupLocation: Identifiable, Hashable {
     var address: String { "\(name) · \(detail)" }
 
     static let campusSpots: [PickupLocation] = [
-        PickupLocation(name: "Student Union", detail: "Level 1", latitude: 28.6016, longitude: -81.2005),
-        PickupLocation(name: "John C. Hitt Library", detail: "Front entrance", latitude: 28.6003, longitude: -81.2017),
+        PickupLocation(name: "Knightro's", detail: "Front entrance", latitude: 28.60741, longitude: -81.19678),
+        PickupLocation(name: "Student Union", detail: "Level 1", latitude: 28.60167, longitude: -81.20053),
+        PickupLocation(name: "John C. Hitt Library", detail: "Front entrance", latitude: 28.60005, longitude: -81.20160),
         PickupLocation(name: "Memory Mall", detail: "Reflecting pond", latitude: 28.6019, longitude: -81.1997),
         PickupLocation(name: "Engineering Atrium", detail: "Ground floor", latitude: 28.6015, longitude: -81.1983),
         PickupLocation(name: "Addition Financial Arena", detail: "Gate A", latitude: 28.6074, longitude: -81.1973),

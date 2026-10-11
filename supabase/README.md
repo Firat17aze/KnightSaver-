@@ -2,12 +2,12 @@
 
 Hosted hackathon project: `prbohivlnyodesbiavyu` (`us-east-1`). The iOS app uses only the project's publishable key; secret and service-role keys must never be added to the app or repository.
 
-`migrations/202610100001_initial_schema.sql` is the source of truth for the database schema, policies, and transactional RPCs. `seed.sql` supplies the UCF campus, Knightro's Kitchen, its pickup location, and one demo listing.
+`migrations/202610100001_initial_schema.sql` is the source of truth for the database schema, policies, and transactional RPCs. `seed.sql` supplies the UCF campus, Knightro's, its pickup location, and one demo listing.
 
 Demo identities are intentionally limited to:
 
 - `alex@ucf.edu` — student
-- `manager@knightros.example` — Knightro's Kitchen manager
+- `manager@knightros.example` — Knightro's manager
 
 Both use the hackathon-only password `KnightSaverDemo!2026`. The app's one-tap demo buttons sign into these real Supabase accounts. Rotate or remove them before any production launch.
 

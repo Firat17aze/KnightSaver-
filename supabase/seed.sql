@@ -6,7 +6,7 @@ insert into public.businesses (id, campus_id, name, brand_key, banner_asset_name
 values (
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  'Knightro''s Kitchen',
+  'Knightro''s',
   'knightros',
   'BannerCafeBrunch'
 )
@@ -16,13 +16,13 @@ insert into public.business_locations (id, business_id, name, address, latitude,
 values (
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-  'Student Union',
-  'Student Union · Level 1',
-  28.6016,
-  -81.2005,
+  'Knightro''s',
+  'Knightro''s · Front entrance',
+  28.60741,
+  -81.19678,
   'America/New_York'
 )
-on conflict (id) do update set address = excluded.address, latitude = excluded.latitude, longitude = excluded.longitude;
+on conflict (id) do update set name = excluded.name, address = excluded.address, latitude = excluded.latitude, longitude = excluded.longitude;
 
 insert into public.listings (
   id, business_id, location_id, label, is_surprise, price_cents,

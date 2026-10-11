@@ -30,7 +30,7 @@ One scrollable dashboard:
 
 ## Demo notes
 
-- Demo data is for Knightro's Kitchen (students see that name; the dashboard header says "Restaurant"). Pickup times are relative to when the app opens.
+- Demo data is for Knightro's (students see that name; the dashboard header says "Restaurant"). Pickup times are relative to when the app opens.
 - Reserved pickups starts with two students: Alex Knight (KS-4821) and Jordan P.
 - **Alex Knight's** reservation uses `KnightPass.sample`, so scanning the Knight Pass from Profile on a second phone verifies it.
 - The Simulator has no camera. Use the **Demo scans** buttons in the scanner.

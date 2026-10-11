@@ -100,7 +100,7 @@ struct Collectible: Identifiable, Hashable {
     let brand: BagBrand?
     let store: String
 
-    /// "Campus Bakery", or "any partner kitchen" mid-sentence.
+    /// "Dunkin' · Knights Plaza", or "any partner kitchen" mid-sentence.
     var pickupPlace: String { brand == nil ? "any partner kitchen" : store }
 }
 
@@ -166,20 +166,20 @@ enum RewardRoad {
         icon: "capsule.fill", brand: nil, store: "Any partner kitchen"
     )
     static let cupcake = Collectible(
-        id: "cupcake", name: "Cupcake Squire", detail: "5 cm mini figure",
-        icon: "birthday.cake.fill", brand: .campusBakery, store: "Campus Bakery"
+        id: "cupcake", name: "Sprinkle Squire", detail: "5 cm mini figure",
+        icon: "birthday.cake.fill", brand: .dunkin, store: "Dunkin' · Knights Plaza"
     )
     static let bookworm = Collectible(
         id: "bookworm", name: "Bookworm Keychain", detail: "Soft enamel keychain",
-        icon: "book.fill", brand: .libraryCafe, store: "Library Café"
+        icon: "book.fill", brand: .barnies, store: "Barnie's · John C. Hitt Library"
     )
     static let carrot = Collectible(
         id: "carrot", name: "Carrot Cavalier", detail: "Squishy stress toy",
-        icon: "carrot.fill", brand: .arenaMarket, store: "Arena Market"
+        icon: "carrot.fill", brand: .subway, store: "Subway · Knights Plaza"
     )
     static let goldenKnight = Collectible(
         id: "golden", name: "Golden Knight", detail: "Rare 12 cm plush",
-        icon: "shield.lefthalf.filled", brand: .knightros, store: "Knightro's Kitchen"
+        icon: "shield.lefthalf.filled", brand: .knightros, store: "Knightro's"
     )
 
     static let crew = [capsule, cupcake, bookworm, carrot, goldenKnight]
