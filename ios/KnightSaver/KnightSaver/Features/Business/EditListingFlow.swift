@@ -24,6 +24,7 @@ struct EditListingFlow: View {
     @State private var pickupLocation: PickupLocation
     @FocusState private var dictationFocused: Bool
     @StateObject private var dictation = VoiceDictation()
+    @State private var isReading = false
 
     static let exampleInstruction = "Change the quantity to six bags and move pickup to 7:15–7:45 PM."
 
@@ -137,16 +138,13 @@ struct EditListingFlow: View {
                 }
 
                 Button {
-                    dictation.stop()
-                    proposal = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
-                    dictationFocused = false
-                    step = .proposal
+                    Task { await proposeChanges() }
                 } label: {
-                    BizPrimaryLabel(title: "Show proposed changes", icon: "checklist")
+                    BizPrimaryLabel(title: isReading ? "Reading what you said…" : "Show proposed changes", icon: "checklist")
                 }
                 .buttonStyle(.plain)
-                .disabled(instructionIsEmpty)
-                .opacity(instructionIsEmpty ? 0.45 : 1)
+                .disabled(instructionIsEmpty || isReading)
+                .opacity(instructionIsEmpty || isReading ? 0.45 : 1)
             }
             .padding(KnightTheme.screenPadding)
         }
@@ -154,6 +152,28 @@ struct EditListingFlow: View {
 
     private var instructionIsEmpty: Bool {
         instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Gemini reads the instruction when a key is set; the on-phone rules read it otherwise,
+    /// or when Gemini doesn't answer.
+    private func proposeChanges() async {
+        dictation.stop()
+        dictationFocused = false
+        isReading = true
+        defer { isReading = false }
+        var result: ListingEditProposal
+        if GeminiAPI.isConfigured {
+            do {
+                result = try await SurplusAI.proposeEdit(for: listing, instruction: instruction)
+            } catch {
+                result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
+                result.notes.insert("Live AI didn't answer, so this was read with simple rules. Check every line.", at: 0)
+            }
+        } else {
+            result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
+        }
+        proposal = result
+        step = .proposal
     }
 
     // MARK: - Proposal

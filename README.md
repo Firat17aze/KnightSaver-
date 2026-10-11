@@ -90,6 +90,20 @@ Steps:
 
 If the Simulator displays an older build, stop the app, delete the installed KnightSaver app from the Simulator, and run it again from Xcode.
 
+### Live AI (Gemini)
+
+EcoKnight AI and the Kitchen voice assistant use Gemini. Create `ios/KnightSaver/KnightSaver/App/Secrets.xcconfig` with your key from Google AI Studio:
+
+```text
+GEMINI_API_KEY = AIza...
+```
+
+The file is gitignored; never commit the key, because Google disables Gemini keys it finds in public repositories. Without a key the app still runs and uses its on-phone fallbacks.
+
+### Your Mac's location in the Simulator
+
+`scripts/simulator-location.sh` sends your Mac's location to the running Simulator (`--follow` repeats it every 30 seconds). It needs `brew install corelocationcli` and Location Services turned on for CoreLocationCLI in System Settings › Privacy & Security.
+
 ## Repository structure
 
 ```text

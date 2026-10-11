@@ -253,7 +253,7 @@ EcoKnight AI is a bar at the top of Impact ("How can I help you?"). Students typ
 
 EcoKnight can look up the student's verified impact, recent rescues, campus totals and league standing through read-only tools, only when a question needs them. General environmental numbers come only from a short, sourced fact list in the app.
 
-EcoKnight runs on Apple's on-device model (iOS 26 with Apple Intelligence, no key and no network) and falls back to simple offline answers when that isn't available.
+EcoKnight asks Gemini when the app has a Gemini key. Without one, or when Gemini doesn't answer, it uses Apple's on-device model (iOS 26 with Apple Intelligence), then simple offline answers.
 
 EcoKnight AI may:
 

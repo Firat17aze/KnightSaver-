@@ -2,8 +2,8 @@ import SwiftUI
 
 /// EcoKnight AI as a bar at the top of Impact: "How can I help you?". The student types a
 /// question and the answer opens under the bar, pushing the page down. EcoKnight can look up the student's own
-/// stats with tools when a question needs them. It runs on Apple's on-device model (no key,
-/// nothing leaves the phone) and falls back to simple offline answers where that isn't available.
+/// stats with tools when a question needs them. It asks Gemini when a key is set, then Apple's
+/// on-device model, then simple offline answers.
 struct EcoKnightAskBar: View {
     let stats: EcoStats
 
@@ -16,6 +16,8 @@ struct EcoKnightAskBar: View {
     @State private var question = ""
     @State private var exchanges: [Exchange] = []
     @State private var onDeviceChat: EcoOnDeviceChat?
+    /// The Gemini conversation in API format, so follow-up questions keep their context.
+    @State private var geminiContents: [[String: Any]] = []
     @State private var isAnswering = false
     @FocusState private var focused: Bool
 
@@ -148,6 +150,7 @@ struct EcoKnightAskBar: View {
     private func close() {
         exchanges = []
         onDeviceChat = nil
+        geminiContents = []
         focused = false
     }
 
@@ -162,7 +165,20 @@ struct EcoKnightAskBar: View {
         defer { isAnswering = false }
 
         var answer: String?
-        if EcoKnightOnDeviceSupport.isAvailable {
+        if GeminiAPI.isConfigured {
+            // Start over before a long conversation gets slow.
+            var contents = geminiContents.count > 40 ? [] : geminiContents
+            contents.append(EcoKnightClient.studentMessage(text: text, photoJPEG: nil))
+            do {
+                answer = try await EcoKnightClient().reply(contents: &contents, stats: stats).text
+                geminiContents = contents
+            } catch EcoKnightError.refused {
+                answer = EcoKnightError.refused.errorDescription
+            } catch {
+                answer = nil
+            }
+        }
+        if answer == nil, EcoKnightOnDeviceSupport.isAvailable {
             let chat = onDeviceChat ?? EcoOnDeviceChat(stats: stats)
             onDeviceChat = chat
             do {

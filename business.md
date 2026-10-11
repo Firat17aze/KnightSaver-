@@ -28,7 +28,7 @@ All Business code lives in `ios/KnightSaver/KnightSaver/Features/Business/` (see
    - The plan lets staff edit the number of bags, price, pickup times and the public description, and choose the pickup spot from five campus locations.
    - **The lineup · staff only** lists each bag by a knight-themed name and shows how the items are split. A **Surprise Bag** switch keeps contents secret; turned off, the listing becomes a **Rescue Bag** whose contents students can see.
    - Nothing is published until staff tap **Approve and publish**.
-   - The "AI" is a local rule-based parser (`SurplusAssistant.swift`): one bag per 3 items, $5.99 when no price is said.
+   - The AI is Gemini (`SurplusAI`), with the local rule-based parser (`SurplusAssistant.swift`) as the offline fallback. Either way: one bag per 3 items, $5.99 when no price is said.
 3. **Current Surprise Bags**: status chip, price, pickup window, bags left and pickup spot.
    - **Edit listing** works by voice (same microphone, proposed changes are approved first) or manually (bags available, price, times, spot, description).
    - **Pause** / **Resume**, and a ••• menu with **Close listing** and **Cancel listing**.

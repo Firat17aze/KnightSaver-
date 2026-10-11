@@ -23,6 +23,7 @@
 		A10000000000000000000009 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* ProfileView.swift */; };
 		A1000000000000000000000A /* Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* Authentication.swift */; };
 		A1000000000000000000000B /* KnightSaverBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* KnightSaverBackend.swift */; };
+		A1000000000000000000000C /* GeminiAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* GeminiAPI.swift */; };
 		A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B01 /* BusinessDashboardView.swift */; };
 		A10000000000000000000B02 /* BusinessModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B02 /* BusinessModels.swift */; };
 		A10000000000000000000B03 /* BusinessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B03 /* BusinessStore.swift */; };
@@ -48,6 +49,9 @@
 		B10000000000000000000005 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		B10000000000000000000006 /* ExploreComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreComponents.swift; sourceTree = "<group>"; };
 		B10000000000000000000007 /* DetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViews.swift; sourceTree = "<group>"; };
+		B1000000000000000000000C /* GeminiAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAPI.swift; sourceTree = "<group>"; };
+		B1000000000000000000000D /* Gemini.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Gemini.xcconfig; sourceTree = "<group>"; };
+		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000000000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000009 /* KnightSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KnightSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000010 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -101,6 +105,9 @@
 				B10000000000000000000002 /* RootView.swift */,
 				B1000000000000000000000A /* Authentication.swift */,
 				B1000000000000000000000B /* KnightSaverBackend.swift */,
+				B1000000000000000000000C /* GeminiAPI.swift */,
+				B1000000000000000000000D /* Gemini.xcconfig */,
+				B1000000000000000000000E /* Info.plist */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -245,6 +252,7 @@
 				A10000000000000000000009 /* ProfileView.swift in Sources */,
 				A1000000000000000000000A /* Authentication.swift in Sources */,
 				A1000000000000000000000B /* KnightSaverBackend.swift in Sources */,
+				A1000000000000000000000C /* GeminiAPI.swift in Sources */,
 				A10000000000000000000B01 /* BusinessDashboardView.swift in Sources */,
 				A10000000000000000000B02 /* BusinessModels.swift in Sources */,
 				A10000000000000000000B03 /* BusinessStore.swift in Sources */,
@@ -307,6 +315,7 @@
 		};
 		G10000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B1000000000000000000000D /* Gemini.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -315,6 +324,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KnightSaver/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";
@@ -340,6 +350,7 @@
 		};
 		G10000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B1000000000000000000000D /* Gemini.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -348,6 +359,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KnightSaver/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KnightSaver;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "KnightSaver uses the camera to scan students' Knight Pass QR codes at pickup.";

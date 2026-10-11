@@ -25,3 +25,6 @@ Package.resolved
 *.pkpass
 .env
 .env.*
+
+# Gemini API key (see ios/KnightSaver/KnightSaver/App/Gemini.xcconfig)
+Secrets.xcconfig

@@ -38,7 +38,7 @@ One scrollable dashboard:
   - **Student cancels**: the payment hold is released and the waitlist gets an offer.
   - **Student accepts offer**.
   - **Mark as missed**.
-- The "AI" is rule-based and runs on the phone, so it works offline. It only uses what staff said, never adds allergens or dietary claims, and always waits for staff approval.
+- The AI is Gemini (`SurplusAI` in `SurplusAssistant.swift`), using the key in `App/Secrets.xcconfig`. Without a key, or when Gemini doesn't answer, the on-phone rules read what staff said instead, so it still works offline. Either way it only uses what staff said, never adds allergens or dietary claims, and always waits for staff approval.
 
 ## Files
 

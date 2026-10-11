@@ -24,6 +24,7 @@ struct ListSurplusFlow: View {
     @State private var plan: BagPlan?
     @FocusState private var dictationFocused: Bool
     @StateObject private var dictation = VoiceDictation()
+    @State private var isReading = false
 
     static let exampleSentence = "We have 4 bagels and 6 cookies left. Pickup can be from 7:00 to 7:30 PM."
 
@@ -168,13 +169,13 @@ struct ListSurplusFlow: View {
                 }
 
                 Button {
-                    understand()
+                    Task { await understand() }
                 } label: {
-                    BizPrimaryLabel(title: "Show what you understood", icon: "checklist")
+                    BizPrimaryLabel(title: isReading ? "Reading what you said…" : "Show what you understood", icon: "checklist")
                 }
                 .buttonStyle(.plain)
-                .disabled(transcriptIsEmpty)
-                .opacity(transcriptIsEmpty ? 0.45 : 1)
+                .disabled(transcriptIsEmpty || isReading)
+                .opacity(transcriptIsEmpty || isReading ? 0.45 : 1)
             }
             .padding(KnightTheme.screenPadding)
         }
@@ -184,9 +185,23 @@ struct ListSurplusFlow: View {
         transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private func understand() {
+    /// Gemini reads the transcript when a key is set; the on-phone rules read it otherwise,
+    /// or when Gemini doesn't answer.
+    private func understand() async {
         dictation.stop()
-        let result = SurplusAssistant.interpret(transcript)
+        isReading = true
+        defer { isReading = false }
+        var result: SurplusInterpretation
+        if GeminiAPI.isConfigured {
+            do {
+                result = try await SurplusAI.interpret(transcript)
+            } catch {
+                result = SurplusAssistant.interpret(transcript)
+                result.notes.insert("Live AI didn't answer, so this was read with simple rules. Check every line.", at: 0)
+            }
+        } else {
+            result = SurplusAssistant.interpret(transcript)
+        }
         inventory = result.inventory
         if let start = result.pickupStart { pickupStart = start }
         if let end = result.pickupEnd { pickupEnd = end }

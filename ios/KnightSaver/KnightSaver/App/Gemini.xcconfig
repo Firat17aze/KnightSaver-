@@ -1,0 +1,7 @@
+// Gemini API key for EcoKnight AI and the Kitchen voice assistant.
+// Put the real key in Secrets.xcconfig next to this file. That file is gitignored, so the key
+// never reaches GitHub (Google disables Gemini keys it finds in public repos):
+//   GEMINI_API_KEY = AIza...
+// Without it the app still builds and uses its on-phone fallbacks.
+GEMINI_API_KEY =
+#include? "Secrets.xcconfig"

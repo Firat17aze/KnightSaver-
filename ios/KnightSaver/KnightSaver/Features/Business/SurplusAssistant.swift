@@ -82,11 +82,10 @@ struct ListingEditProposal: Hashable {
     var notes: [String]
 }
 
-/// Turns what staff say (dictated with the keyboard microphone, or typed) into
-/// structured data. It runs on the phone with simple rules so the demo works offline.
-/// It can be replaced by a language model later, as long as it keeps these rules:
-/// it only uses inventory staff reported, never invents allergens or dietary claims,
-/// never approves food safety, and nothing is published without staff approval.
+/// Turns what staff say (dictated or typed) into structured data with simple rules on the
+/// phone. `SurplusAI` does the same job with Gemini; these rules are its offline fallback.
+/// Both keep the same contract: only inventory staff reported, no allergen or dietary claims,
+/// no food-safety approval, and nothing is published without staff approval.
 enum SurplusAssistant {
     /// Words the speech recognizer should expect from kitchen staff.
     static let speechHints = [
@@ -108,23 +107,28 @@ enum SurplusAssistant {
         notes.append(contentsOf: times.notes.filter { !$0.hasPrefix("No pickup") })
         let inventory = extractInventory(from: working)
 
-        if inventory.isEmpty {
-            notes.insert("I didn't hear any items with a quantity, like “12 bagels”. Add them below.", at: 0)
-        }
-        if times.start == nil && times.end == nil {
-            notes.append("No pickup time heard. Set the start and end below.")
-        }
-        if price == nil {
-            notes.append("No price heard. The standard price of \(PickupTime.money(BusinessRules.defaultBagPrice)) per bag will be suggested.")
-        }
-
-        return SurplusInterpretation(
+        return withMissingNotes(SurplusInterpretation(
             inventory: inventory,
             pickupStart: times.start,
             pickupEnd: times.end,
             price: price,
             notes: notes
-        )
+        ))
+    }
+
+    /// Adds the notes staff see when items, a pickup time or a price weren't heard.
+    static func withMissingNotes(_ interpretation: SurplusInterpretation) -> SurplusInterpretation {
+        var result = interpretation
+        if result.inventory.isEmpty {
+            result.notes.insert("I didn't hear any items with a quantity, like “12 bagels”. Add them below.", at: 0)
+        }
+        if result.pickupStart == nil && result.pickupEnd == nil {
+            result.notes.append("No pickup time heard. Set the start and end below.")
+        }
+        if result.price == nil {
+            result.notes.append("No price heard. The standard price of \(PickupTime.money(BusinessRules.defaultBagPrice)) per bag will be suggested.")
+        }
+        return result
     }
 
     // MARK: Stage 2
@@ -197,18 +201,53 @@ enum SurplusAssistant {
     ) -> ListingEditProposal {
         var working = normalize(instruction)
         let lower = working
-        var proposal = ListingEditProposal(changes: [], notes: [])
+        let price = extractPrice(from: &working)
+        let times = extractPickupTimes(from: &working, now: now, calendar: calendar, isEdit: true)
+        var notes = times.notes.filter { !$0.hasPrefix("No pickup") }
+        let quantity = tokenize(working).first(where: { Int($0) != nil }).flatMap { Int($0) }
 
-        if let price = extractPrice(from: &working), abs(price - listing.price) > 0.001 {
+        let action: ListingStateAction?
+        if containsWord(lower, ["cancel"]) {
+            action = .cancel
+        } else if containsWord(lower, ["close", "sold out", "stop selling", "end it"]) {
+            action = .close
+        } else if containsWord(lower, ["pause", "hide", "hold"]) {
+            action = .pause
+        } else if containsWord(lower, ["resume", "unpause", "reopen", "restart"]) {
+            action = .resume
+        } else {
+            action = nil
+        }
+
+        if lower.contains("allerg") || lower.contains("vegan") || lower.contains("gluten") || lower.contains("halal") {
+            notes.append("Allergen and dietary claims can't be added. Surprise Bags never promise contents.")
+        }
+        return makeProposal(for: listing, quantity: quantity, price: price,
+                            pickupStart: times.start, pickupEnd: times.end, action: action, notes: notes)
+    }
+
+    /// Compares the values heard in an edit with the live listing and lists what would change.
+    /// A start time alone keeps the pickup's length; an end time alone keeps the start when it can.
+    static func makeProposal(
+        for listing: BusinessListing,
+        quantity: Int?,
+        price: Double?,
+        pickupStart: Date?,
+        pickupEnd: Date?,
+        action: ListingStateAction?,
+        notes: [String]
+    ) -> ListingEditProposal {
+        var proposal = ListingEditProposal(changes: [], notes: notes)
+
+        if let price, price >= 0, abs(price - listing.price) > 0.001 {
             proposal.price = price
             proposal.changes.append(ProposedChange(field: "Price",
                                                    oldValue: PickupTime.money(listing.price),
                                                    newValue: PickupTime.money(price)))
         }
 
-        let times = extractPickupTimes(from: &working, now: now, calendar: calendar, isEdit: true)
-        var newStart = times.start
-        var newEnd = times.end
+        var newStart = pickupStart
+        var newEnd = pickupEnd
         if newStart != nil && newEnd == nil, let start = newStart {
             // "Move pickup to 7:30" keeps the same length.
             newEnd = start.addingTimeInterval(listing.pickupEnd.timeIntervalSince(listing.pickupStart))
@@ -223,28 +262,19 @@ enum SurplusAssistant {
                                                    oldValue: listing.pickupWindowText,
                                                    newValue: PickupTime.window(start, end)))
         }
-        proposal.notes.append(contentsOf: times.notes.filter { !$0.hasPrefix("No pickup") })
 
-        let tokens = tokenize(working)
-        if let quantityText = tokens.first(where: { Int($0) != nil }),
-           let quantity = Int(quantityText), quantity >= 0, quantity <= 500,
-           quantity != listing.remainingQuantity {
+        if let quantity, quantity >= 0, quantity <= 500, quantity != listing.remainingQuantity {
             proposal.remainingQuantity = quantity
             proposal.changes.append(ProposedChange(field: "Bags available",
                                                    oldValue: "\(listing.remainingQuantity)",
                                                    newValue: "\(quantity)"))
         }
 
-        if containsWord(lower, ["cancel"]) {
-            proposal.stateAction = .cancel
-        } else if containsWord(lower, ["close", "sold out", "stop selling", "end it"]) {
-            proposal.stateAction = .close
-        } else if containsWord(lower, ["pause", "hide", "hold"]) {
-            if listing.state != .paused { proposal.stateAction = .pause }
-        } else if containsWord(lower, ["resume", "unpause", "reopen", "restart"]) {
-            if listing.state == .paused { proposal.stateAction = .resume }
-        }
-        if let action = proposal.stateAction {
+        switch action {
+        case .pause? where listing.state == .paused, .resume? where listing.state != .paused:
+            break
+        case let action?:
+            proposal.stateAction = action
             let newValue: String
             switch action {
             case .pause: newValue = "Paused"
@@ -253,11 +283,10 @@ enum SurplusAssistant {
             case .cancel: newValue = "Cancelled"
             }
             proposal.changes.append(ProposedChange(field: "Status", oldValue: listing.status.rawValue, newValue: newValue))
+        case nil:
+            break
         }
 
-        if lower.contains("allerg") || lower.contains("vegan") || lower.contains("gluten") || lower.contains("halal") {
-            proposal.notes.append("Allergen and dietary claims can't be added. Surprise Bags never promise contents.")
-        }
         if proposal.changes.isEmpty {
             proposal.notes.append("I didn't find a change. Try: “Change the quantity to six bags and move pickup to 7:15–7:45 PM.”")
         }
@@ -528,5 +557,183 @@ enum SurplusAssistant {
             let pattern = "\\b" + NSRegularExpression.escapedPattern(for: word) + "\\b"
             return !matches(pattern, in: text).isEmpty
         }
+    }
+}
+
+// MARK: - Gemini
+
+/// Reads staff speech with Gemini. It returns the same types as `SurplusAssistant`, so the
+/// screens don't change and staff still review every result. Callers fall back to
+/// `SurplusAssistant` when this throws (no key, offline, no answer).
+enum SurplusAI {
+    private static let rules = """
+    You read what restaurant staff said and turn it into data for KnightSaver, a UCF app where \
+    students pick up surplus food in Surprise Bags. Staff speak into a phone, so the text may have \
+    speech-to-text mistakes, like "for" instead of "4" or "bagel's" instead of "bagels". Fix obvious ones.
+    Rules:
+    - Use only items, numbers, prices and times staff actually said. Never invent anything.
+    - Never add allergen, dietary, ingredient or freshness claims. If staff mention them, add a note \
+    that Surprise Bags can't promise contents.
+    - Times are 24-hour "HH:mm" today. Pickups are usually in the afternoon or evening. If staff give \
+    no AM or PM, choose the sensible reading and add a note saying what you assumed.
+    - Notes are short sentences for staff about anything unclear. No notes when everything is clear.
+    """
+
+    // MARK: List surplus
+
+    static func interpret(
+        _ text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> SurplusInterpretation {
+        struct Reply: Decodable {
+            struct Item: Decodable {
+                let name: String
+                let quantity: Int
+            }
+            let items: [Item]
+            let pickupStart: String?
+            let pickupEnd: String?
+            let price: Double?
+            let notes: [String]
+        }
+        let reply: Reply = try await ask("""
+            It is \(clock(now, calendar: calendar)) now. Staff said: "\(text)"
+            List each surplus item with its quantity, merging repeats of the same item. Give the pickup \
+            start and end if staff said them, and the price per bag in US dollars if staff said one. \
+            Use null for anything staff didn't say.
+            """, schema: object([
+                "items": ["type": "array", "items": object(["name": string, "quantity": integer])],
+                "pickupStart": nullable("string"),
+                "pickupEnd": nullable("string"),
+                "price": nullable("number"),
+                "notes": ["type": "array", "items": string]
+            ]))
+
+        var inventory: [SurplusItem] = []
+        for item in reply.items {
+            let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty, (1...500).contains(item.quantity) else { continue }
+            if let index = inventory.firstIndex(where: { $0.name.lowercased() == name.lowercased() }) {
+                inventory[index].quantity += item.quantity
+            } else {
+                inventory.append(SurplusItem(name: name.prefix(1).uppercased() + name.dropFirst(), quantity: item.quantity))
+            }
+        }
+
+        var start = reply.pickupStart.flatMap { time($0, on: now, calendar: calendar) }
+        var end = reply.pickupEnd.flatMap { time($0, on: now, calendar: calendar) }
+        var notes = reply.notes
+        if start == nil, let heardEnd = end {
+            start = max(PickupTime.roundedDown(now), heardEnd.addingTimeInterval(-BusinessRules.defaultPickupLength))
+            notes.append("Only an end time was heard, so pickup starts 30 minutes earlier. Check it.")
+        } else if end == nil, let heardStart = start {
+            end = heardStart.addingTimeInterval(BusinessRules.defaultPickupLength)
+            notes.append("Only a start time was heard, so pickup lasts 30 minutes. Check it.")
+        }
+
+        return SurplusAssistant.withMissingNotes(SurplusInterpretation(
+            inventory: inventory,
+            pickupStart: start,
+            pickupEnd: end,
+            price: reply.price.flatMap { $0 >= 0 ? $0 : nil },
+            notes: notes
+        ))
+    }
+
+    // MARK: Edit listing
+
+    static func proposeEdit(
+        for listing: BusinessListing,
+        instruction: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> ListingEditProposal {
+        struct Reply: Decodable {
+            let bagsAvailable: Int?
+            let price: Double?
+            let pickupStart: String?
+            let pickupEnd: String?
+            let status: String
+            let notes: [String]
+        }
+        let reply: Reply = try await ask("""
+            It is \(clock(now, calendar: calendar)) now. The live listing has \(listing.remainingQuantity) of \
+            \(listing.totalQuantity) bags available, costs \(PickupTime.money(listing.price)) per bag, has \
+            pickup from \(clock(listing.pickupStart, calendar: calendar)) to \(clock(listing.pickupEnd, calendar: calendar)), \
+            and its status is \(listing.status.rawValue).
+            Staff said: "\(instruction)"
+            Give only what staff asked to change, and null for everything else. bagsAvailable is the new \
+            number of bags left. status is "pause", "resume", "close" (stop selling), "cancel", or "none".
+            """, schema: object([
+                "bagsAvailable": nullable("integer"),
+                "price": nullable("number"),
+                "pickupStart": nullable("string"),
+                "pickupEnd": nullable("string"),
+                "status": ["type": "string", "enum": ["none", "pause", "resume", "close", "cancel"]],
+                "notes": ["type": "array", "items": string]
+            ]))
+
+        let action: ListingStateAction? = switch reply.status {
+        case "pause": .pause
+        case "resume": .resume
+        case "close": .close
+        case "cancel": .cancel
+        default: nil
+        }
+        return SurplusAssistant.makeProposal(
+            for: listing,
+            quantity: reply.bagsAvailable,
+            price: reply.price,
+            pickupStart: reply.pickupStart.flatMap { time($0, on: now, calendar: calendar) },
+            pickupEnd: reply.pickupEnd.flatMap { time($0, on: now, calendar: calendar) },
+            action: action,
+            notes: reply.notes
+        )
+    }
+
+    // MARK: Transport
+
+    /// One structured-output call: Gemini's reply is JSON that matches `schema`.
+    private static func ask<Reply: Decodable>(_ prompt: String, schema: [String: Any]) async throws -> Reply {
+        let content = try await GeminiAPI.generate([
+            "systemInstruction": ["parts": [["text": rules]]],
+            "contents": [["role": "user", "parts": [["text": prompt]]]],
+            "generationConfig": [
+                "responseMimeType": "application/json",
+                "responseJsonSchema": schema,
+                // Low thinking: a short extraction while staff wait at the counter.
+                "thinkingConfig": ["thinkingLevel": "low"]
+            ]
+        ])
+        guard let data = GeminiAPI.text(of: content).data(using: .utf8),
+              let reply = try? JSONDecoder().decode(Reply.self, from: data) else { throw GeminiAPI.Failure.unreadable }
+        return reply
+    }
+
+    private static let string: [String: Any] = ["type": "string"]
+    private static let integer: [String: Any] = ["type": "integer"]
+
+    private static func nullable(_ type: String) -> [String: Any] {
+        ["type": [type, "null"]]
+    }
+
+    /// Every property required and nothing extra, so replies always have the same shape.
+    private static func object(_ properties: [String: Any]) -> [String: Any] {
+        ["type": "object", "properties": properties, "required": properties.keys.sorted(), "additionalProperties": false]
+    }
+
+    // MARK: Times
+
+    private static func clock(_ date: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+    }
+
+    /// "19:30" → today at 7:30 PM.
+    private static func time(_ text: String, on day: Date, calendar: Calendar) -> Date? {
+        let parts = text.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2, (0...23).contains(parts[0]), (0...59).contains(parts[1]) else { return nil }
+        return calendar.date(bySettingHour: parts[0], minute: parts[1], second: 0, of: day)
     }
 }
