@@ -116,7 +116,8 @@ struct ListSurplusFlow: View {
                 BizMethodButton(
                     title: "Speak with AI",
                     subtitle: "Say what's left and when it can be picked up. AI shows what it understood, then proposes the bags.",
-                    icon: "mic.fill"
+                    icon: "mic.fill",
+                    isAI: true
                 ) {
                     usingAI = true
                     step = .speak
@@ -150,9 +151,12 @@ struct ListSurplusFlow: View {
     private var speakView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Tell me what's left")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
+                HStack(spacing: 8) {
+                    Text("Tell me what's left")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    AISparkle(size: 20)
+                }
                 Text("Tap the mic and say what's left, when pickup is and the price if you have one. I'll write it down.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
@@ -312,7 +316,8 @@ struct ListSurplusFlow: View {
             price: heardPrice,
             pickupStart: pickupStart,
             pickupEnd: pickupEnd,
-            createdByAI: usingAI
+            createdByAI: usingAI,
+            maxBags: store.profile.maxBagsPerListing
         )
         step = .plan
     }
@@ -347,7 +352,7 @@ struct BagPlanEditor: View {
                 }
                 .padding(.vertical, 4)
 
-                Stepper(value: $plan.bagCount, in: 1...max(1, plan.totalItems)) {
+                Stepper(value: $plan.bagCount, in: 1...plan.bagCountCap) {
                     Text("Surprise Bags: \(plan.bagCount)")
                 }
                 HStack {
@@ -364,6 +369,8 @@ struct BagPlanEditor: View {
                 DatePicker("Pickup ends", selection: $plan.pickupEnd, displayedComponents: .hourAndMinute)
             } header: {
                 Text(plan.createdByAI ? "AI proposal — edit anything" : "Your Surprise Bags")
+            } footer: {
+                Text("Your limit is \(plan.maxBags) bags per listing. Change it in Profile.")
             }
 
             Section {

@@ -22,8 +22,22 @@ struct BackendAuthSession: Codable, Hashable {
 }
 
 struct BackendUser: Codable, Hashable {
+    struct Metadata: Codable, Hashable {
+        let displayName: String?
+
+        enum CodingKeys: String, CodingKey {
+            case displayName = "display_name"
+        }
+    }
+
     let id: UUID
     let email: String?
+    let metadata: Metadata?
+
+    enum CodingKeys: String, CodingKey {
+        case id, email
+        case metadata = "user_metadata"
+    }
 }
 
 struct BackendReservationResult: Decodable, Hashable {
@@ -84,13 +98,25 @@ struct RemoteListing: Decodable, Identifiable, Hashable {
     }
 }
 
+struct BackendBusinessSettings: Decodable, Hashable {
+    let businessID: UUID
+    let maxBagsPerListing: Int
+
+    enum CodingKeys: String, CodingKey {
+        case businessID = "business_id"
+        case maxBagsPerListing = "max_bags_per_listing"
+    }
+}
+
 enum BackendError: LocalizedError {
     case invalidResponse
     case server(String)
+    case notDeployed
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: "The KnightSaver service returned an unreadable response."
+        case .notDeployed: "This feature isn't set up on the KnightSaver service yet."
         case .server(let message): message
         }
     }
@@ -152,6 +178,44 @@ actor KnightSaverBackend {
         return try decoder.decode(BackendAuthSession.self, from: data)
     }
 
+    /// Emails a one-time code. An address without an account gets one, confirmed when the code
+    /// is entered. The code is the `{{ .Token }}` in the project's Confirm signup and Magic Link
+    /// email templates.
+    func sendEmailCode(email: String, displayName: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "email": email,
+            "create_user": true,
+            "data": ["display_name": displayName]
+        ])
+        _ = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "auth/v1/otp"),
+            method: "POST",
+            body: body
+        )
+    }
+
+    /// Checks the emailed code and returns the new session. The email is verified from here on.
+    func verifyEmailCode(email: String, code: String) async throws -> BackendAuthSession {
+        let body = try JSONSerialization.data(withJSONObject: ["type": "email", "email": email, "token": code])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "auth/v1/verify"),
+            method: "POST",
+            body: body
+        )
+        return try decoder.decode(BackendAuthSession.self, from: data)
+    }
+
+    /// Sets the password the student chose, so later sign-ins use email and password.
+    func setPassword(_ password: String, accessToken: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["password": password])
+        _ = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "auth/v1/user"),
+            method: "PUT",
+            body: body,
+            accessToken: accessToken
+        )
+    }
+
     func bootstrapIdentity(accessToken: String) async throws -> String {
         let data = try await request(
             url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/bootstrap_demo_identity"),
@@ -187,6 +251,32 @@ actor KnightSaverBackend {
         return try decoder.decode(BackendReservationResult.self, from: data)
     }
 
+    /// The signed-in staff member's business settings (today: the bag limit per listing).
+    func fetchBusinessSettings(accessToken: String) async throws -> BackendBusinessSettings {
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/get_business_settings"),
+            method: "POST",
+            body: Data("{}".utf8),
+            accessToken: accessToken
+        )
+        guard let settings = try decoder.decode([BackendBusinessSettings].self, from: data).first else {
+            throw BackendError.server("This account isn't staff of a business yet.")
+        }
+        return settings
+    }
+
+    /// Managers only. The database checks the range and returns the saved limit.
+    func setMaxBagsPerListing(_ limit: Int, accessToken: String) async throws -> Int {
+        let body = try JSONSerialization.data(withJSONObject: ["p_max": limit])
+        let data = try await request(
+            url: BackendConfiguration.projectURL.appending(path: "rest/v1/rpc/set_max_bags_per_listing"),
+            method: "POST",
+            body: body,
+            accessToken: accessToken
+        )
+        return try decoder.decode(Int.self, from: data)
+    }
+
     private func request(
         url: URL,
         method: String,
@@ -205,6 +295,8 @@ actor KnightSaverBackend {
         guard let http = response as? HTTPURLResponse else { throw BackendError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
             let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            // PostgREST's "no such function": the migration that adds it isn't applied yet.
+            if payload?["code"] as? String == "PGRST202" { throw BackendError.notDeployed }
             let message = payload?["message"] as? String
                 ?? payload?["msg"] as? String
                 ?? "KnightSaver service error (\(http.statusCode))."

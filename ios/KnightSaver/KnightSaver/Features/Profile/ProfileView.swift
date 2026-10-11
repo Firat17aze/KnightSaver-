@@ -1408,11 +1408,13 @@ private struct SignOutButton: View {
 
 // MARK: - Business profile
 
-/// Profile tab for business owners: their photo, business details, and sign out.
+/// Profile tab for business owners: their photo, business details, the bag limit, and sign out.
 /// Students see `ProfileView` instead.
 struct BusinessAccountView: View {
     let account: AppAccount
     let onSignOut: () -> Void
+    @EnvironmentObject private var businessStore: BusinessStore
+    @State private var isEditingBagLimit = false
 
     var body: some View {
         NavigationStack {
@@ -1444,6 +1446,8 @@ struct BusinessAccountView: View {
                         }
                     }
 
+                    bagLimitSection
+
                     SignOutButton(onSignOut: onSignOut)
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
@@ -1454,6 +1458,56 @@ struct BusinessAccountView: View {
             .reservesTabBarSpace()
             .background(KnightTheme.paper)
             .navigationBarHidden(true)
+            .sheet(isPresented: $isEditingBagLimit) {
+                BagLimitEditor(account: account)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+    }
+
+    private var bagLimitSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Surprise Bags")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(KnightTheme.ink)
+
+            Button {
+                isEditingBagLimit = true
+            } label: {
+                HStack(spacing: 13) {
+                    Image(systemName: "bag")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
+                        .frame(width: 34, height: 34)
+                    Text("Max bags per listing")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(KnightTheme.ink)
+                    Spacer(minLength: 12)
+                    Text("\(businessStore.profile.maxBagsPerListing)")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(KnightTheme.ink)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+            }
+            .accessibilityLabel("Max bags per listing, \(businessStore.profile.maxBagsPerListing)")
+            .accessibilityHint("Changes the most Surprise Bags one listing can have")
+
+            Text("No listing can have more bags than this, whether the AI proposes it or it's typed in.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(KnightTheme.muted)
         }
     }
 
@@ -1480,6 +1534,66 @@ struct BusinessAccountView: View {
                 Spacer(minLength: 0)
             }
         }
+    }
+}
+
+/// Sheet for the owner's bag limit per listing. Saved to the database when signed in to it.
+private struct BagLimitEditor: View {
+    let account: AppAccount
+    @EnvironmentObject private var businessStore: BusinessStore
+    @EnvironmentObject private var sessionStore: SessionStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var limit = BusinessRules.defaultMaxBagsPerListing
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Stepper(value: $limit, in: BusinessRules.maxBagsPerListingRange) {
+                        Text("\(limit) bag\(limit == 1 ? "" : "s") per listing")
+                            .monospacedDigit()
+                    }
+                } footer: {
+                    Text("Applies to new listings and to edits. A live listing that already has more keeps its bags, but can't add any.")
+                }
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(KnightTheme.red)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(KnightTheme.paper)
+            .navigationTitle("Max bags per listing")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") { Task { await save() } }
+                            .fontWeight(.bold)
+                            .disabled(limit == businessStore.profile.maxBagsPerListing)
+                    }
+                }
+            }
+        }
+        .tint(KnightTheme.ink)
+        .onAppear { limit = businessStore.profile.maxBagsPerListing }
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        errorMessage = await businessStore.saveBagLimit(limit, accountID: account.id, accessToken: sessionStore.accessToken)
+        if errorMessage == nil { dismiss() }
     }
 }
 

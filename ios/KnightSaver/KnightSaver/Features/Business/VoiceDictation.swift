@@ -20,8 +20,14 @@ final class VoiceDictation: ObservableObject {
 
     var isListening: Bool { status == .listening || status == .starting }
 
+    private enum DictationError: Error {
+        case noMicrophoneInput
+    }
+
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-    private let audioEngine = AVAudioEngine()
+    /// A new engine for every session, so the mic format is read fresh after the audio
+    /// session changes (a stale format makes installTap throw and close the app).
+    private var audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var session = 0
@@ -91,8 +97,18 @@ final class VoiceDictation: ObservableObject {
         request.contextualStrings = SurplusAssistant.speechHints
         self.request = request
 
+        audioEngine = AVAudioEngine()
         let input = audioEngine.inputNode
-        let format = input.outputFormat(forBus: 0)
+        // installTap raises an Objective-C exception (which Swift can't catch) when the format
+        // has no channels or sample rate, or doesn't match the mic. That happens with no mic,
+        // in the Simulator without Mac mic access, or during a call. Check first and fall back
+        // to "Voice isn't available" instead of crashing.
+        let hardware = input.inputFormat(forBus: 0)
+        guard hardware.sampleRate > 0, hardware.channelCount > 0 else {
+            throw DictationError.noMicrophoneInput
+        }
+        let output = input.outputFormat(forBus: 0)
+        let format = output.sampleRate == hardware.sampleRate && output.channelCount > 0 ? output : hardware
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             request.append(buffer)

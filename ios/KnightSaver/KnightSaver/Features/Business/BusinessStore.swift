@@ -93,6 +93,56 @@ final class BusinessStore: ObservableObject {
         }
     }
 
+    // MARK: - Bag limit (Profile)
+
+    private static func bagLimitKey(_ accountID: UUID) -> String {
+        "knightsaver.maxBagsPerListing.\(accountID.uuidString)"
+    }
+
+    /// Loads the owner's bag limit: the copy saved on this phone first, then the database's
+    /// when the account is signed in to the backend.
+    @MainActor
+    func loadBagLimit(accountID: UUID, accessToken: String?) async {
+        let key = Self.bagLimitKey(accountID)
+        if let saved = UserDefaults.standard.object(forKey: key) as? Int {
+            profile.maxBagsPerListing = Self.clampedBagLimit(saved)
+        }
+        guard let accessToken,
+              let settings = try? await KnightSaverBackend.shared.fetchBusinessSettings(accessToken: accessToken) else { return }
+        profile.maxBagsPerListing = Self.clampedBagLimit(settings.maxBagsPerListing)
+        UserDefaults.standard.set(profile.maxBagsPerListing, forKey: key)
+    }
+
+    /// Saves a new bag limit. With a backend session the database must accept it first;
+    /// if it refuses, the old limit stays and the error message is returned. Until the bag
+    /// limit migration is applied, the limit is kept on this phone only.
+    @MainActor
+    func saveBagLimit(_ limit: Int, accountID: UUID, accessToken: String?) async -> String? {
+        var saved = Self.clampedBagLimit(limit)
+        if let accessToken {
+            do {
+                saved = Self.clampedBagLimit(try await KnightSaverBackend.shared.setMaxBagsPerListing(saved, accessToken: accessToken))
+            } catch BackendError.notDeployed {
+                // Keep it locally.
+            } catch {
+                return error.localizedDescription
+            }
+        }
+        profile.maxBagsPerListing = saved
+        UserDefaults.standard.set(saved, forKey: Self.bagLimitKey(accountID))
+        log(.listingUpdated, "Bag limit set to \(saved) per listing")
+        return nil
+    }
+
+    static func clampedBagLimit(_ value: Int) -> Int {
+        min(max(value, BusinessRules.maxBagsPerListingRange.lowerBound), BusinessRules.maxBagsPerListingRange.upperBound)
+    }
+
+    /// Most bags staff can make available on this listing right now.
+    func maxBagsAvailable(for listing: BusinessListing) -> Int {
+        listing.maxBagsAvailable(limit: profile.maxBagsPerListing)
+    }
+
     // MARK: - Reading
 
     func listing(id: UUID) -> BusinessListing? {
@@ -312,6 +362,11 @@ final class BusinessStore: ObservableObject {
     @discardableResult
     func publish(_ plan: BagPlan) -> BusinessListing? {
         guard plan.isReady else { return nil }
+        // The owner's limit from Profile, checked again here whatever the plan screen allowed.
+        guard plan.bagCount <= profile.maxBagsPerListing else {
+            toast = "Not published: your limit is \(profile.maxBagsPerListing) bags per listing."
+            return nil
+        }
         let allocation = plan.allocation
         let allocatedItems = allocation.bags.flatMap { $0 }
         var inventory: [SurplusItem] = []
@@ -361,8 +416,10 @@ final class BusinessStore: ObservableObject {
         }
 
         if let remaining = remaining {
-            let delta = max(0, remaining) - listing.remainingQuantity
-            listing.remainingQuantity = max(0, remaining)
+            // Never above the owner's per-listing bag limit, however the number was entered.
+            let allowed = min(max(0, remaining), listing.maxBagsAvailable(limit: profile.maxBagsPerListing))
+            let delta = allowed - listing.remainingQuantity
+            listing.remainingQuantity = allowed
             listing.totalQuantity = max(0, listing.totalQuantity + delta)
             if delta != 0 {
                 listing.reallocateBags()

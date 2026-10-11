@@ -142,6 +142,8 @@ struct RootView: View {
         .task(id: account.id) {
             if account.role == .student {
                 await businessStore.refreshFromBackend()
+            } else {
+                await businessStore.loadBagLimit(accountID: account.id, accessToken: sessionStore.accessToken)
             }
         }
     }

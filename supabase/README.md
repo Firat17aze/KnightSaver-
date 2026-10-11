@@ -13,6 +13,26 @@ Both use the hackathon-only password `KnightSaverDemo!2026`. The app's one-tap d
 
 After either account signs in, the iOS app calls `bootstrap_demo_identity()`. The manager account is then assigned to the seeded business and location. Remove that bootstrap function before a production launch and provision staff through an admin-only workflow.
 
+## Student sign-up with a UCF email code
+
+Students create an account in the app with their name, an `@ucf.edu` email and a password. Supabase emails them a one-time code; once they enter it, the account is verified and the password is saved, so later sign-ins use email and password. `migrations/202610110001_ucf_student_emails.sql` makes the database refuse new accounts that aren't `@ucf.edu` (the demo manager excepted).
+
+Dashboard setup, once:
+
+1. **Custom SMTP** (Authentication › Emails › SMTP Settings). Supabase's built-in sender only delivers to members of the project's team, 2 emails an hour. Any SMTP service works; for the hackathon, a Gmail account with an [app password](https://myaccount.google.com/apppasswords) is quickest: host `smtp.gmail.com`, port `465`, the Gmail address as username and sender, the app password as password. Then raise the email rate limit under Authentication › Rate Limits.
+2. **Email templates** (Authentication › Emails › Templates). New students get the **Confirm signup** email and returning addresses get the **Magic Link or OTP** email, so use the same code template in both, with subject `Your KnightSaver verification code` and body:
+   ```html
+   <h2>Your KnightSaver verification code</h2>
+   <p>Enter this code in the KnightSaver app to verify your UCF email:</p>
+   <p style="font-size:32px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
+   <p>This code expires in one hour. If you did not request it, you can ignore this email.</p>
+   ```
+3. **The UCF-only rule**: run `migrations/202610110001_ucf_student_emails.sql` in the SQL Editor.
+
+## Bag limit per listing
+
+Each business has `businesses.max_bags_per_listing` (1–100, default 10): the most Surprise Bags one listing may have. Managers set it from the app's Profile tab through `set_max_bags_per_listing`, and the app reads it with `get_business_settings`. A trigger on `listings` refuses any new listing above the limit and any edit that grows a listing past it, so neither the AI proposal nor manual entry can beat it. Apply it by running `migrations/202610120001_business_bag_limit.sql` in the SQL Editor.
+
 Critical writes are RPC-only:
 
 - `reserve_listing` locks inventory so the final bag cannot be oversold.

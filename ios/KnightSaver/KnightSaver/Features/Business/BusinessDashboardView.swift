@@ -194,20 +194,12 @@ enum BusinessSheet: Identifiable, Hashable {
 
 // MARK: - Scan Knight Pass button
 
-/// The one bold element on the page. Same family as the Knight Pass card in Profile
-/// (flat fill, gold wordmark, KnightLogo, 22pt corners, thin border), but shaped as a
-/// wide action with a gold chevron so it reads as a button.
+/// The one bold element on the page. Same shape as the Knight Pass card in Profile
+/// (flat fill, wordmark, KnightLogo, 22pt corners, thin border), in lake blue so it
+/// stands apart from the gold List surplus button under it.
 struct ScanKnightPassButton: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var isDark: Bool { colorScheme == .dark }
-
-    /// Dark mode: the Knight Pass card's black. Light mode: a flat pale gold.
-    private var fill: Color {
-        isDark ? KnightTheme.night : Color(red: 0.99, green: 0.93, blue: 0.76)
-    }
 
     var body: some View {
         Button(action: action) {
@@ -216,14 +208,14 @@ struct ScanKnightPassButton: View {
                     Text("KNIGHTSAVER")
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(2.2)
-                        .foregroundStyle(isDark ? KnightTheme.gold : KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.gold)
                         .padding(.bottom, 4)
                     Text("Scan Knight Pass")
                         .font(.system(size: 21, weight: .bold, design: .rounded))
-                        .foregroundStyle(isDark ? Color.white : KnightTheme.onAccent)
+                        .foregroundStyle(Color.white)
                     Text("Verify a student's pickup")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(isDark ? Color.white.opacity(0.68) : KnightTheme.onAccent.opacity(0.62))
+                        .foregroundStyle(Color.white.opacity(0.78))
                 }
 
                 Spacer(minLength: 8)
@@ -236,18 +228,18 @@ struct ScanKnightPassButton: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(isDark ? KnightTheme.onAccent : KnightTheme.gold)
+                    .foregroundStyle(KnightTheme.lakeOnGold)
                     .frame(width: 38, height: 38)
-                    .background(isDark ? KnightTheme.gold : KnightTheme.night, in: Circle())
+                    .background(Color.white, in: Circle())
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-            .background(fill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(KnightTheme.lakeFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(isDark ? Color.white.opacity(0.14) : KnightTheme.goldDeep.opacity(0.25), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }

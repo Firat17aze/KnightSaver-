@@ -97,7 +97,8 @@ struct EditListingFlow: View {
                 BizMethodButton(
                     title: "Edit with voice",
                     subtitle: "Say what to change. You'll see the proposed changes before anything goes live.",
-                    icon: "mic.fill"
+                    icon: "mic.fill",
+                    isAI: true
                 ) {
                     step = .voice
                 }
@@ -119,9 +120,12 @@ struct EditListingFlow: View {
     private var voiceView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("What should change?")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
+                HStack(spacing: 8) {
+                    Text("What should change?")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(KnightTheme.ink)
+                    AISparkle(size: 20)
+                }
                 Text("Tap the mic and say what to change: bags, price, pickup time or spot.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
@@ -164,13 +168,16 @@ struct EditListingFlow: View {
         var result: ListingEditProposal
         if GeminiAPI.isConfigured {
             do {
-                result = try await SurplusAI.proposeEdit(for: listing, instruction: instruction)
+                result = try await SurplusAI.proposeEdit(for: listing, instruction: instruction,
+                                                       maxBagsPerListing: store.profile.maxBagsPerListing)
             } catch {
-                result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
+                result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction,
+                                                       maxBagsPerListing: store.profile.maxBagsPerListing)
                 result.notes.insert("Live AI didn't answer, so this was read with simple rules. Check every line.", at: 0)
             }
         } else {
-            result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction)
+            result = SurplusAssistant.proposeEdit(for: listing, instruction: instruction,
+                                                       maxBagsPerListing: store.profile.maxBagsPerListing)
         }
         proposal = result
         step = .proposal
@@ -276,7 +283,7 @@ struct EditListingFlow: View {
     private var manualView: some View {
         Form {
             Section {
-                Stepper(value: $remaining, in: 0...500) {
+                Stepper(value: $remaining, in: 0...store.maxBagsAvailable(for: listing)) {
                     Text("Bags available: \(remaining)")
                 }
                 HStack {
@@ -294,7 +301,7 @@ struct EditListingFlow: View {
             } header: {
                 Text("Listing")
             } footer: {
-                Text("Reserved bags stay reserved. Changing bags available only changes what students can still reserve.")
+                Text("Reserved bags stay reserved. Changing bags available only changes what students can still reserve. Your limit is \(store.profile.maxBagsPerListing) bags per listing (set in Profile).")
             }
 
             Section {

@@ -32,12 +32,17 @@ struct BagPlan: Hashable {
     /// On: contents stay a secret, even in the staff split. Off: a Rescue Bag with known contents.
     var isSurprise: Bool = true
     var createdByAI: Bool
+    /// The business's bag limit per listing (Profile). The plan can't go above it.
+    var maxBags: Int = BusinessRules.defaultMaxBagsPerListing
 
     var validInventory: [SurplusItem] {
         inventory.filter { $0.quantity > 0 && !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
     var totalItems: Int { validInventory.totalUnits }
+
+    /// Highest bag count staff can pick: one item per bag at least, and never above the limit.
+    var bagCountCap: Int { max(1, min(totalItems, maxBags)) }
 
     var allocation: BagAllocation {
         SurplusAssistant.allocate(validInventory, into: bagCount)
@@ -47,6 +52,7 @@ struct BagPlan: Hashable {
         var result: [String] = []
         if totalItems == 0 { result.append("Add at least one surplus item.") }
         if bagCount < 1 { result.append("Make at least 1 Surprise Bag.") }
+        if bagCount > maxBags { result.append("Your limit is \(maxBags) bags per listing. Change it in Profile.") }
         if totalItems > 0 && bagCount > totalItems { result.append("There are more bags than surplus items.") }
         if price < 0 { result.append("Price can't be negative.") }
         if pickupEnd <= pickupStart { result.append("Pickup must end after it starts.") }
@@ -138,10 +144,11 @@ enum SurplusAssistant {
         price: Double?,
         pickupStart: Date,
         pickupEnd: Date,
-        createdByAI: Bool
+        createdByAI: Bool,
+        maxBags: Int = BusinessRules.defaultMaxBagsPerListing
     ) -> BagPlan {
         let total = inventory.totalUnits
-        let bags = max(1, total / BusinessRules.targetItemsPerBag)
+        let bags = min(max(1, total / BusinessRules.targetItemsPerBag), max(1, maxBags))
         return BagPlan(
             inventory: inventory,
             bagCount: bags,
@@ -149,7 +156,8 @@ enum SurplusAssistant {
             pickupStart: pickupStart,
             pickupEnd: pickupEnd,
             publicDescription: BusinessRules.defaultPublicDescription,
-            createdByAI: createdByAI
+            createdByAI: createdByAI,
+            maxBags: max(1, maxBags)
         )
     }
 
@@ -196,6 +204,7 @@ enum SurplusAssistant {
     static func proposeEdit(
         for listing: BusinessListing,
         instruction: String,
+        maxBagsPerListing: Int = BusinessRules.defaultMaxBagsPerListing,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> ListingEditProposal {
@@ -223,7 +232,8 @@ enum SurplusAssistant {
             notes.append("Allergen and dietary claims can't be added. Surprise Bags never promise contents.")
         }
         return makeProposal(for: listing, quantity: quantity, price: price,
-                            pickupStart: times.start, pickupEnd: times.end, action: action, notes: notes)
+                            pickupStart: times.start, pickupEnd: times.end, action: action, notes: notes,
+                            maxBagsPerListing: maxBagsPerListing)
     }
 
     /// Compares the values heard in an edit with the live listing and lists what would change.
@@ -235,9 +245,11 @@ enum SurplusAssistant {
         pickupStart: Date?,
         pickupEnd: Date?,
         action: ListingStateAction?,
-        notes: [String]
+        notes: [String],
+        maxBagsPerListing: Int = BusinessRules.defaultMaxBagsPerListing
     ) -> ListingEditProposal {
         var proposal = ListingEditProposal(changes: [], notes: notes)
+        let maxBagsAvailable = listing.maxBagsAvailable(limit: maxBagsPerListing)
 
         if let price, price >= 0, abs(price - listing.price) > 0.001 {
             proposal.price = price
@@ -263,11 +275,18 @@ enum SurplusAssistant {
                                                    newValue: PickupTime.window(start, end)))
         }
 
-        if let quantity, quantity >= 0, quantity <= 500, quantity != listing.remainingQuantity {
-            proposal.remainingQuantity = quantity
-            proposal.changes.append(ProposedChange(field: "Bags available",
-                                                   oldValue: "\(listing.remainingQuantity)",
-                                                   newValue: "\(quantity)"))
+        if var quantity, quantity >= 0, quantity <= 500 {
+            // The business's bag limit wins over whatever was heard.
+            if quantity > maxBagsAvailable {
+                proposal.notes.append("Your limit is \(maxBagsPerListing) bags per listing, so at most \(maxBagsAvailable) can be available here. Change the limit in Profile.")
+                quantity = maxBagsAvailable
+            }
+            if quantity != listing.remainingQuantity {
+                proposal.remainingQuantity = quantity
+                proposal.changes.append(ProposedChange(field: "Bags available",
+                                                       oldValue: "\(listing.remainingQuantity)",
+                                                       newValue: "\(quantity)"))
+            }
         }
 
         switch action {
@@ -646,6 +665,7 @@ enum SurplusAI {
     static func proposeEdit(
         for listing: BusinessListing,
         instruction: String,
+        maxBagsPerListing: Int = BusinessRules.defaultMaxBagsPerListing,
         now: Date = Date(),
         calendar: Calendar = .current
     ) async throws -> ListingEditProposal {
@@ -661,7 +681,8 @@ enum SurplusAI {
             It is \(clock(now, calendar: calendar)) now. The live listing has \(listing.remainingQuantity) of \
             \(listing.totalQuantity) bags available, costs \(PickupTime.money(listing.price)) per bag, has \
             pickup from \(clock(listing.pickupStart, calendar: calendar)) to \(clock(listing.pickupEnd, calendar: calendar)), \
-            and its status is \(listing.status.rawValue).
+            and its status is \(listing.status.rawValue). The business allows at most \
+            \(listing.maxBagsAvailable(limit: maxBagsPerListing)) bags available on this listing.
             Staff said: "\(instruction)"
             Give only what staff asked to change, and null for everything else. bagsAvailable is the new \
             number of bags left. status is "pause", "resume", "close" (stop selling), "cancel", or "none".
@@ -688,7 +709,8 @@ enum SurplusAI {
             pickupStart: reply.pickupStart.flatMap { time($0, on: now, calendar: calendar) },
             pickupEnd: reply.pickupEnd.flatMap { time($0, on: now, calendar: calendar) },
             action: action,
-            notes: reply.notes
+            notes: reply.notes,
+            maxBagsPerListing: maxBagsPerListing
         )
     }
 

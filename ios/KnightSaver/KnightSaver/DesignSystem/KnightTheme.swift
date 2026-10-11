@@ -19,6 +19,11 @@ enum KnightTheme {
     static let citrus = dynamic(light: (0.74, 0.33, 0.04), dark: (0.98, 0.62, 0.30))
     /// Lake Claire blue: information and place (pickup location, times).
     static let lake = dynamic(light: (0.12, 0.40, 0.64), dark: (0.47, 0.71, 0.95))
+    /// Deep lake blue fill for the Scan Knight Pass action, with white text on top.
+    static let lakeFill = dynamic(light: (0.04, 0.36, 0.82), dark: (0.07, 0.29, 0.64))
+    /// Icons drawn on a gold tile. They stay the same in both modes because gold does.
+    static let lakeOnGold = Color(red: 0.04, green: 0.36, blue: 0.82)
+    static let greenOnGold = Color(red: 0.08, green: 0.43, blue: 0.28)
     /// Neutral tile behind plain icons, in place of gold tints.
     static let wash = dynamic(light: (0.93, 0.925, 0.905), dark: (0.19, 0.18, 0.16))
     /// League podium: second and third place next to gold.

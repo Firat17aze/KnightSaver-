@@ -53,7 +53,12 @@ final class SessionStore: ObservableObject {
     @Published private(set) var accessToken: String?
     @Published var errorMessage: String?
     @Published private(set) var isWorking = false
+    /// The UCF email waiting for its one-time code during student sign-up.
+    @Published private(set) var pendingVerificationEmail: String?
+    /// When the last code was sent. Supabase allows one code a minute per address.
+    @Published private(set) var codeSentAt: Date?
 
+    private var pendingSignUp: (name: String, password: String)?
     private let credentialsKey = "knightsaver.localCredentials.v1"
     private let activeAccountKey = "knightsaver.activeAccountID.v1"
     private var credentials: [LocalCredential] = []
@@ -83,40 +88,47 @@ final class SessionStore: ObservableObject {
                 email: normalizedEmail,
                 password: password
             )
-            let backendRole = try await KnightSaverBackend.shared.bootstrapIdentity(
-                accessToken: session.accessToken
-            )
-            let resolvedRole: AccountRole = backendRole == "business" ? .business : .student
-            guard resolvedRole == role else {
-                errorMessage = resolvedRole == .business
-                    ? "This is a business account. Go back and choose Business owner."
-                    : "This is a student account. Go back and choose Student."
-                return
-            }
-
-            let passToken = (try? await KnightSaverBackend.shared.knightPassToken(
-                accessToken: session.accessToken
-            )) ?? UUID().uuidString.replacingOccurrences(of: "-", with: "")
-            let displayName = normalizedEmail == "alex@ucf.edu"
-                ? "Alex Knight"
-                : normalizedEmail == "manager@knightros.example" ? "Jordan Manager" : normalizedEmail.split(separator: "@").first.map(String.init) ?? "KnightSaver member"
-            let remoteAccount = AppAccount(
-                id: session.user.id,
-                displayName: displayName,
-                email: session.user.email ?? normalizedEmail,
-                role: resolvedRole,
-                businessName: resolvedRole == .business ? "Knightro's Kitchen" : nil,
-                campusName: "UCF Main Campus",
-                passToken: passToken
-            )
-            accessToken = session.accessToken
-            setActive(remoteAccount)
+            try await activate(session, email: normalizedEmail, as: role)
             return
         } catch {
             // The built-in demo remains usable offline at judging time.
             if signInLocally(email: normalizedEmail, password: password, as: role) { return }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Loads the backend role and Knight Pass for a new session and makes it the active account.
+    /// Leaves the account signed out, with an error, when it belongs to the other side.
+    private func activate(_ session: BackendAuthSession, email: String, as role: AccountRole) async throws {
+        let backendRole = try await KnightSaverBackend.shared.bootstrapIdentity(
+            accessToken: session.accessToken
+        )
+        let resolvedRole: AccountRole = backendRole == "business" ? .business : .student
+        guard resolvedRole == role else {
+            errorMessage = resolvedRole == .business
+                ? "This is a business account. Go back and choose Business owner."
+                : "This is a student account. Go back and choose Student."
+            return
+        }
+
+        let passToken = (try? await KnightSaverBackend.shared.knightPassToken(
+            accessToken: session.accessToken
+        )) ?? UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let displayName = email == "alex@ucf.edu"
+            ? "Alex Knight"
+            : email == "manager@knightros.example" ? "Jordan Manager"
+            : session.user.metadata?.displayName ?? email.split(separator: "@").first.map(String.init) ?? "KnightSaver member"
+        let remoteAccount = AppAccount(
+            id: session.user.id,
+            displayName: displayName,
+            email: session.user.email ?? email,
+            role: resolvedRole,
+            businessName: resolvedRole == .business ? "Knightro's Kitchen" : nil,
+            campusName: "UCF Main Campus",
+            passToken: passToken
+        )
+        accessToken = session.accessToken
+        setActive(remoteAccount)
     }
 
     @discardableResult
@@ -138,6 +150,73 @@ final class SessionStore: ObservableObject {
         return true
     }
 
+    /// Step 1 of student sign-up: checks the details and emails a one-time code to the UCF address.
+    func startStudentSignUp(name: String, email: String, password: String) async {
+        errorMessage = nil
+        guard let details = validatedNewAccount(role: .student, name: name, email: email, password: password, businessName: nil) else {
+            return
+        }
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            try await KnightSaverBackend.shared.sendEmailCode(email: details.email, displayName: details.name)
+            pendingSignUp = (details.name, password)
+            pendingVerificationEmail = details.email
+            codeSentAt = Date()
+        } catch {
+            errorMessage = "We couldn't send a code to \(details.email). \(error.localizedDescription)"
+        }
+    }
+
+    func resendVerificationCode() async {
+        guard let email = pendingVerificationEmail, let pendingSignUp else { return }
+        errorMessage = nil
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            try await KnightSaverBackend.shared.sendEmailCode(email: email, displayName: pendingSignUp.name)
+            codeSentAt = Date()
+        } catch {
+            errorMessage = "We couldn't send a new code. \(error.localizedDescription)"
+        }
+    }
+
+    /// Step 2 of student sign-up: checks the code, saves the password and signs the student in.
+    func verifyStudentSignUp(code: String) async {
+        guard let email = pendingVerificationEmail, let pendingSignUp else { return }
+        let digits = code.filter(\.isNumber)
+        errorMessage = nil
+        guard digits.count >= 6 else {
+            errorMessage = "Enter the code from the email."
+            return
+        }
+        isWorking = true
+        defer { isWorking = false }
+
+        let session: BackendAuthSession
+        do {
+            session = try await KnightSaverBackend.shared.verifyEmailCode(email: email, code: digits)
+        } catch {
+            errorMessage = "That code didn't work. Check it, or send a new one."
+            return
+        }
+        do {
+            try await KnightSaverBackend.shared.setPassword(pendingSignUp.password, accessToken: session.accessToken)
+            try await activate(session, email: email, as: .student)
+            cancelVerification()
+        } catch {
+            errorMessage = "Your email is verified, but we couldn't finish setting up your account. \(error.localizedDescription)"
+        }
+    }
+
+    /// Leaves the code step, for example to fix a mistyped email.
+    func cancelVerification() {
+        pendingVerificationEmail = nil
+        pendingSignUp = nil
+        codeSentAt = nil
+    }
+
+    /// Business sign-up. It stays on this phone; students verify their UCF email instead.
     func register(
         role: AccountRole,
         name: String,
@@ -146,34 +225,12 @@ final class SessionStore: ObservableObject {
         businessName: String?
     ) {
         errorMessage = nil
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let trimmedBusiness = businessName?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard trimmedName.count >= 2 else {
-            errorMessage = "Enter your full name."
+        guard let details = validatedNewAccount(role: role, name: name, email: email, password: password, businessName: businessName) else {
             return
         }
-        guard normalizedEmail.contains("@"), normalizedEmail.contains(".") else {
-            errorMessage = "Enter a valid email address."
-            return
-        }
-        if role == .student && !normalizedEmail.hasSuffix("@ucf.edu") {
-            errorMessage = "Student accounts require a UCF email address."
-            return
-        }
-        if role == .business && (trimmedBusiness?.isEmpty ?? true) {
-            errorMessage = "Enter the business name."
-            return
-        }
-        guard password.count >= 8 else {
-            errorMessage = "Use at least 8 characters for the password."
-            return
-        }
-        guard !credentials.contains(where: { $0.account.email == normalizedEmail }) else {
-            errorMessage = "An account already uses that email."
-            return
-        }
+        let trimmedName = details.name
+        let normalizedEmail = details.email
+        let trimmedBusiness = details.businessName
 
         let newAccount = AppAccount(
             id: UUID(),
@@ -186,6 +243,45 @@ final class SessionStore: ObservableObject {
         credentials.append(LocalCredential(account: newAccount, passwordDigest: digest(password)))
         saveCredentials()
         setActive(newAccount)
+    }
+
+    /// Trimmed details for a new account, or nil with an error message explaining what to fix.
+    private func validatedNewAccount(
+        role: AccountRole,
+        name: String,
+        email: String,
+        password: String,
+        businessName: String?
+    ) -> (name: String, email: String, businessName: String?)? {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmedBusiness = businessName?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard trimmedName.count >= 2 else {
+            errorMessage = "Enter your full name."
+            return nil
+        }
+        guard normalizedEmail.contains("@"), normalizedEmail.contains(".") else {
+            errorMessage = "Enter a valid email address."
+            return nil
+        }
+        if role == .student && !normalizedEmail.hasSuffix("@ucf.edu") {
+            errorMessage = "Student accounts require a UCF email address."
+            return nil
+        }
+        if role == .business && (trimmedBusiness?.isEmpty ?? true) {
+            errorMessage = "Enter the business name."
+            return nil
+        }
+        guard password.count >= 8 else {
+            errorMessage = "Use at least 8 characters for the password."
+            return nil
+        }
+        guard !credentials.contains(where: { $0.account.email == normalizedEmail }) else {
+            errorMessage = "An account already uses that email."
+            return nil
+        }
+        return (trimmedName, normalizedEmail, trimmedBusiness)
     }
 
     /// Signs into the two auto-confirmed hackathon accounts in Supabase.
@@ -385,7 +481,8 @@ private struct RoleCard: View {
     }
 }
 
-/// Student: graduation cap. Business: the sprout storefront used for the Kitchen tab.
+/// Student: a blue graduation cap. Business: the Kitchen tab's sprout storefront, drawn in
+/// two layers so only the leaves are green and the building stays dark.
 private struct RoleIcon: View {
     let role: AccountRole
     let size: CGFloat
@@ -393,20 +490,28 @@ private struct RoleIcon: View {
     var body: some View {
         Group {
             if role == .business {
-                Image("TabKitchenFill")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: size * 0.48, height: size * 0.48)
+                ZStack {
+                    layer("KitchenBuilding", tint: KnightTheme.onAccent)
+                    layer("KitchenLeaves", tint: KnightTheme.greenOnGold)
+                }
+                .frame(width: size * 0.56, height: size * 0.56)
             } else {
                 Image(systemName: role.icon)
                     .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundStyle(KnightTheme.lakeOnGold)
             }
         }
-        .foregroundStyle(KnightTheme.onAccent)
         .frame(width: size, height: size)
         .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
         .accessibilityHidden(true)
+    }
+
+    private func layer(_ name: String, tint: Color) -> some View {
+        Image(name)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(tint)
     }
 }
 
@@ -425,7 +530,13 @@ private struct RoleAuthenticationView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
-                Button(action: onBack) {
+                Button {
+                    if store.pendingVerificationEmail != nil {
+                        store.cancelVerification()
+                    } else {
+                        onBack()
+                    }
+                } label: {
                     Label("Back", systemImage: "chevron.left")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
@@ -437,84 +548,88 @@ private struct RoleAuthenticationView: View {
 
                 header
 
-                VStack(spacing: 18) {
-                    Picker("Account action", selection: $mode) {
-                        ForEach(AuthenticationMode.allCases) { option in
-                            Text(option.rawValue).tag(option)
+                if role == .student, let pendingEmail = store.pendingVerificationEmail {
+                    EmailCodeView(store: store, email: pendingEmail)
+                } else {
+                    VStack(spacing: 18) {
+                        Picker("Account action", selection: $mode) {
+                            ForEach(AuthenticationMode.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
                         }
-                    }
-                    .pickerStyle(.segmented)
+                        .pickerStyle(.segmented)
 
-                    if mode == .createAccount {
+                        if mode == .createAccount {
+                            AuthField(
+                                title: role == .business ? "Your full name" : "Full name",
+                                icon: "person",
+                                text: $name
+                            )
+
+                            if role == .business {
+                                AuthField(title: "Business name", icon: "storefront", text: $businessName)
+                            }
+                        }
+
                         AuthField(
-                            title: role == .business ? "Your full name" : "Full name",
-                            icon: "person",
-                            text: $name
+                            title: role == .student ? "UCF email" : "Business email",
+                            icon: "envelope",
+                            text: $email,
+                            keyboard: .emailAddress
                         )
 
-                        if role == .business {
-                            AuthField(title: "Business name", icon: "storefront", text: $businessName)
+                        HStack(spacing: 11) {
+                            Image(systemName: "lock")
+                                .foregroundStyle(KnightTheme.muted)
+                                .frame(width: 20)
+                            SecureField("Password", text: $password)
+                                .textContentType(mode == .signIn ? .password : .newPassword)
                         }
-                    }
+                        .padding(.horizontal, 16)
+                        .frame(height: 54)
+                        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                                .stroke(KnightTheme.line, lineWidth: 1)
+                        }
 
-                    AuthField(
-                        title: role == .student ? "UCF email" : "Business email",
-                        icon: "envelope",
-                        text: $email,
-                        keyboard: .emailAddress
-                    )
+                        if let error = store.errorMessage {
+                            Text(error)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(KnightTheme.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityLabel("Account error: \(error)")
+                        }
 
-                    HStack(spacing: 11) {
-                        Image(systemName: "lock")
-                            .foregroundStyle(KnightTheme.muted)
-                            .frame(width: 20)
-                        SecureField("Password", text: $password)
-                            .textContentType(mode == .signIn ? .password : .newPassword)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(height: 54)
-                    .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                            .stroke(KnightTheme.line, lineWidth: 1)
-                    }
-
-                    if let error = store.errorMessage {
-                        Text(error)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(KnightTheme.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityLabel("Account error: \(error)")
-                    }
-
-                    Button {
-                        Task { await submit() }
-                    } label: {
-                        Text(store.isWorking ? "Connecting…" : mode.rawValue)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(KnightTheme.onAccent)
-                            .frame(maxWidth: .infinity, minHeight: 54)
-                            .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(store.isWorking)
-
-                    if mode == .signIn {
                         Button {
-                            Task { await store.signInDemo(as: role) }
+                            Task { await submit() }
                         } label: {
-                            Label(role == .student ? "Skip, use demo student" : "Skip, use demo business", systemImage: "bolt.fill")
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(KnightTheme.ink)
-                                .frame(maxWidth: .infinity, minHeight: 50)
-                                .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                                        .stroke(KnightTheme.line, lineWidth: 1)
-                                }
+                            Text(store.isWorking ? "Connecting…" : mode.rawValue)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(KnightTheme.onAccent)
+                                .frame(maxWidth: .infinity, minHeight: 54)
+                                .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
                         }
                         .buttonStyle(.plain)
                         .disabled(store.isWorking)
+
+                        if mode == .signIn {
+                            Button {
+                                Task { await store.signInDemo(as: role) }
+                            } label: {
+                                Label(role == .student ? "Skip, use demo student" : "Skip, use demo business", systemImage: "bolt.fill")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundStyle(KnightTheme.ink)
+                                    .frame(maxWidth: .infinity, minHeight: 50)
+                                    .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                                            .stroke(KnightTheme.line, lineWidth: 1)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(store.isWorking)
+                        }
                     }
                 }
             }
@@ -534,14 +649,16 @@ private struct RoleAuthenticationView: View {
                 Text(role.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(KnightTheme.muted)
-                Text(mode == .signIn ? "Welcome back" : "Create your account")
+                Text(store.pendingVerificationEmail != nil ? "Check your email"
+                     : mode == .signIn ? "Welcome back" : "Create your account")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Text(role == .student
-                     ? "Use your UCF email to reserve bags."
-                     : "Manage your listings and pickups.")
+                Text(store.pendingVerificationEmail.map { "We sent a code to \($0)." }
+                     ?? (role == .student
+                         ? "Use your UCF email to reserve bags."
+                         : "Manage your listings and pickups."))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(KnightTheme.muted)
             }
@@ -551,6 +668,8 @@ private struct RoleAuthenticationView: View {
     private func submit() async {
         if mode == .signIn {
             await store.signIn(email: email, password: password, as: role)
+        } else if role == .student {
+            await store.startStudentSignUp(name: name, email: email, password: password)
         } else {
             store.register(
                 role: role,
@@ -560,6 +679,93 @@ private struct RoleAuthenticationView: View {
                 businessName: businessName
             )
         }
+    }
+}
+
+/// Student sign-up, step 2: the one-time code emailed to the UCF address. iOS offers the code
+/// from Mail above the keyboard.
+private struct EmailCodeView: View {
+    @ObservedObject var store: SessionStore
+    let email: String
+
+    @State private var code = ""
+    @FocusState private var isFocused: Bool
+
+    private var canVerify: Bool {
+        !store.isWorking && code.filter(\.isNumber).count >= 6
+    }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Text("Enter the code from the email to verify that this UCF address is yours. It can take a minute to arrive; check Junk too.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(KnightTheme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 11) {
+                Image(systemName: "number")
+                    .foregroundStyle(KnightTheme.muted)
+                    .frame(width: 20)
+                TextField("Verification code", text: $code)
+                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .focused($isFocused)
+                    .accessibilityLabel("Verification code")
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 54)
+            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                    .stroke(KnightTheme.line, lineWidth: 1)
+            }
+
+            if let error = store.errorMessage {
+                Text(error)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Verification error: \(error)")
+            }
+
+            Button {
+                Task { await store.verifyStudentSignUp(code: code) }
+            } label: {
+                Text(store.isWorking ? "Checking…" : "Verify and create account")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.onAccent)
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canVerify)
+            .opacity(canVerify ? 1 : 0.45)
+
+            // Supabase allows one code a minute per address.
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let wait = max(0, 60 - Int(context.date.timeIntervalSince(store.codeSentAt ?? .distantPast)))
+                Button {
+                    code = ""
+                    Task { await store.resendVerificationCode() }
+                } label: {
+                    Text(wait > 0 ? "Send a new code in \(wait)s" : "Send a new code")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(wait > 0 ? KnightTheme.muted : KnightTheme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .disabled(wait > 0 || store.isWorking)
+            }
+
+            Button("Use a different email") {
+                store.cancelVerification()
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(KnightTheme.muted)
+            .frame(minHeight: 44)
+        }
+        .onAppear { isFocused = true }
     }
 }
 

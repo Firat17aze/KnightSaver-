@@ -167,6 +167,8 @@ struct BizMethodButton: View {
     let title: String
     let subtitle: String
     let icon: String
+    /// Adds the sparkles mark used for AI across the app (as on the EcoKnight bar).
+    var isAI = false
     let action: () -> Void
 
     var body: some View {
@@ -178,9 +180,15 @@ struct BizMethodButton: View {
                     .frame(width: 46, height: 46)
                     .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(KnightTheme.ink)
+                        if isAI {
+                            AISparkle(size: 15)
+                                .accessibilityHidden(true)
+                        }
+                    }
                     Text(subtitle)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
@@ -196,6 +204,18 @@ struct BizMethodButton: View {
             .bizCard()
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The AI mark: plain sparkles in deep gold, the same as the EcoKnight AI bar.
+struct AISparkle: View {
+    var size: CGFloat = 15
+
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(KnightTheme.goldDeep)
+            .accessibilityLabel("AI")
     }
 }
 

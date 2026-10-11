@@ -16,6 +16,9 @@ struct BusinessProfile: Identifiable, Hashable {
     var longitude: Double
     var rating: Double
     var feedbackCount: Int
+    /// The most Surprise Bags one listing may have. Set by the owner in Profile; neither the
+    /// AI proposal nor manual entry can go above it, and the database enforces it too.
+    var maxBagsPerListing: Int = BusinessRules.defaultMaxBagsPerListing
 
     static let demo = BusinessProfile(
         id: UUID(),
@@ -79,6 +82,10 @@ enum BusinessRules {
     static let defaultPublicDescription = "A mix of today's surplus items."
     /// How early / late a Knight Pass scan still counts for a pickup window.
     static let pickupGrace: TimeInterval = 15 * 60
+    /// Bag limit per listing until the owner changes it in Profile.
+    static let defaultMaxBagsPerListing = 10
+    /// What the owner can pick for that limit. Matches the check in the database.
+    static let maxBagsPerListingRange = 1...100
 }
 
 // MARK: - Surplus inventory (staff only, never shown to students)
@@ -284,6 +291,14 @@ struct BusinessListing: Identifiable, Hashable {
     var isReservable: Bool { status == .available }
 
     var pickupWindowText: String { PickupTime.window(pickupStart, pickupEnd) }
+
+    /// The most bags this listing can show as available under the business's per-listing
+    /// limit. Reserved and collected bags count toward the limit. A listing already above a
+    /// newly lowered limit keeps what it has, but can't add more.
+    func maxBagsAvailable(limit: Int) -> Int {
+        let committed = totalQuantity - remainingQuantity
+        return max(remainingQuantity, max(0, limit - committed))
+    }
 
     /// Recomputes the per-bag split after the number of bags changes.
     mutating func reallocateBags() {
