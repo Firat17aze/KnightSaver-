@@ -8,6 +8,16 @@ private struct ExploreShelf: Identifiable {
     let bags: [SurpriseBag]
 }
 
+private struct CenteredViewAlignedScrollTargetBehavior: ScrollTargetBehavior {
+    private let viewAligned = ViewAlignedScrollTargetBehavior()
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        viewAligned.updateTarget(&target, context: context)
+        // Center middle cards so the previous and next cards peek in by the same amount.
+        target.anchor = .center
+    }
+}
+
 struct ExploreView: View {
     @Binding var activeReservations: [ActiveReservation]
     let student: KnightPass
@@ -293,17 +303,18 @@ struct ExploreView: View {
                 }
                 .scrollTargetLayout()
             }
-            .contentMargins(.horizontal, Self.shelfMargin, for: .scrollContent)
+            .contentMargins(.leading, KnightTheme.screenPadding, for: .scrollContent)
+            .contentMargins(.trailing, Self.shelfTrailingMargin, for: .scrollContent)
             .scrollIndicators(.hidden)
-            .scrollTargetBehavior(.viewAligned)
+            .scrollTargetBehavior(CenteredViewAlignedScrollTargetBehavior())
         }
     }
 
     private static let cardSpacing: CGFloat = 14
     /// How much of the previous and next card shows on each side.
     private static let cardPeek: CGFloat = 20
-    /// Equal on both sides; snapping lines each card up with it, so every card ends up centered.
-    private static let shelfMargin: CGFloat = cardSpacing + cardPeek
+    /// Leaves the next card visible while the first card stays aligned with its section heading.
+    private static let shelfTrailingMargin: CGFloat = cardSpacing + cardPeek
 
     /// "Current location" was only saved once when picked. Refresh it when Explore opens
     /// (at most every two minutes) so distances follow the student around campus.

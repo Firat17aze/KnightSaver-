@@ -419,7 +419,6 @@ private struct RoleChoiceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 VStack(alignment: .leading, spacing: 14) {
-                    KnightSaverBrandBar()
                     Text("Save good food.\nMake an impact.")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
@@ -481,8 +480,8 @@ private struct RoleCard: View {
     }
 }
 
-/// Student: a blue graduation cap. Business: the Kitchen tab's sprout storefront, drawn in
-/// two layers so only the leaves are green and the building stays dark.
+/// Student: a blue graduation cap. Business: the original sprout storefront with
+/// separate flat colors for the stem, awning, wall and base.
 private struct RoleIcon: View {
     let role: AccountRole
     let size: CGFloat
@@ -491,27 +490,46 @@ private struct RoleIcon: View {
         Group {
             if role == .business {
                 ZStack {
-                    layer("KitchenBuilding", tint: KnightTheme.onAccent)
-                    layer("KitchenLeaves", tint: KnightTheme.greenOnGold)
+                    Image("KitchenBuilding")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(storefrontColors)
+
+                    Image("KitchenLeaves")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(KnightTheme.greenOnGold)
                 }
-                .frame(width: size * 0.56, height: size * 0.56)
+                .frame(width: size * 0.7, height: size * 0.7)
             } else {
                 Image(systemName: role.icon)
-                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .font(.system(size: size * 0.5, weight: .semibold))
                     .foregroundStyle(KnightTheme.lakeOnGold)
             }
         }
         .frame(width: size, height: size)
-        .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
         .accessibilityHidden(true)
     }
 
-    private func layer(_ name: String, tint: Color) -> some View {
-        Image(name)
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(tint)
+    /// Hard stops keep the existing one-piece vector shape while giving each horizontal
+    /// storefront region its own flat color instead of tinting the whole building once.
+    private var storefrontColors: LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(color: KnightTheme.greenOnGold, location: 0.00),
+                .init(color: KnightTheme.greenOnGold, location: 0.34),
+                .init(color: Color(red: 0.84, green: 0.39, blue: 0.24), location: 0.35),
+                .init(color: Color(red: 0.84, green: 0.39, blue: 0.24), location: 0.53),
+                .init(color: Color(red: 0.93, green: 0.72, blue: 0.43), location: 0.54),
+                .init(color: Color(red: 0.93, green: 0.72, blue: 0.43), location: 0.82),
+                .init(color: Color(red: 0.68, green: 0.25, blue: 0.16), location: 0.83),
+                .init(color: Color(red: 0.68, green: 0.25, blue: 0.16), location: 1.00)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }
 
