@@ -289,12 +289,6 @@ final class SessionStore: ObservableObject {
         return (trimmedName, normalizedEmail, trimmedBusiness)
     }
 
-    /// Signs into the two auto-confirmed hackathon accounts in Supabase.
-    func signInDemo(as role: AccountRole) async {
-        let email = role == .student ? "alex@ucf.edu" : "manager@knightros.example"
-        await signIn(email: email, password: "KnightSaverDemo!2026", as: role)
-    }
-
     private func seedDemoAccounts() {
         let demos = [
             AppAccount(
@@ -619,23 +613,6 @@ private struct RoleAuthenticationView: View {
                         .buttonStyle(.plain)
                         .disabled(store.isWorking)
 
-                        if mode == .signIn {
-                            Button {
-                                Task { await store.signInDemo(as: role) }
-                            } label: {
-                                Label(role == .student ? "Skip, use demo student" : "Skip, use demo business", systemImage: "bolt.fill")
-                                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                                    .foregroundStyle(KnightTheme.ink)
-                                    .frame(maxWidth: .infinity, minHeight: 50)
-                                    .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
-                                            .stroke(KnightTheme.line, lineWidth: 1)
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(store.isWorking)
-                        }
                     }
                 }
             }

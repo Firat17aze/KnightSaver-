@@ -9,7 +9,7 @@ Demo identities are intentionally limited to:
 - `alex@ucf.edu` — student
 - `manager@knightros.example` — Knightro's manager
 
-Both use the hackathon-only password `KnightSaverDemo!2026`. The app's one-tap demo buttons sign into these real Supabase accounts. Rotate or remove them before any production launch.
+Both use the hackathon-only password `KnightSaverDemo!2026`. Rotate or remove these accounts before any production launch.
 
 After either account signs in, the iOS app calls `bootstrap_demo_identity()`. The manager account is then assigned to the seeded business and location. Remove that bootstrap function before a production launch and provision staff through an admin-only workflow.
 
