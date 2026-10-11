@@ -148,8 +148,6 @@ enum ImpactDemo {
         let bagsAllTime: Int
         let measuredKg: Double
         let estimatedKg: Double
-        let residenceHalls: Int
-        let studentOrgs: Int
 
         var co2eKg: Double { (measuredKg + estimatedKg) * ImpactRules.co2ePerFoodKg }
     }
@@ -160,9 +158,7 @@ enum ImpactDemo {
         weeklyGoal: 600,
         bagsAllTime: 8_940,
         measuredKg: 1_210,
-        estimatedKg: 2_860,
-        residenceHalls: 14,
-        studentOrgs: 37
+        estimatedKg: 2_860
     )
 
     static let weeklyStudents: [(String, Int)] = [
@@ -173,37 +169,10 @@ enum ImpactDemo {
         ("SirScraps", 61), ("BagelBaron", 57), ("LadyLeftover", 49), ("MossKnight", 44),
         ("Gr8Rescuer", 38), ("CroissantQuest", 31), ("NightOwlNom", 22)
     ]
-    static let weeklyHalls: [(String, Int)] = [
-        ("Libra Community", 64), ("Nike Community", 58), ("Hercules Community", 51),
-        ("Towers at Knights Plaza", 47), ("Lake Claire", 33)
-    ]
-    static let allTimeHalls: [(String, Int)] = [
-        ("Nike Community", 1_204), ("Libra Community", 1_177), ("Towers at Knights Plaza", 1_032),
-        ("Hercules Community", 968), ("Lake Claire", 611)
-    ]
-    static let weeklyOrgs: [(String, Int)] = [
-        ("Sustainability Knights", 41), ("Hospitality Society", 36), ("Engineering Council", 29),
-        ("Pre-Health Club", 24), ("Esports Knights", 17)
-    ]
-    static let allTimeOrgs: [(String, Int)] = [
-        ("Sustainability Knights", 702), ("Hospitality Society", 655), ("Engineering Council", 498),
-        ("Pre-Health Club", 377), ("Esports Knights", 260)
-    ]
-
-    /// The student's demo residence hall and org, so their points show up in those boards.
-    static let studentHall = "Libra Community"
-    static let studentOrg = "Sustainability Knights"
     static let weeklySponsor = "Knightro's Kitchen"
 }
 
 // MARK: - Campus Rescue League
-
-enum LeagueBoard: String, CaseIterable, Identifiable {
-    case students = "Students"
-    case halls = "Halls"
-    case orgs = "Orgs"
-    var id: String { rawValue }
-}
 
 enum LeaguePeriod: String, CaseIterable, Identifiable {
     case week = "This week"
@@ -220,34 +189,14 @@ struct LeagueEntry: Identifiable, Hashable {
 
 enum CampusLeague {
     static func entries(
-        board: LeagueBoard,
         period: LeaguePeriod,
         nickname: String?,
         yourPoints: Int
     ) -> [LeagueEntry] {
-        let base: [(String, Int)]
-        switch (board, period) {
-        case (.students, .week): base = ImpactDemo.weeklyStudents
-        case (.students, .allTime): base = ImpactDemo.allTimeStudents
-        case (.halls, .week): base = ImpactDemo.weeklyHalls
-        case (.halls, .allTime): base = ImpactDemo.allTimeHalls
-        case (.orgs, .week): base = ImpactDemo.weeklyOrgs
-        case (.orgs, .allTime): base = ImpactDemo.allTimeOrgs
-        }
-
-        var entries: [LeagueEntry]
-        switch board {
-        case .students:
-            entries = base.map { LeagueEntry(name: $0.0, points: $0.1, isYou: false) }
-            if let nickname, !nickname.isEmpty {
-                entries.append(LeagueEntry(name: nickname, points: yourPoints, isYou: true))
-            }
-        case .halls, .orgs:
-            let yours = board == .halls ? ImpactDemo.studentHall : ImpactDemo.studentOrg
-            entries = base.map { name, points in
-                // Your verified points also count for your hall and org.
-                LeagueEntry(name: name, points: points + (name == yours && nickname != nil ? yourPoints : 0), isYou: name == yours)
-            }
+        let base = period == .week ? ImpactDemo.weeklyStudents : ImpactDemo.allTimeStudents
+        var entries = base.map { LeagueEntry(name: $0.0, points: $0.1, isYou: false) }
+        if let nickname, !nickname.isEmpty {
+            entries.append(LeagueEntry(name: nickname, points: yourPoints, isYou: true))
         }
         return entries.sorted { $0.points == $1.points ? $0.isYou && !$1.isYou : $0.points > $1.points }
     }
@@ -263,7 +212,7 @@ enum CampusLeague {
 
 enum ImpactFormat {
     static func kg(_ value: Double) -> String {
-        value >= 100 ? String(format: "%.0f kg", value) : String(format: "%.1f kg", value)
+        value >= 100 ? "\(Int(value.rounded()).formatted()) kg" : String(format: "%.1f kg", value)
     }
 
     static func shortDate(_ date: Date) -> String {

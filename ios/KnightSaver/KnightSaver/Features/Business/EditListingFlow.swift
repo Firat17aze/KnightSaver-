@@ -142,7 +142,7 @@ struct EditListingFlow: View {
                     dictationFocused = false
                     step = .proposal
                 } label: {
-                    BizPrimaryLabel(title: "Show proposed changes", icon: "sparkles")
+                    BizPrimaryLabel(title: "Show proposed changes", icon: "checklist")
                 }
                 .buttonStyle(.plain)
                 .disabled(instructionIsEmpty)
@@ -184,7 +184,7 @@ struct EditListingFlow: View {
                                         .foregroundStyle(KnightTheme.muted)
                                     Image(systemName: "arrow.right")
                                         .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(KnightTheme.goldDeep)
+                                        .foregroundStyle(KnightTheme.muted)
                                     Text(change.newValue)
                                         .font(.system(size: 16, weight: .bold, design: .rounded))
                                         .foregroundStyle(KnightTheme.ink)
@@ -204,7 +204,7 @@ struct EditListingFlow: View {
                         ForEach(proposal.notes, id: \.self) { note in
                             Label(note, systemImage: "info.circle")
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(KnightTheme.goldDeep)
+                                .foregroundStyle(KnightTheme.lake)
                         }
                     }
                 }

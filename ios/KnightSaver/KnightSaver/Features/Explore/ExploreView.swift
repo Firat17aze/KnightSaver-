@@ -24,6 +24,7 @@ struct ExploreView: View {
     @StateObject private var locationManager = PickupLocationManager()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var businessStore: BusinessStore
+    @EnvironmentObject var sessionStore: SessionStore
 
     /// Resolve distance once per Explore refresh, then reuse the result in every shelf.
     private var matchingBags: [SurpriseBag] {
@@ -174,14 +175,13 @@ struct ExploreView: View {
             HStack(spacing: 12) {
                 Image(systemName: "location.fill")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.lake)
                     .frame(width: 36, height: 36)
-                    .background(KnightTheme.gold.opacity(0.24), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .background(KnightTheme.lake.opacity(0.14), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("PICKUP NEAR")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.2)
+                    Text("Pickup near")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(KnightTheme.muted)
                     Text(pickupLocationTitle)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -194,7 +194,7 @@ struct ExploreView: View {
 
                 Text("Change")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.lake)
             }
             .contentShape(Rectangle())
         }
@@ -244,7 +244,7 @@ struct ExploreView: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(shelf.title)
-                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
                         .lineLimit(1)
                     Text(shelf.subtitle)
@@ -307,7 +307,31 @@ struct ExploreView: View {
     }
 
     private func reserve(_ bag: SurpriseBag) {
-        if businessStore.isLiveBag(bag) {
+        if businessStore.isLiveBag(bag), !businessStore.isDemo, let accessToken = sessionStore.accessToken {
+            Task { @MainActor in
+                do {
+                    let result = try await KnightSaverBackend.shared.reserve(
+                        listingID: bag.id,
+                        accessToken: accessToken
+                    )
+                    let isWaitlisted = result.kind == "waitlisted"
+                    activeReservations.append(ActiveReservation(
+                        id: result.reservationID ?? result.waitlistID ?? UUID(),
+                        bag: bag,
+                        status: isWaitlisted ? .waitlisted : .confirmed,
+                        paymentStatus: isWaitlisted ? "Not charged" : "Payment authorized",
+                        attentionMessage: isWaitlisted
+                            ? "Waitlist position \(result.position ?? 1)"
+                            : "Pickup code \(result.code ?? "Ready")"
+                    ))
+                    businessStore.toast = isWaitlisted ? "You joined the waitlist." : "Surprise Bag reserved."
+                    selectedBag = nil
+                    await businessStore.refreshFromBackend()
+                } catch {
+                    businessStore.toast = error.localizedDescription
+                }
+            }
+        } else if businessStore.isLiveBag(bag) {
             businessStore.reserve(
                 bagID: bag.id,
                 studentName: student.displayName,

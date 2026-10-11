@@ -50,7 +50,9 @@ private struct LocalCredential: Codable {
 @MainActor
 final class SessionStore: ObservableObject {
     @Published private(set) var account: AppAccount?
+    @Published private(set) var accessToken: String?
     @Published var errorMessage: String?
+    @Published private(set) var isWorking = false
 
     private let credentialsKey = "knightsaver.localCredentials.v1"
     private let activeAccountKey = "knightsaver.activeAccountID.v1"
@@ -70,24 +72,70 @@ final class SessionStore: ObservableObject {
 
     /// Signs in to the side the person chose. A student account can't open the business
     /// side, and a business account can't open the student side.
-    func signIn(email: String, password: String, as role: AccountRole) {
+    func signIn(email: String, password: String, as role: AccountRole) async {
         errorMessage = nil
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard let credential = credentials.first(where: { $0.account.email == normalizedEmail }) else {
-            errorMessage = "No account uses that email. Check it, or create an account."
+        isWorking = true
+        defer { isWorking = false }
+
+        do {
+            let session = try await KnightSaverBackend.shared.signIn(
+                email: normalizedEmail,
+                password: password
+            )
+            let backendRole = try await KnightSaverBackend.shared.bootstrapIdentity(
+                accessToken: session.accessToken
+            )
+            let resolvedRole: AccountRole = backendRole == "business" ? .business : .student
+            guard resolvedRole == role else {
+                errorMessage = resolvedRole == .business
+                    ? "This is a business account. Go back and choose Business owner."
+                    : "This is a student account. Go back and choose Student."
+                return
+            }
+
+            let passToken = (try? await KnightSaverBackend.shared.knightPassToken(
+                accessToken: session.accessToken
+            )) ?? UUID().uuidString.replacingOccurrences(of: "-", with: "")
+            let displayName = normalizedEmail == "alex@ucf.edu"
+                ? "Alex Knight"
+                : normalizedEmail == "manager@knightros.example" ? "Jordan Manager" : normalizedEmail.split(separator: "@").first.map(String.init) ?? "KnightSaver member"
+            let remoteAccount = AppAccount(
+                id: session.user.id,
+                displayName: displayName,
+                email: session.user.email ?? normalizedEmail,
+                role: resolvedRole,
+                businessName: resolvedRole == .business ? "Knightro's Kitchen" : nil,
+                campusName: "UCF Main Campus",
+                passToken: passToken
+            )
+            accessToken = session.accessToken
+            setActive(remoteAccount)
             return
+        } catch {
+            // The built-in demo remains usable offline at judging time.
+            if signInLocally(email: normalizedEmail, password: password, as: role) { return }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    private func signInLocally(email normalizedEmail: String, password: String, as role: AccountRole) -> Bool {
+        guard let credential = credentials.first(where: { $0.account.email == normalizedEmail }) else {
+            return false
         }
         guard credential.passwordDigest == digest(password) else {
-            errorMessage = "That password doesn’t match this account."
-            return
+            return false
         }
         guard credential.account.role == role else {
             errorMessage = credential.account.role == .business
                 ? "This is a business account. Go back and choose Business owner."
                 : "This is a student account. Go back and choose Student."
-            return
+            return true
         }
+        accessToken = nil
         setActive(credential.account)
+        return true
     }
 
     func register(
@@ -140,8 +188,12 @@ final class SessionStore: ObservableObject {
         setActive(newAccount)
     }
 
-    /// Prototype accounts that are always available for sign in (password "knightsaver").
-    /// Remove when the KnightSaver backend handles accounts.
+    /// Signs into the two auto-confirmed hackathon accounts in Supabase.
+    func signInDemo(as role: AccountRole) async {
+        let email = role == .student ? "alex@ucf.edu" : "manager@knightros.example"
+        await signIn(email: email, password: "KnightSaverDemo!2026", as: role)
+    }
+
     private func seedDemoAccounts() {
         let demos = [
             AppAccount(
@@ -212,6 +264,7 @@ final class SessionStore: ObservableObject {
 
     func signOut() {
         account = nil
+        accessToken = nil
         UserDefaults.standard.removeObject(forKey: activeAccountKey)
     }
 
@@ -272,7 +325,7 @@ private struct RoleChoiceView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     KnightSaverBrandBar()
                     Text("Save good food.\nMake an impact.")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
                     Text("How will you use KnightSaver?")
                         .font(.system(size: 16, weight: .medium))
@@ -282,14 +335,12 @@ private struct RoleChoiceView: View {
                 VStack(spacing: 14) {
                     RoleCard(
                         role: .student,
-                        title: "I'm a student",
-                        subtitle: "Find and reserve Surprise Bags around campus"
+                        title: "I'm a student"
                     ) { onChoose(.student) }
 
                     RoleCard(
                         role: .business,
-                        title: "I'm a business owner",
-                        subtitle: "List surplus food and verify pickups"
+                        title: "I'm a business owner"
                     ) { onChoose(.business) }
                 }
             }
@@ -303,7 +354,6 @@ private struct RoleChoiceView: View {
 private struct RoleCard: View {
     let role: AccountRole
     let title: String
-    let subtitle: String
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -312,21 +362,15 @@ private struct RoleCard: View {
             HStack(spacing: 16) {
                 RoleIcon(role: role, size: 64)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 19, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                    Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(KnightTheme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(title)
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
 
                 Spacer(minLength: 8)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.muted)
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -335,11 +379,9 @@ private struct RoleCard: View {
                 RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
                     .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
             }
-            .knightCardShadow()
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(title)
-        .accessibilityHint(subtitle)
     }
 }
 
@@ -361,12 +403,9 @@ private struct RoleIcon: View {
                     .font(.system(size: size * 0.4, weight: .semibold))
             }
         }
-        .foregroundStyle(role == .business ? KnightTheme.gold : KnightTheme.onAccent)
+        .foregroundStyle(KnightTheme.onAccent)
         .frame(width: size, height: size)
-        .background(
-            role == .business ? KnightTheme.night : KnightTheme.gold,
-            in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-        )
+        .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
         .accessibilityHidden(true)
     }
 }
@@ -448,14 +487,35 @@ private struct RoleAuthenticationView: View {
                             .accessibilityLabel("Account error: \(error)")
                     }
 
-                    Button(action: submit) {
-                        Text(mode.rawValue)
-                            .font(.system(size: 16, weight: .black, design: .rounded))
+                    Button {
+                        Task { await submit() }
+                    } label: {
+                        Text(store.isWorking ? "Connecting…" : mode.rawValue)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(KnightTheme.onAccent)
                             .frame(maxWidth: .infinity, minHeight: 54)
                             .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .disabled(store.isWorking)
+
+                    if mode == .signIn {
+                        Button {
+                            Task { await store.signInDemo(as: role) }
+                        } label: {
+                            Label(role == .student ? "Skip, use demo student" : "Skip, use demo business", systemImage: "bolt.fill")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(KnightTheme.ink)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: KnightTheme.controlRadius, style: .continuous)
+                                        .stroke(KnightTheme.line, lineWidth: 1)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(store.isWorking)
+                    }
                 }
             }
             .padding(.horizontal, KnightTheme.screenPadding)
@@ -471,12 +531,11 @@ private struct RoleAuthenticationView: View {
             RoleIcon(role: role, size: 56)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(role.title.uppercased())
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .tracking(1.4)
-                    .foregroundStyle(KnightTheme.goldDeep)
+                Text(role.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.muted)
                 Text(mode == .signIn ? "Welcome back" : "Create your account")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -489,9 +548,9 @@ private struct RoleAuthenticationView: View {
         }
     }
 
-    private func submit() {
+    private func submit() async {
         if mode == .signIn {
-            store.signIn(email: email, password: password, as: role)
+            await store.signIn(email: email, password: password, as: role)
         } else {
             store.register(
                 role: role,

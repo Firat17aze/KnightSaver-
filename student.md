@@ -6,7 +6,7 @@ KnightSaver is a campus-focused, pickup-only Surprise Bag platform. Students res
 
 KnightSaver is not a delivery app, menu browser, or savings marketplace. Its student experience is built around four differentiators:
 
-1. **EcoKnight AI** — Helps students use what they receive and understand their estimated environmental impact.
+1. **EcoKnight AI** — A "How can I help you?" bar for food waste, climate and campus habits, with access to the student's own rescue stats.
 2. **Campus Rescue League** — Turns verified campus food rescue into a weekly community challenge.
 3. **Past Surprise Reveals** — Shows optional photos, ratings, and comments from previous verified pickups.
 4. **Verified Impact Chain** — Updates impact and leaderboard results only after staff verifies pickup.
@@ -249,7 +249,11 @@ Do not prioritize delivery tracking, menus, food categories, tipping, promotiona
 
 EcoKnight AI is an environmental rescue assistant grounded in approved environmental guidance and verified KnightSaver data. Do not claim custom model training unless it is actually implemented.
 
-After verified pickup, a student may photograph or manually enter the bag contents. The student must confirm AI-identified items before receiving item-specific suggestions.
+EcoKnight AI is a bar at the top of Impact ("How can I help you?"). Students type a question about food waste, climate, campus habits or their own impact, and the answer opens under the bar.
+
+EcoKnight can look up the student's verified impact, recent rescues, campus totals and league standing through read-only tools, only when a question needs them. General environmental numbers come only from a short, sourced fact list in the app.
+
+EcoKnight runs on Apple's on-device model (iOS 26 with Apple Intelligence, no key and no network) and falls back to simple offline answers when that isn't available.
 
 EcoKnight AI may:
 

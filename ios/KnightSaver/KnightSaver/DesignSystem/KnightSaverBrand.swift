@@ -24,6 +24,7 @@ struct KnightSaverLogo: View {
 /// Optional trailing content (for example the dark mode button on Business).
 struct KnightSaverBrandBar<Trailing: View>: View {
     private let trailing: Trailing
+    @Environment(\.colorScheme) private var colorScheme
 
     init(@ViewBuilder trailing: () -> Trailing) {
         self.trailing = trailing()
@@ -33,14 +34,14 @@ struct KnightSaverBrandBar<Trailing: View>: View {
         HStack(alignment: .center, spacing: 10) {
             HStack(spacing: 10) {
                 KnightSaverLogo(size: 36)
+                // Plain flat colors, no shadow or effects: pure black/white and UCF gold.
                 HStack(spacing: 0) {
                     Text("Knight")
-                        .foregroundStyle(KnightTheme.ink)
+                        .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
                     Text("Saver")
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.gold)
                 }
-                .font(.system(size: 24, weight: .black, design: .rounded))
-                .tracking(-0.3)
+                .font(.system(size: 23, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             }

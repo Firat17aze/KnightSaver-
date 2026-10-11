@@ -10,7 +10,7 @@ struct KnightMark: View {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .fill(KnightTheme.night)
             Text("K")
-                .font(.system(size: 22, weight: .black, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.gold)
         }
         .frame(width: 46, height: 46)
@@ -30,10 +30,10 @@ struct KnightPassButton: View {
 
                 Label("Tap card to flip", systemImage: "arrow.triangle.2.circlepath")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(KnightTheme.muted)
                     .padding(.horizontal, 13)
                     .frame(minHeight: 36)
-                    .background(KnightTheme.night, in: Capsule())
+                    .overlay { Capsule().stroke(KnightTheme.line, lineWidth: 1) }
                     .accessibilityHidden(true)
             }
         }
@@ -284,7 +284,7 @@ struct ReservationPassStack: View {
         .overlay(alignment: .bottomTrailing) {
             if reservations.count > 1 {
                 Text("\(reservations.count) ACTIVE PASSES")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(KnightTheme.onAccent)
                     .padding(.horizontal, 11)
@@ -439,7 +439,6 @@ struct PickupPassCard: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(.white.opacity(showsQRCode ? 0.52 : 0.14), lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.24), radius: 22, x: 0, y: 12)
         .accessibilityElement(children: .ignore)
     }
 
@@ -448,23 +447,12 @@ struct PickupPassCard: View {
             ZStack {
                 reservation.bag.brand.primary
 
-                Circle()
-                    .fill(reservation.bag.brand.secondary.opacity(0.2))
-                    .frame(width: proxy.size.width * 0.72)
-                    .offset(x: proxy.size.width * 0.4, y: -proxy.size.height * 0.34)
-
-                RoundedRectangle(cornerRadius: 42, style: .continuous)
-                    .fill(.white.opacity(0.055))
-                    .frame(width: proxy.size.width * 0.72, height: 72)
-                    .rotationEffect(.degrees(-12))
-                    .offset(x: -proxy.size.width * 0.28, y: proxy.size.height * 0.33)
-
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top) {
                         BusinessWordmark(bag: reservation.bag, inverse: true)
                         Spacer()
                         Text(reservation.status.rawValue.uppercased())
-                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
                             .tracking(0.8)
                             .foregroundStyle(KnightTheme.onAccent)
                             .padding(.horizontal, 9)
@@ -478,11 +466,11 @@ struct PickupPassCard: View {
                         KnightroPassMark()
                         VStack(alignment: .leading, spacing: 2) {
                             Text("KNIGHTRO")
-                                .font(.system(size: 25, weight: .black, design: .rounded))
+                                .font(.system(size: 25, weight: .bold, design: .rounded))
                                 .tracking(0.4)
                                 .foregroundStyle(.white)
                             Text("CAMPUS PICKUP PASS")
-                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .tracking(1.7)
                                 .foregroundStyle(reservation.bag.brand.secondary)
                         }
@@ -527,7 +515,7 @@ struct PickupPassCard: View {
                         BusinessWordmark(bag: reservation.bag, inverse: false)
                         Spacer()
                         Text("SCAN ONCE")
-                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
                             .tracking(0.9)
                             .foregroundStyle(KnightTheme.green)
                     }
@@ -543,7 +531,7 @@ struct PickupPassCard: View {
                         VStack(alignment: .leading, spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("PICKUP")
-                                    .font(.system(size: 8, weight: .black, design: .rounded))
+                                    .font(.system(size: 8, weight: .bold, design: .rounded))
                                     .tracking(1.1)
                                     .foregroundStyle(KnightTheme.muted)
                                 Text(reservation.bag.pickupWindow)
@@ -553,7 +541,7 @@ struct PickupPassCard: View {
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("PASS ID")
-                                    .font(.system(size: 8, weight: .black, design: .rounded))
+                                    .font(.system(size: 8, weight: .bold, design: .rounded))
                                     .tracking(1.1)
                                     .foregroundStyle(KnightTheme.muted)
                                 Text(reservation.pickupCode)
@@ -589,13 +577,13 @@ private struct BusinessWordmark: View {
     var body: some View {
         HStack(spacing: 7) {
             Text(bag.brand.mark)
-                .font(.system(size: 12, weight: .black, design: .rounded))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(bag.brand.primary)
                 .frame(width: 27, height: 27)
                 .background(bag.brand.secondary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Text(bag.brand.wordmark)
-                .font(.system(size: 10, weight: .black, design: .rounded))
+                .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(0.4)
                 .foregroundStyle(inverse ? Color.white : bag.brand.primary)
                 .lineLimit(1)
@@ -610,14 +598,10 @@ private struct KnightroPassMark: View {
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(KnightTheme.gold)
             Text("K")
-                .font(.system(size: 24, weight: .black, design: .rounded))
+                .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.onAccent)
         }
         .frame(width: 48, height: 48)
-        .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(.white.opacity(0.3), lineWidth: 1)
-        }
         .accessibilityHidden(true)
     }
 }
@@ -764,7 +748,7 @@ struct SurpriseBagCard: View {
                         Spacer(minLength: 8)
 
                         Text(bag.formattedPrice)
-                            .font(.system(size: 17, weight: .black, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(KnightTheme.ink)
                             .fixedSize()
                     }
@@ -825,14 +809,10 @@ struct BrandMark: View {
 
     var body: some View {
         Text(brand.mark)
-            .font(.system(size: size * 0.42, weight: .black, design: .rounded))
+            .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
             .foregroundStyle(brand.primary)
             .frame(width: size, height: size)
             .background(brand.secondary, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-                    .stroke(.white.opacity(0.4), lineWidth: 1)
-            }
             .accessibilityHidden(true)
     }
 }
@@ -849,17 +829,18 @@ private struct MetadataItem: View {
     }
 }
 
-/// Sits on the card photo, so it uses a solid fill; the fill color carries the stock level.
+/// Sits on the card photo, so it uses a solid fill; the fill color carries the stock level:
+/// frosted white when plenty is left, citrus when it's almost gone, red when sold out.
 private struct AvailabilityChip: View {
     let count: Int
     let text: String
 
     private var fill: Color {
-        count == 0 ? KnightTheme.red : count <= 2 ? KnightTheme.gold : KnightTheme.night
+        count == 0 ? KnightTheme.red : count <= 2 ? KnightTheme.citrus : Color.white.opacity(0.94)
     }
 
     private var textColor: Color {
-        count > 0 && count <= 2 ? KnightTheme.onAccent : .white
+        count > 2 ? KnightTheme.ink : .white
     }
 
     var body: some View {
@@ -882,9 +863,9 @@ struct EmptyExploreState: View {
         VStack(spacing: 14) {
             Image(systemName: "takeoutbag.and.cup.and.straw")
                 .font(.system(size: 32, weight: .medium))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.muted)
                 .frame(width: 68, height: 68)
-                .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             Text("No Surprise Bags found")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)

@@ -37,7 +37,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     VStack(alignment: .leading, spacing: 12) {
-                        KnightSaverBrandBar()
+                        KnightSaverBrandBar { ThemeToggleButton() }
                         profileHeader
                     }
 
@@ -91,7 +91,7 @@ struct ProfileView: View {
     private var profileHeader: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Profile")
-                .font(.system(size: 32, weight: .black, design: .rounded))
+                .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)
 
             HStack(spacing: 14) {
@@ -106,7 +106,7 @@ struct ProfileView: View {
                         .foregroundStyle(KnightTheme.muted)
                     Text(pass.memberID)
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.muted)
                 }
                 Spacer(minLength: 0)
             }
@@ -223,13 +223,10 @@ private struct UpcomingPickupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 12) {
-                BrandMark(brand: reservation.bag.brand, size: 48)
-
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("UPCOMING PICKUP")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.goldDeep)
+                    Text("Upcoming pickup")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
                     Text(reservation.bag.business)
                         .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
@@ -260,7 +257,7 @@ private struct UpcomingPickupCard: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.muted)
                     .accessibilityHidden(true)
             }
         }
@@ -270,7 +267,6 @@ private struct UpcomingPickupCard: View {
             RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
                 .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
         }
-        .knightCardShadow()
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens reservation details")
     }
@@ -284,7 +280,7 @@ private struct PickupMetadataRow: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .frame(width: 22)
                 .accessibilityHidden(true)
             Text(text)
@@ -300,9 +296,9 @@ private struct EmptyPickupCard: View {
         HStack(spacing: 13) {
             Image(systemName: "calendar.badge.plus")
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.muted)
                 .frame(width: 44, height: 44)
-                .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("No upcoming pickups")
@@ -374,9 +370,8 @@ private struct ProfileRow: View {
         HStack(spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.muted)
                 .frame(width: 34, height: 34)
-                .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -420,7 +415,7 @@ private struct ReservationDetailsView: View {
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text(reservation.bag.business)
-                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(KnightTheme.ink)
                         Text("Surprise Bag · \(reservation.bag.formattedPrice)")
                             .font(.system(size: 14, weight: .medium))
@@ -449,7 +444,7 @@ private struct ReservationDetailsView: View {
 
                 HStack(alignment: .top, spacing: 11) {
                     Image(systemName: "qrcode")
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.lake)
                         .accessibilityHidden(true)
                     Text("Use the reusable Knight Pass at the top of Profile when staff verifies your pickup.")
                         .font(.system(size: 13, weight: .medium))
@@ -457,7 +452,7 @@ private struct ReservationDetailsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(16)
-                .background(KnightTheme.gold.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(KnightTheme.lake.opacity(0.09), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                 if reservation.status != .verified {
                     Button(role: .destructive) {
@@ -537,14 +532,13 @@ private struct DetailLine: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .frame(width: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(label.uppercased())
-                    .font(.system(size: 9, weight: .black, design: .rounded))
-                    .tracking(1)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(KnightTheme.muted)
                 Text(value)
                     .font(.system(size: 14, weight: .semibold))
@@ -749,10 +743,10 @@ private struct PersonalInformationView: View {
             } label: {
                 Image(systemName: editingField == field ? "checkmark" : "pencil")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(editingField == field ? KnightTheme.ink : KnightTheme.goldDeep)
+                    .foregroundStyle(editingField == field ? KnightTheme.onAccent : KnightTheme.muted)
                     .frame(width: 34, height: 34)
                     .background(
-                        editingField == field ? KnightTheme.gold : KnightTheme.gold.opacity(0.14),
+                        editingField == field ? KnightTheme.gold : KnightTheme.wash,
                         in: Circle()
                     )
             }
@@ -824,7 +818,7 @@ private struct NotificationSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(KnightTheme.paper)
-        .tint(KnightTheme.goldDeep)
+        .tint(KnightTheme.green)
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -832,6 +826,7 @@ private struct NotificationSettingsView: View {
 
 final class PickupLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var authorizationStatus: CLAuthorizationStatus
+    @Published private(set) var accuracyAuthorization: CLAccuracyAuthorization
     @Published private(set) var isLocating = false
     @Published private(set) var hasCurrentLocation = false
     @Published private(set) var currentLocation: CLLocation?
@@ -848,9 +843,10 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
 
     override init() {
         authorizationStatus = manager.authorizationStatus
+        accuracyAuthorization = manager.accuracyAuthorization
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         manager.distanceFilter = kCLDistanceFilterNone
     }
 
@@ -896,6 +892,7 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
+        accuracyAuthorization = manager.accuracyAuthorization
 
         guard hasPendingRequest else { return }
         switch manager.authorizationStatus {
@@ -916,7 +913,9 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard hasPendingRequest else { return }
-        let earliestAllowedDate = requestStartedAt?.addingTimeInterval(-2) ?? .distantPast
+        // Core Location often supplies a recent high-quality cached fix first. Accept up to
+        // 15 seconds of cache rather than discarding an accurate result and timing out.
+        let earliestAllowedDate = requestStartedAt?.addingTimeInterval(-15) ?? .distantPast
         let candidates = locations.filter {
             $0.horizontalAccuracy >= 0 && $0.timestamp >= earliestAllowedDate
         }
@@ -929,7 +928,7 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         }
 
         guard let bestLocation else { return }
-        if bestLocation.horizontalAccuracy <= 100 {
+        if bestLocation.horizontalAccuracy <= 75 {
             finish(using: bestLocation)
         }
     }
@@ -952,14 +951,16 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
 
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.hasPendingRequest else { return }
-            if let best = self.bestLocation, best.horizontalAccuracy <= 500 {
+            if let best = self.bestLocation, best.horizontalAccuracy <= 250 {
                 self.finish(using: best)
+            } else if self.manager.accuracyAuthorization == .reducedAccuracy {
+                self.finishWithError("Precise Location is off. Turn it on in Settings so KnightSaver can find nearby pickups accurately.")
             } else {
                 self.finishWithError("We couldn’t get an accurate location. Try again outdoors or choose a UCF campus.")
             }
         }
         timeoutWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: workItem)
     }
 
     private func finish(using location: CLLocation) {
@@ -969,17 +970,37 @@ final class PickupLocationManager: NSObject, ObservableObject, CLLocationManager
         timeoutWorkItem?.cancel()
         currentLocation = location
 
+        // GPS success must not depend on Apple's address service. Publish a useful local label
+        // immediately; reverse geocoding may improve it afterward.
+        currentLocationLabel = immediateLocationLabel(for: location)
+        isLocating = false
+        hasCurrentLocation = true
+
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             DispatchQueue.main.async {
-                guard let self else { return }
-                self.currentLocationLabel = self.locationLabel(
-                    for: placemarks?.first,
-                    fallback: location.coordinate
-                )
-                self.isLocating = false
-                self.hasCurrentLocation = true
+                guard let self, let placemark = placemarks?.first else { return }
+                self.currentLocationLabel = self.locationLabel(for: placemark, fallback: location.coordinate)
             }
         }
+    }
+
+    private func immediateLocationLabel(for location: CLLocation) -> String {
+        let campuses: [(String, CLLocation)] = [
+            ("UCF Main Campus", CLLocation(latitude: 28.6024, longitude: -81.2001)),
+            ("UCF Downtown", CLLocation(latitude: 28.5469, longitude: -81.3871)),
+            ("Health Sciences Campus", CLLocation(latitude: 28.3664, longitude: -81.2818)),
+            ("Rosen College", CLLocation(latitude: 28.4293, longitude: -81.4610))
+        ]
+        if let nearest = campuses.min(by: { location.distance(from: $0.1) < location.distance(from: $1.1) }),
+           location.distance(from: nearest.1) <= 5_000 {
+            return "Near \(nearest.0) · ±\(Int(location.horizontalAccuracy.rounded())) m"
+        }
+        return String(
+            format: "%.4f, %.4f · ±%d m",
+            location.coordinate.latitude,
+            location.coordinate.longitude,
+            Int(location.horizontalAccuracy.rounded())
+        )
     }
 
     private func finishWithError(_ message: String) {
@@ -1082,7 +1103,7 @@ private struct PickupPreferencesView: View {
         }
         .scrollContentBackground(.hidden)
         .background(KnightTheme.paper)
-        .tint(KnightTheme.goldDeep)
+        .tint(KnightTheme.lake)
         .navigationTitle("Pickup preferences")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: locationManager.hasCurrentLocation) { _, hasCurrentLocation in
@@ -1092,7 +1113,7 @@ private struct PickupPreferencesView: View {
             }
         }
         .alert("Location unavailable", isPresented: locationErrorBinding) {
-            if locationManager.authorizationStatus == .denied {
+            if locationManager.authorizationStatus == .denied || locationManager.accuracyAuthorization == .reducedAccuracy {
                 Button("Open Settings") {
                     if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
                         openURL(settingsURL)
@@ -1155,9 +1176,9 @@ struct LocationPreferenceRow: View {
         HStack(spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .frame(width: 38, height: 38)
-                .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .background(KnightTheme.lake.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -1174,7 +1195,7 @@ struct LocationPreferenceRow: View {
 
             if isLoading {
                 ProgressView()
-                    .tint(KnightTheme.goldDeep)
+                    .tint(KnightTheme.lake)
                     .accessibilityLabel("Finding your location")
             } else if isSelected {
                 Image(systemName: "checkmark.circle.fill")
@@ -1205,9 +1226,9 @@ private struct ProfileArticleView: View {
             VStack(alignment: .leading, spacing: 24) {
                 Image(systemName: icon)
                     .font(.system(size: 25, weight: .semibold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.muted)
                     .frame(width: 56, height: 56)
-                    .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                    .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
                     .accessibilityHidden(true)
 
                 ForEach(sections) { section in
@@ -1314,9 +1335,9 @@ struct ProfileAvatar: View {
                     } else {
                         Image(systemName: "person.fill")
                             .font(.system(size: size * 0.42, weight: .semibold))
-                            .foregroundStyle(KnightTheme.goldDeep)
+                            .foregroundStyle(KnightTheme.muted)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(KnightTheme.gold.opacity(0.28))
+                            .background(KnightTheme.wash)
                     }
                 }
                 .frame(width: size, height: size)
@@ -1398,7 +1419,7 @@ struct BusinessAccountView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     VStack(alignment: .leading, spacing: 12) {
-                        KnightSaverBrandBar()
+                        KnightSaverBrandBar { ThemeToggleButton() }
                         header
                     }
 
@@ -1439,7 +1460,7 @@ struct BusinessAccountView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Profile")
-                .font(.system(size: 32, weight: .black, design: .rounded))
+                .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)
 
             HStack(spacing: 14) {
@@ -1452,10 +1473,9 @@ struct BusinessAccountView: View {
                     Text(account.email)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
-                    Text("BUSINESS ACCOUNT")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(KnightTheme.goldDeep)
+                    Text("Business account")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(KnightTheme.muted)
                 }
                 Spacer(minLength: 0)
             }
@@ -1472,9 +1492,8 @@ private struct BusinessDetailRow: View {
         HStack(spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.muted)
                 .frame(width: 34, height: 34)
-                .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityHidden(true)
 
             Text(title)

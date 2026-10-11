@@ -194,7 +194,7 @@ struct BizVoiceComposer: View {
                     MicRings(level: voice.level, reduceMotion: reduceMotion)
                 } else {
                     Circle()
-                        .stroke(KnightTheme.gold.opacity(0.35), lineWidth: 1.5)
+                        .stroke(KnightTheme.line, lineWidth: 1.5)
                         .frame(width: 104, height: 104)
                 }
 
@@ -202,14 +202,9 @@ struct BizVoiceComposer: View {
                     .fill(
                         voice.isListening
                             ? AnyShapeStyle(KnightTheme.red)
-                            : AnyShapeStyle(LinearGradient(
-                                colors: [Color(red: 0.99, green: 0.83, blue: 0.36), KnightTheme.gold],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
+                            : AnyShapeStyle(KnightTheme.gold)
                     )
                     .frame(width: 84, height: 84)
-                    .shadow(color: (voice.isListening ? KnightTheme.red : KnightTheme.gold).opacity(0.35), radius: 14, y: 6)
 
                 Image(systemName: voice.isListening ? "mic.fill" : "mic")
                     .font(.system(size: 32, weight: .semibold))
@@ -257,7 +252,7 @@ struct BizVoiceComposer: View {
             if voice.status == .denied, let settings = URL(string: UIApplication.openSettingsURLString) {
                 Button("Open Settings") { openURL(settings) }
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.lake)
             }
         }
         .padding(14)

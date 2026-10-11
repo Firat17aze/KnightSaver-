@@ -8,7 +8,7 @@ extension SurpriseBagStatus {
     var tint: Color {
         switch self {
         case .available: return KnightTheme.green
-        case .fullyReserved: return KnightTheme.goldDeep
+        case .fullyReserved: return KnightTheme.citrus
         case .paused, .draft: return KnightTheme.muted
         case .closed: return KnightTheme.ink
         case .cancelled: return KnightTheme.red
@@ -20,7 +20,7 @@ extension PickupStatus {
     var tint: Color {
         switch self {
         case .authorized: return KnightTheme.green
-        case .offerSent: return KnightTheme.goldDeep
+        case .offerSent: return KnightTheme.citrus
         case .waitlisted: return KnightTheme.muted
         case .pickupVerified, .paymentCaptured: return KnightTheme.green
         case .cancelled, .refunded, .missed: return KnightTheme.red
@@ -38,7 +38,6 @@ struct BizCardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
                     .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
             }
-            .knightCardShadow()
     }
 }
 
@@ -106,7 +105,7 @@ struct BizMetaRow: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .frame(width: 22)
                 .accessibilityHidden(true)
             Text(text)
@@ -191,7 +190,7 @@ struct BizMethodButton: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.muted)
                     .padding(.top, 14)
             }
             .bizCard()
@@ -206,7 +205,7 @@ struct BizStatTile: View {
     var isEstimate = false
     var icon: String? = nil
     var caption: String? = nil
-    /// 0...1. Shows a thin gold bar under the value.
+    /// 0...1. Shows a thin green bar under the value.
     var progress: Double? = nil
 
     var body: some View {
@@ -215,7 +214,7 @@ struct BizStatTile: View {
                 if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.muted)
                         .accessibilityHidden(true)
                 }
                 Text(title)
@@ -234,7 +233,7 @@ struct BizStatTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             if let progress {
-                BizProgressBar(progress: progress, tint: KnightTheme.gold, height: 5)
+                BizProgressBar(progress: progress, tint: KnightTheme.green, height: 5)
             }
             if let caption {
                 Text(caption)
@@ -261,10 +260,10 @@ struct BizEstimateTag: View {
     var body: some View {
         Text("Est.")
             .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(KnightTheme.goldDeep)
+            .foregroundStyle(KnightTheme.muted)
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
-            .background(KnightTheme.gold.opacity(0.18), in: Capsule())
+            .background(KnightTheme.wash, in: Capsule())
             .accessibilityLabel("estimate")
     }
 }
@@ -362,7 +361,7 @@ struct BizDictationBox: View {
                         .fill(KnightTheme.red)
                         .frame(width: 7, height: 7)
                     Text("LIVE")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(0.8)
                 }
                 .foregroundStyle(KnightTheme.red)

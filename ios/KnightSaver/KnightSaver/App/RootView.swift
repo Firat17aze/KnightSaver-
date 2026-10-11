@@ -109,8 +109,6 @@ struct RootView: View {
                     }
                     .ignoresSafeArea(.keyboard)
             }
-            .blur(radius: showKnightPass ? 12 : 0)
-            .scaleEffect(!showKnightPass || reduceMotion ? 1 : 0.985)
             .allowsHitTesting(!showKnightPass)
             .accessibilityHidden(showKnightPass)
 
@@ -124,6 +122,7 @@ struct RootView: View {
             }
         }
         .environmentObject(businessStore)
+        .environmentObject(sessionStore)
         .environmentObject(profilePhotos)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showKnightPass)
         .onAppear {
@@ -133,6 +132,11 @@ struct RootView: View {
             let tabs = AppTab.available(for: account.role)
             if !tabs.contains(selectedTab), let first = tabs.first {
                 selectedTab = first
+            }
+        }
+        .task(id: account.id) {
+            if account.role == .student {
+                await businessStore.refreshFromBackend()
             }
         }
     }
@@ -204,16 +208,15 @@ private struct KnightTabBar: View {
             }
         }
         .padding(6)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.08), lineWidth: 1)
+                .stroke(KnightTheme.line, lineWidth: 1)
         }
-        .shadow(color: KnightTheme.ink.opacity(0.12), radius: 20, x: 0, y: 8)
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 4)
-        .background(KnightTheme.paper.opacity(0.94).ignoresSafeArea(edges: .bottom))
+        .background(KnightTheme.paper.ignoresSafeArea(edges: .bottom))
     }
 }
 
@@ -239,9 +242,9 @@ private struct PlaceholderView: View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 38, weight: .medium))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
                 .frame(width: 76, height: 76)
-                .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .background(KnightTheme.lake.opacity(0.12), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             Text(title)
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)

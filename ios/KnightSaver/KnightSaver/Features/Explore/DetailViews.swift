@@ -65,7 +65,7 @@ struct BagDetailView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(bag.business)
-                    .font(.system(size: 25, weight: .black, design: .rounded))
+                    .font(.system(size: 25, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.ink)
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
@@ -81,7 +81,7 @@ struct BagDetailView: View {
             Spacer(minLength: 8)
 
             Text(bag.formattedPrice)
-                .font(.system(size: 23, weight: .black, design: .rounded))
+                .font(.system(size: 23, weight: .bold, design: .rounded))
                 .foregroundStyle(KnightTheme.ink)
         }
     }
@@ -113,9 +113,9 @@ struct BagDetailView: View {
             HStack(spacing: 13) {
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(KnightTheme.goldDeep)
+                    .foregroundStyle(KnightTheme.lake)
                     .frame(width: 42, height: 42)
-                    .background(KnightTheme.gold.opacity(0.22), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .background(KnightTheme.lake.opacity(0.14), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bag.location)
@@ -159,7 +159,7 @@ struct BagDetailView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 12) {
                     RevealCard(initials: "AM", rating: 5, comment: "Great portion and a smooth pickup.", tint: bag.brand.secondary)
-                    RevealCard(initials: "JR", rating: 4, comment: "Fun surprise—everything was easy to use.", tint: KnightTheme.gold)
+                    RevealCard(initials: "JR", rating: 4, comment: "Fun surprise—everything was easy to use.", tint: KnightTheme.lake)
                 }
             }
             .scrollIndicators(.hidden)
@@ -169,14 +169,14 @@ struct BagDetailView: View {
     private var expectationNotice: some View {
         HStack(alignment: .top, spacing: 11) {
             Image(systemName: "info.circle.fill")
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.lake)
             Text("Contents change with the business’s available surplus. Past Reveals show previous student experiences and do not guarantee future contents.")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(KnightTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .background(KnightTheme.gold.opacity(0.16), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(KnightTheme.lake.opacity(0.09), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var reserveBar: some View {
@@ -203,7 +203,7 @@ struct BagDetailView: View {
             .padding(.horizontal, KnightTheme.screenPadding)
             .padding(.vertical, 12)
         }
-        .background(.ultraThinMaterial)
+        .background(KnightTheme.paper)
     }
 }
 
@@ -216,10 +216,9 @@ private struct DetailFact: View {
         VStack(alignment: .leading, spacing: 7) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .black, design: .rounded))
-                .tracking(1)
+                .foregroundStyle(KnightTheme.lake)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(KnightTheme.muted)
             Text(value)
                 .font(.system(size: 12, weight: .bold))
@@ -243,7 +242,7 @@ private struct RevealCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(initials)
-                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
                     .frame(width: 34, height: 34)
                     .background(tint.opacity(0.32), in: Circle())
                 Spacer()
@@ -323,7 +322,7 @@ struct LocationPickerView: View {
 
                                 if !usesCurrentLocation && selectedLocation == location {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(KnightTheme.goldDeep)
+                                        .foregroundStyle(KnightTheme.lake)
                                         .accessibilityHidden(true)
                                 }
                             }
@@ -351,7 +350,7 @@ struct LocationPickerView: View {
                 }
             }
             .alert("Location unavailable", isPresented: locationErrorBinding) {
-                if locationManager.authorizationStatus == .denied {
+                if locationManager.authorizationStatus == .denied || locationManager.accuracyAuthorization == .reducedAccuracy {
                     Button("Open Settings") {
                         if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
                             openURL(settingsURL)

@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The third tab: verified personal impact, campus impact, the Campus Rescue League with
-/// Knight of the Week, and EcoKnight AI for the latest verified rescue (student.md "Impact").
+/// The third tab, split in two so each half reads on its own (student.md "Impact"):
+/// "You" is verified personal impact and recent rescues;
+/// "Campus" is the weekly goal, Knight of the Week and the Campus Rescue League.
 struct ImpactView: View {
     let student: KnightPass
 
@@ -10,18 +11,22 @@ struct ImpactView: View {
     @AppStorage("knightsaver.league.nickname") private var storedNickname = ""
     /// Feedback for demo-history rescues (live ones go to the Kitchen store).
     @AppStorage("knightsaver.impact.ratedCodes") private var ratedCodes = ""
-    @State private var board: LeagueBoard = .students
+    @State private var section: ImpactSection = .you
     @State private var period: LeaguePeriod = .week
     @State private var sheet: ImpactSheet?
 
+    private enum ImpactSection: String, CaseIterable, Identifiable {
+        case you = "You"
+        case campus = "Campus"
+        var id: String { rawValue }
+    }
+
     private enum ImpactSheet: Identifiable {
-        case eco(StudentRescue?)
         case feedback(StudentRescue)
         case league
 
         var id: String {
             switch self {
-            case .eco(let rescue): return "eco-\(rescue?.id.uuidString ?? "chat")"
             case .feedback(let rescue): return "feedback-\(rescue.id.uuidString)"
             case .league: return "league"
             }
@@ -48,42 +53,20 @@ struct ImpactView: View {
 
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
+                VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 12) {
                         KnightSaverBrandBar()
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Impact")
-                                .font(.system(size: 32, weight: .black, design: .rounded))
-                                .foregroundStyle(KnightTheme.ink)
-                            Text("Only pickups verified by staff count.")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(KnightTheme.muted)
-                        }
+                        EcoKnightAskBar(stats: EcoStats(summary: summary, rescues: rescues, leagueNickname: leagueJoined ? nickname : nil))
                     }
 
-                    YourImpactCard(summary: summary)
-
-                    if let latest = rescues.first {
-                        LatestRescueCard(
-                            rescue: latest,
-                            isRated: isRated(latest),
-                            onEcoKnight: { sheet = .eco(latest) },
-                            onFeedback: { sheet = .feedback(latest) }
-                        )
-                    } else {
-                        FirstRescueCard { sheet = .eco(nil) }
+                    Picker("Section", selection: $section) {
+                        ForEach(ImpactSection.allCases) { Text($0.rawValue).tag($0) }
                     }
+                    .pickerStyle(.segmented)
 
-                    CampusImpactCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
-
-                    KnightOfTheWeekCard(
-                        leader: CampusLeague.entries(board: .students, period: .week, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsThisWeek()).first
-                    )
-
-                    leagueSection(summary: summary)
-
-                    if !rescues.isEmpty {
-                        recentSection
+                    switch section {
+                    case .you: youSection(summary: summary)
+                    case .campus: campusSection(summary: summary)
                     }
                 }
                 .padding(.horizontal, KnightTheme.screenPadding)
@@ -96,9 +79,6 @@ struct ImpactView: View {
             .navigationBarHidden(true)
             .sheet(item: $sheet) { sheet in
                 switch sheet {
-                case .eco(let rescue):
-                    EcoKnightView(rescue: rescue)
-                        .presentationDragIndicator(.visible)
                 case .feedback(let rescue):
                     RevealFeedbackView(rescue: rescue) { feedback in
                         submit(feedback, for: rescue)
@@ -113,76 +93,102 @@ struct ImpactView: View {
         }
     }
 
-    // MARK: League
+    // MARK: You
+
+    @ViewBuilder
+    private func youSection(summary: StudentImpactSummary) -> some View {
+        YourImpactCard(summary: summary)
+
+        let recent = Array(rescues.prefix(5))
+        if recent.isEmpty {
+            FirstRescueCard()
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                BizSectionHeader(title: "Recent rescues")
+                VStack(spacing: 0) {
+                    ForEach(Array(recent.enumerated()), id: \.element.id) { index, rescue in
+                        RescueRow(rescue: rescue)
+                        if index < recent.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 64) }
+                    }
+                }
+                .listCard()
+            }
+        }
+    }
+
+    // MARK: Campus
+
+    @ViewBuilder
+    private func campusSection(summary: StudentImpactSummary) -> some View {
+        CampusGoalCard(studentBagsThisWeek: summary.weeklyBags(weeks: 1).first ?? 0)
+
+        KnightOfTheWeekCard(
+            leader: CampusLeague.entries(period: .week, nickname: leagueJoined ? nickname : nil, yourPoints: summary.pointsThisWeek()).first
+        )
+
+        leagueSection(summary: summary)
+    }
 
     private func leagueSection(summary: StudentImpactSummary) -> some View {
         let yourPoints = period == .week ? summary.pointsThisWeek() : summary.pointsAllTime
-        let entries = CampusLeague.entries(board: board, period: period, nickname: leagueJoined ? nickname : nil, yourPoints: yourPoints)
+        let entries = CampusLeague.entries(period: period, nickname: leagueJoined ? nickname : nil, yourPoints: yourPoints)
         let top = Array(entries.prefix(5))
         let you = entries.enumerated().first { $0.element.isYou }
 
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 4) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Campus Rescue League")
+                    Text("Rescue League")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
-                    Text("One point per day with a verified pickup")
+                        .accessibilityAddTraits(.isHeader)
+                    Text("1 point a day you rescue")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(KnightTheme.muted)
                 }
                 Spacer(minLength: 8)
+                Menu {
+                    Picker("Period", selection: $period) {
+                        ForEach(LeaguePeriod.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(period.rawValue)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(KnightTheme.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 34)
+                    .background(KnightTheme.surface, in: Capsule())
+                    .overlay { Capsule().stroke(KnightTheme.line, lineWidth: 1) }
+                }
+                .accessibilityLabel("Period, \(period.rawValue)")
                 Button {
                     sheet = .league
                 } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(KnightTheme.ink)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 44)
                 }
                 .accessibilityLabel("League settings")
             }
 
-            Picker("Period", selection: $period) {
-                ForEach(LeaguePeriod.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-
-            HStack(spacing: 8) {
-                ForEach(LeagueBoard.allCases) { option in
-                    Button {
-                        board = option
-                    } label: {
-                        Text(option.rawValue)
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(board == option ? KnightTheme.onAccent : KnightTheme.muted)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 36)
-                            .background(board == option ? KnightTheme.gold : KnightTheme.surface, in: Capsule())
-                            .overlay { Capsule().stroke(KnightTheme.line, lineWidth: board == option ? 0 : 1) }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(board == option ? .isSelected : [])
-                }
-            }
-
             VStack(spacing: 0) {
                 ForEach(Array(top.enumerated()), id: \.element.id) { index, entry in
-                    LeagueRow(rank: index + 1, entry: entry, board: board)
+                    LeagueRow(rank: index + 1, entry: entry)
                     if index < top.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 52) }
                 }
                 if let you, you.offset >= 5 {
                     Divider().overlay(KnightTheme.line)
-                    LeagueRow(rank: you.offset + 1, entry: you.element, board: board)
+                    LeagueRow(rank: you.offset + 1, entry: you.element)
                 }
             }
-            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
-            }
+            .listCard()
 
-            if board == .students && !leagueJoined {
+            if !leagueJoined {
                 Button {
                     sheet = .league
                 } label: {
@@ -196,55 +202,10 @@ struct ImpactView: View {
                 .buttonStyle(.plain)
             }
 
-            Text("Joining is optional and uses a nickname. Cancelled, missed or unverified pickups earn nothing. Leaderboard names and other schools' points are demo data.")
+            Text("Joining is optional and shows only your nickname. Cancelled, missed or unverified pickups earn nothing.")
                 .font(.system(size: 12))
                 .foregroundStyle(KnightTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: Recent
-
-    private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recent verified rescues")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(KnightTheme.ink)
-            VStack(spacing: 0) {
-                let recent = Array(rescues.prefix(4))
-                ForEach(Array(recent.enumerated()), id: \.element.id) { index, rescue in
-                    HStack(spacing: 12) {
-                        BrandMark(brand: rescue.brand, size: 38)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(rescue.business)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(KnightTheme.ink)
-                            Text("\(ImpactFormat.shortDate(rescue.verifiedAt)) · \(rescue.bags) bag\(rescue.bags == 1 ? "" : "s")")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(KnightTheme.muted)
-                        }
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(ImpactFormat.kg(rescue.foodKg))
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(KnightTheme.ink)
-                            Text(rescue.measuredKg == nil ? "Est." : "Weighed")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(rescue.measuredKg == nil ? KnightTheme.goldDeep : KnightTheme.green)
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 60)
-                    .accessibilityElement(children: .combine)
-                    if index < recent.count - 1 { Divider().overlay(KnightTheme.line).padding(.leading, 64) }
-                }
-            }
-            .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
-            }
         }
     }
 
@@ -273,7 +234,18 @@ struct ImpactView: View {
     }
 }
 
-// MARK: - Cards
+private extension View {
+    /// White rounded container for list rows (league, earlier rescues).
+    func listCard() -> some View {
+        background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
+            }
+    }
+}
+
+// MARK: - You
 
 private struct YourImpactCard: View {
     let summary: StudentImpactSummary
@@ -285,41 +257,41 @@ private struct YourImpactCard: View {
         let peak = max(weeks.max() ?? 1, 1)
         let streak = summary.weeklyStreak()
 
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("YOUR VERIFIED IMPACT")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .tracking(1.2)
-                    .foregroundStyle(KnightTheme.goldDeep)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(summary.bags)")
+                        .font(.system(size: 52, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(KnightTheme.ink)
+                    Text(summary.bags == 1 ? "bag rescued" : "bags rescued")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(KnightTheme.muted)
+                }
+                .accessibilityElement(children: .combine)
                 Spacer()
                 if streak > 0 {
                     Label("\(streak)-week streak", systemImage: "flame.fill")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.onAccent)
+                        .foregroundStyle(KnightTheme.citrus)
                         .padding(.horizontal, 10)
                         .frame(minHeight: 28)
-                        .background(KnightTheme.gold, in: Capsule())
+                        .background(KnightTheme.citrus.opacity(0.13), in: Capsule())
                 }
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(summary.bags)")
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(KnightTheme.ink)
-                Text(summary.bags == 1 ? "bag rescued" : "bags rescued")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(KnightTheme.muted)
-            }
-
-            HStack(spacing: 12) {
-                miniStat(
+            HStack(spacing: 0) {
+                stat(
                     title: "Food rescued",
                     value: ImpactFormat.kg(summary.foodKg),
                     caption: String(format: "%.1f weighed · %.1f est.", summary.measuredKg, summary.estimatedKg),
                     estimate: false
                 )
-                miniStat(
+                Rectangle()
+                    .fill(KnightTheme.line)
+                    .frame(width: 1, height: 44)
+                    .padding(.horizontal, 14)
+                stat(
                     title: "CO₂e avoided",
                     value: ImpactFormat.kg(summary.co2eKg),
                     caption: "From food rescued",
@@ -327,23 +299,17 @@ private struct YourImpactCard: View {
                 )
             }
 
-            // Last six weeks of verified bags.
+            // Last six weeks of verified bags, in impact green; this week at full strength.
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .bottom, spacing: 8) {
                     ForEach(Array(weeks.enumerated()), id: \.offset) { index, count in
-                        VStack(spacing: 4) {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(KnightTheme.muted)
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(index == weeks.count - 1 ? KnightTheme.green : KnightTheme.gold.opacity(count == 0 ? 0.25 : 0.85))
-                                .frame(height: grown ? max(4, 44 * CGFloat(count) / CGFloat(peak)) : 4)
-                        }
-                        .frame(maxWidth: .infinity)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(KnightTheme.green.opacity(index == weeks.count - 1 ? 1 : count == 0 ? 0.15 : 0.4))
+                            .frame(height: grown ? max(4, 40 * CGFloat(count) / CGFloat(peak)) : 4)
+                            .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(height: 64, alignment: .bottom)
+                .frame(height: 40, alignment: .bottom)
                 HStack {
                     Text("6 weeks ago")
                     Spacer()
@@ -355,23 +321,17 @@ private struct YourImpactCard: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Bags rescued per week, oldest first: \(weeks.map(String.init).joined(separator: ", "))")
         }
-        .padding(17)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
-        }
-        .knightCardShadow()
+        .bizCard()
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7).delay(0.1)) { grown = true }
         }
     }
 
-    private func miniStat(title: String, value: String, caption: String, estimate: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+    private func stat(title: String, value: String, caption: String, estimate: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.system(size: 12))
                     .foregroundStyle(KnightTheme.muted)
                     .lineLimit(1)
                 if estimate { BizEstimateTag() }
@@ -381,87 +341,17 @@ private struct YourImpactCard: View {
                 .monospacedDigit()
                 .foregroundStyle(KnightTheme.ink)
             Text(caption)
-                .font(.system(size: 11, weight: .regular))
+                .font(.system(size: 11))
                 .foregroundStyle(KnightTheme.muted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(KnightTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
 
-private struct LatestRescueCard: View {
-    let rescue: StudentRescue
-    let isRated: Bool
-    let onEcoKnight: () -> Void
-    let onFeedback: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                BrandMark(brand: rescue.brand, size: 46)
-                VStack(alignment: .leading, spacing: 3) {
-                    Label("Verified pickup", systemImage: "checkmark.seal.fill")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(KnightTheme.green)
-                    Text(rescue.business)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                    Text("\(ImpactFormat.shortDate(rescue.verifiedAt)) · \(rescue.bags) bag\(rescue.bags == 1 ? "" : "s") · \(rescue.location)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(KnightTheme.muted)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-
-            Button(action: onEcoKnight) {
-                HStack(spacing: 10) {
-                    Image(systemName: "sparkles")
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Open EcoKnight AI")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                        Text("What to make, what to eat first, how to store it")
-                            .font(.system(size: 12, weight: .medium))
-                            .opacity(0.75)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .foregroundStyle(KnightTheme.onAccent)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 60)
-                .background(KnightTheme.gold, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
-            Button(action: onFeedback) {
-                Label(isRated ? "Thanks for your feedback" : "Rate it and share your reveal", systemImage: isRated ? "checkmark" : "camera")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(isRated ? KnightTheme.muted : KnightTheme.ink)
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(KnightTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(KnightTheme.line, lineWidth: 1) }
-            }
-            .buttonStyle(.plain)
-            .disabled(isRated)
-        }
-        .padding(17)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
-        }
-    }
-}
-
 private struct FirstRescueCard: View {
-    let onAsk: () -> Void
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("No verified rescues yet")
@@ -471,23 +361,46 @@ private struct FirstRescueCard: View {
                 .font(.system(size: 14))
                 .foregroundStyle(KnightTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            Button(action: onAsk) {
-                Label("Ask EcoKnight a question", systemImage: "sparkles")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.onAccent)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 44)
-                    .background(KnightTheme.gold, in: Capsule())
-            }
-            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(17)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .bizCard()
     }
 }
 
-private struct CampusImpactCard: View {
+private struct RescueRow: View {
+    let rescue: StudentRescue
+
+    var body: some View {
+        HStack(spacing: 12) {
+            BrandMark(brand: rescue.brand, size: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rescue.business)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(KnightTheme.ink)
+                Text("\(ImpactFormat.shortDate(rescue.verifiedAt)) · \(rescue.bags) bag\(rescue.bags == 1 ? "" : "s")")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(KnightTheme.muted)
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(ImpactFormat.kg(rescue.foodKg))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(KnightTheme.ink)
+                Text(rescue.measuredKg == nil ? "Est." : "Weighed")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(rescue.measuredKg == nil ? KnightTheme.muted : KnightTheme.green)
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 60)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Campus
+
+private struct CampusGoalCard: View {
     let studentBagsThisWeek: Int
 
     var body: some View {
@@ -495,53 +408,37 @@ private struct CampusImpactCard: View {
         let thisWeek = campus.bagsThisWeek + studentBagsThisWeek
         let progress = min(Double(thisWeek) / Double(campus.weeklyGoal), 1)
 
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("UCF this week")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                Spacer()
-                Text("Demo data")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(KnightTheme.ink.opacity(0.06), in: Capsule())
-            }
-
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
+                Text("UCF this week")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.muted)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(thisWeek)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(KnightTheme.ink)
-                    Text("of \(campus.weeklyGoal) bags · campus goal")
-                        .font(.system(size: 13, weight: .medium))
+                    Text("/ \(campus.weeklyGoal) bags")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(KnightTheme.muted)
                     Spacer()
-                    Text("\(Int((progress * 100).rounded()))%")
+                    Text("\(Int((progress * 100).rounded()))% of goal")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.green)
                 }
                 BizProgressBar(progress: progress, tint: KnightTheme.green, height: 10)
             }
+            .accessibilityElement(children: .combine)
 
-            HStack(spacing: 0) {
+            Divider().overlay(KnightTheme.line)
+
+            HStack(alignment: .top, spacing: 0) {
                 campusStat("\(campus.bagsAllTime.formatted())", "bags all time")
                 campusStat(ImpactFormat.kg(campus.measuredKg + campus.estimatedKg), "food rescued")
                 campusStat(ImpactFormat.kg(campus.co2eKg), "CO₂e avoided, est.")
             }
-
-            Label("\(campus.residenceHalls) residence halls and \(campus.studentOrgs) student orgs are taking part", systemImage: "building.2")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(KnightTheme.muted)
         }
-        .padding(17)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.07), lineWidth: 1)
-        }
+        .bizCard()
     }
 
     private func campusStat(_ value: String, _ label: String) -> some View {
@@ -558,6 +455,7 @@ private struct CampusImpactCard: View {
                 .lineLimit(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -569,11 +467,11 @@ private struct KnightOfTheWeekCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label("KNIGHT OF THE WEEK", systemImage: "crown.fill")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(KnightTheme.gold)
                     Spacer()
-                    Text("Crowned in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))")
+                    Text("Ends in \(ImpactFormat.countdown(to: CampusLeague.nextReset(after: context.date), now: context.date))")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.75))
@@ -582,44 +480,26 @@ private struct KnightOfTheWeekCard: View {
                 if let leader {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(leader.isYou ? "\(leader.name) (you)" : leader.name)
-                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         Text("\(leader.points) pt\(leader.points == 1 ? "" : "s")")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundStyle(KnightTheme.gold)
                     }
-                    Text("Leading this week")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
                 }
 
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "gift.fill")
-                        .foregroundStyle(KnightTheme.gold)
-                    Text("The winner gets a free Surprise Bag from \(ImpactDemo.weeklySponsor), a Rescue Knight badge for a week and a shout-out in the app.")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(12)
-                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                Text("Sponsor-funded, so no one's bag is taken away. Demo reward.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.55))
+                Label("Prize: a free Surprise Bag from \(ImpactDemo.weeklySponsor)", systemImage: "gift.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.85))
             }
             .padding(17)
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 0.055, green: 0.053, blue: 0.05), Color(red: 0.16, green: 0.135, blue: 0.09)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(KnightTheme.night, in: RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(KnightTheme.gold.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: KnightTheme.cardRadius, style: .continuous)
+                    .stroke(KnightTheme.line, lineWidth: 1)
             }
             .accessibilityElement(children: .combine)
         }
@@ -629,23 +509,22 @@ private struct KnightOfTheWeekCard: View {
 private struct LeagueRow: View {
     let rank: Int
     let entry: LeagueEntry
-    let board: LeagueBoard
 
     var body: some View {
         HStack(spacing: 12) {
             Text("\(rank)")
-                .font(.system(size: 14, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(rank <= 3 ? KnightTheme.onAccent : KnightTheme.muted)
                 .frame(width: 28, height: 28)
-                .background(rank <= 3 ? KnightTheme.gold.opacity(rank == 1 ? 1 : 0.55) : Color.clear, in: Circle())
+                .background(podium, in: Circle())
             Text(entry.name)
                 .font(.system(size: 15, weight: entry.isYou ? .bold : .medium))
                 .foregroundStyle(KnightTheme.ink)
                 .lineLimit(1)
             if entry.isYou {
-                Text(board == .students ? "You" : "Yours")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
+                Text("You")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(KnightTheme.green)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
@@ -659,8 +538,18 @@ private struct LeagueRow: View {
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 52)
-        .background(entry.isYou ? KnightTheme.gold.opacity(0.10) : Color.clear)
+        .background(entry.isYou ? KnightTheme.green.opacity(0.08) : Color.clear)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Gold, silver and bronze for the top three.
+    private var podium: Color {
+        switch rank {
+        case 1: KnightTheme.gold
+        case 2: KnightTheme.silver
+        case 3: KnightTheme.bronze
+        default: .clear
+        }
     }
 }
 
@@ -685,7 +574,7 @@ private struct LeagueSettingsView: View {
                             .autocorrectionDisabled()
                     }
                 } footer: {
-                    Text("Only your nickname is shown, never your real name. Your points still count for your hall and org.")
+                    Text("Only your nickname is shown, never your real name.")
                 }
             }
             .scrollContentBackground(.hidden)

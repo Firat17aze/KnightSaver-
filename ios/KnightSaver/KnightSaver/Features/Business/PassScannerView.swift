@@ -108,10 +108,9 @@ struct PassScannerView: View {
 
         if store.isDemo {
             VStack(alignment: .leading, spacing: 10) {
-                Text("DEMO SCANS")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(1.2)
-                    .foregroundStyle(KnightTheme.goldDeep)
+                Text("Demo scans")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(KnightTheme.muted)
                 if let expected = expectedReservation, expected.passToken != KnightPass.sample.verificationToken {
                     demoScanButton("Scan \(expected.studentDisplayName)'s pass", value: "knightsaver://verify-user/\(expected.passToken)")
                 }
@@ -180,7 +179,7 @@ struct PassScannerView: View {
         case .alreadyVerified(let reservation):
             statusCard(
                 icon: "checkmark.circle.fill",
-                tint: KnightTheme.goldDeep,
+                tint: KnightTheme.lake,
                 title: "Already verified",
                 message: "\(reservation.studentDisplayName)'s pickup (\(reservation.code)) was verified at \(reservation.verifiedAt.map { PickupTime.time($0) } ?? "earlier"). Payment was captured once and won't be charged again."
             )
@@ -307,7 +306,7 @@ struct PassScannerView: View {
                 BizMetaRow(icon: "creditcard.fill", text: "Payment captured: \(PickupTime.money(reservation.total))")
                 BizMetaRow(icon: "list.bullet.rectangle", text: "Added to Today's verified rescues")
                 BizMetaRow(icon: "leaf.fill", text: "Impact and Campus Rescue League updated")
-                BizMetaRow(icon: "sparkles", text: "EcoKnight AI and Past Reveal unlocked for the student")
+                BizMetaRow(icon: "leaf", text: "EcoKnight AI and Past Reveal unlocked for the student")
             }
             .bizCard()
             HStack(spacing: 10) {
@@ -323,7 +322,7 @@ struct PassScannerView: View {
         case .alreadyVerified(let reservation):
             statusCard(
                 icon: "checkmark.circle.fill",
-                tint: KnightTheme.goldDeep,
+                tint: KnightTheme.lake,
                 title: "Already verified",
                 message: "\(reservation.code) was already verified. Nothing was charged again."
             )

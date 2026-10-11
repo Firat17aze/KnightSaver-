@@ -7,8 +7,6 @@ struct BusinessDashboardView: View {
     @ObservedObject var store: BusinessStore
     @State private var sheet: BusinessSheet?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// App-wide dark mode, read by KnightSaverApp.
-    @AppStorage("knightsaver.darkMode") private var darkMode = false
 
     init(store: BusinessStore) {
         _store = ObservedObject(wrappedValue: store)
@@ -45,7 +43,7 @@ struct BusinessDashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             KnightSaverBrandBar {
-                darkModeButton
+                ThemeToggleButton()
             }
 
             ScanKnightPassButton {
@@ -62,29 +60,6 @@ struct BusinessDashboardView: View {
             .accessibilityLabel("List surplus")
             .accessibilityHint("Publish new Surprise Bags with AI or manually")
         }
-    }
-
-    /// Crescent moon at the top right. Turns dark mode on or off for the whole app.
-    private var darkModeButton: some View {
-        Button {
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
-                darkMode.toggle()
-            }
-        } label: {
-            Image(systemName: "moon.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(darkMode ? KnightTheme.onAccent : KnightTheme.ink)
-                .frame(width: 44, height: 44)
-                .background(darkMode ? KnightTheme.gold : KnightTheme.surface, in: Circle())
-                .overlay {
-                    Circle().stroke(KnightTheme.line, lineWidth: darkMode ? 0 : 1)
-                }
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Dark mode")
-        .accessibilityValue(darkMode ? "On" : "Off")
-        .accessibilityHint("Switches the whole app between light and dark")
     }
 
     // MARK: - 1. Current Surprise Bags
@@ -191,9 +166,9 @@ struct BusinessDashboardView: View {
         HStack(spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.muted)
                 .frame(width: 40, height: 40)
-                .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Text(text)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(KnightTheme.muted)
@@ -220,8 +195,8 @@ enum BusinessSheet: Identifiable, Hashable {
 // MARK: - Scan Knight Pass button
 
 /// The one bold element on the page. Same family as the Knight Pass card in Profile
-/// (dark diagonal gradient, faint gold ring, gold wordmark, KnightLogo, 22pt corners,
-/// thin white border), but shaped as a wide action with a gold chevron so it reads as a button.
+/// (flat fill, gold wordmark, KnightLogo, 22pt corners, thin border), but shaped as a
+/// wide action with a gold chevron so it reads as a button.
 struct ScanKnightPassButton: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -229,11 +204,9 @@ struct ScanKnightPassButton: View {
 
     private var isDark: Bool { colorScheme == .dark }
 
-    /// Dark mode: the Knight Pass card's black. Light mode: soft champagne gold that sits well on white.
-    private var gradientColors: [Color] {
-        isDark
-            ? [Color(red: 0.055, green: 0.053, blue: 0.05), Color(red: 0.14, green: 0.125, blue: 0.095)]
-            : [Color(red: 1.0, green: 0.968, blue: 0.875), Color(red: 0.965, green: 0.878, blue: 0.635)]
+    /// Dark mode: the Knight Pass card's black. Light mode: a flat pale gold.
+    private var fill: Color {
+        isDark ? KnightTheme.night : Color(red: 0.99, green: 0.93, blue: 0.76)
     }
 
     var body: some View {
@@ -271,23 +244,11 @@ struct ScanKnightPassButton: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-            .background {
-                GeometryReader { proxy in
-                    ZStack {
-                        LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
-                        Circle()
-                            .stroke(isDark ? KnightTheme.gold.opacity(0.14) : KnightTheme.goldDeep.opacity(0.22), lineWidth: 1)
-                            .frame(width: proxy.size.width * 0.62)
-                            .offset(x: proxy.size.width * 0.38, y: -proxy.size.height * 0.62)
-                    }
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(fill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(isDark ? Color.white.opacity(0.14) : Color.white.opacity(0.7), lineWidth: 1)
+                    .stroke(isDark ? Color.white.opacity(0.14) : KnightTheme.goldDeep.opacity(0.25), lineWidth: 1)
             }
-            .shadow(color: isDark ? .black.opacity(0.18) : KnightTheme.goldDeep.opacity(0.18), radius: 16, x: 0, y: 8)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle(reduceMotion: reduceMotion))
@@ -489,7 +450,7 @@ struct TodaysTotalCard: View {
                         .foregroundStyle(KnightTheme.ink)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.muted)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .frame(minHeight: 44)

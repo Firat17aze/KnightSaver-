@@ -170,7 +170,7 @@ struct ListSurplusFlow: View {
                 Button {
                     understand()
                 } label: {
-                    BizPrimaryLabel(title: "Show what you understood", icon: "sparkles")
+                    BizPrimaryLabel(title: "Show what you understood", icon: "checklist")
                 }
                 .buttonStyle(.plain)
                 .disabled(transcriptIsEmpty)
@@ -259,7 +259,7 @@ struct ListSurplusFlow: View {
                     ForEach(notes, id: \.self) { note in
                         Label(note, systemImage: "exclamationmark.circle")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(KnightTheme.goldDeep)
+                            .foregroundStyle(KnightTheme.citrus)
                     }
                 } header: {
                     Text("Missing or uncertain")
@@ -324,7 +324,7 @@ struct BagPlanEditor: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(plan.bagCount) Surprise Bag\(plan.bagCount == 1 ? "" : "s")")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(KnightTheme.ink)
                     Text("\(PickupTime.money(plan.price)) each · Pickup \(PickupTime.window(plan.pickupStart, plan.pickupEnd))")
                         .font(.system(size: 15, weight: .semibold))
@@ -398,7 +398,7 @@ struct BagPlanEditor: View {
                 ForEach(plan.problems, id: \.self) { problem in
                     Label(problem, systemImage: "exclamationmark.circle")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(KnightTheme.goldDeep)
+                        .foregroundStyle(KnightTheme.citrus)
                 }
                 Button {
                     guard !isPublishing else { return }
@@ -455,9 +455,9 @@ struct BagLineupRow: View {
         HStack(spacing: 12) {
             Text(BagName.numeral(index))
                 .font(.system(size: 13, weight: .bold, design: .serif))
-                .foregroundStyle(KnightTheme.goldDeep)
+                .foregroundStyle(KnightTheme.ink)
                 .frame(width: 34, height: 34)
-                .background(KnightTheme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(KnightTheme.wash, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(BagName.name(index, isSurprise: isSurprise))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
