@@ -83,10 +83,10 @@ enum RewardRules {
     }
 }
 
-// MARK: - Reward Road
+// MARK: - Rewards by orders
 
-// Every staff-verified order moves the student one step along the Reward Road.
-// Steps pay out Knight Cash (money on the account, paid with a QR at the counter)
+// Every staff-verified order counts toward the next reward.
+// Rewards pay out Knight Cash (money on the account, paid with a QR at the counter)
 // or unlock a small Rescue Crew toy that waits at a partner kitchen.
 
 /// A small toy kept behind the counter at one partner kitchen.
@@ -119,13 +119,6 @@ struct RoadMilestone: Identifiable, Hashable {
         switch reward {
         case .cash(let cents): "+\(KnightCash.format(cents)) Knight Cash"
         case .collectible(let toy): toy.name
-        }
-    }
-
-    var shortTitle: String {
-        switch reward {
-        case .cash(let cents): KnightCash.format(cents, compact: true)
-        case .collectible(let toy): toy.name.split(separator: " ").last.map(String.init) ?? toy.name
         }
     }
 

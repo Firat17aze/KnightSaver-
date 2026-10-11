@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Rewards tab: Knight Cash, the Reward Road, the Rescue Crew toys, Knight of the Week,
+/// The Rewards tab: Knight Cash, the Rescue Crew toys, Knight of the Week,
 /// the Campus Rescue League and badges. Everything here counts staff-verified pickups only.
 struct RewardsView: View {
     let student: KnightPass
@@ -13,7 +13,6 @@ struct RewardsView: View {
     @State private var selectedBadge: RewardBadge?
     /// Rescue Crew toys the student has picked up, by id.
     @AppStorage("knightsaver.rewards.collected") private var collectedIDs = ""
-    @State private var selectedStep: Int?
     @State private var qrSheet: RewardQR?
 
     private var isDemoStudent: Bool { student.verificationToken == KnightPass.sample.verificationToken }
@@ -49,7 +48,7 @@ struct RewardsView: View {
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(KnightTheme.ink)
                                 .accessibilityAddTraits(.isHeader)
-                            Text("Every verified order moves you down the road.")
+                            Text("The more you order, the more you earn.")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundStyle(KnightTheme.muted)
                         }
@@ -58,8 +57,6 @@ struct RewardsView: View {
                     KnightCashCard(orders: orders, balanceCents: RewardRoad.cashEarnedCents(orders: orders)) {
                         qrSheet = .cash
                     }
-
-                    roadSection(orders: orders)
 
                     crewSection(orders: orders)
 
@@ -101,7 +98,7 @@ struct RewardsView: View {
         }
     }
 
-    // MARK: Reward Road
+    // MARK: Knight Cash and toys
 
     private var collected: Set<String> {
         Set(collectedIDs.split(separator: ",").map(String.init))
@@ -118,31 +115,6 @@ struct RewardsView: View {
         return "KS-\(tail)-\(suffix.uppercased())"
     }
 
-    private func roadSection(orders: Int) -> some View {
-        let next = RewardRoad.next(after: orders)
-        let focus = RewardRoad.milestones.first { $0.orders == selectedStep } ?? next ?? RewardRoad.milestones.last!
-
-        return VStack(alignment: .leading, spacing: 12) {
-            BizSectionHeader(
-                title: "Reward Road",
-                subtitle: "Cash and toys unlock as your orders add up",
-                trailing: "\(orders) order\(orders == 1 ? "" : "s")"
-            )
-
-            RewardRoadView(orders: orders, collected: collected, selected: focus.orders) { step in
-                selectedStep = step.orders
-            }
-
-            RoadStepDetail(step: focus, orders: orders, isCollected: focus.collectible.map { collected.contains($0.id) } ?? false) {
-                if let toy = focus.collectible {
-                    qrSheet = .collectible(toy)
-                } else {
-                    qrSheet = .cash
-                }
-            }
-        }
-    }
-
     private func crewSection(orders: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             BizSectionHeader(
@@ -155,16 +127,15 @@ struct RewardsView: View {
                 HStack(spacing: 12) {
                     ForEach(RewardRoad.crew) { toy in
                         let unlockAt = RewardRoad.unlockOrders(for: toy)
+                        let isReady = orders >= unlockAt && !collected.contains(toy.id)
                         Button {
-                            if orders >= unlockAt && !collected.contains(toy.id) {
-                                qrSheet = .collectible(toy)
-                            } else {
-                                selectedStep = unlockAt
-                            }
+                            qrSheet = .collectible(toy)
                         } label: {
                             CrewCard(toy: toy, unlockAt: unlockAt, orders: orders, isCollected: collected.contains(toy.id))
                         }
                         .buttonStyle(.plain)
+                        // Only a toy ready to pick up opens its QR.
+                        .allowsHitTesting(isReady)
                     }
                 }
                 .padding(.vertical, 2)
@@ -326,7 +297,7 @@ private enum RewardQR: Identifiable {
     }
 }
 
-/// The wallet: Knight Cash earned on the Reward Road, paid with a QR at the counter.
+/// The wallet: Knight Cash earned from verified orders, paid with a QR at the counter.
 private struct KnightCashCard: View {
     let orders: Int
     let balanceCents: Int
@@ -404,227 +375,12 @@ private struct KnightCashCard: View {
                 }
                 .accessibilityElement(children: .combine)
             } else {
-                Label("You finished the Reward Road. Legend.", systemImage: "crown.fill")
+                Label("Every reward unlocked. Legend.", systemImage: "crown.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(KnightTheme.goldDeep)
             }
         }
         .bizCard()
-    }
-}
-
-// MARK: - Reward Road
-
-/// A horizontal road of steps with a knight token at the student's spot.
-private struct RewardRoadView: View {
-    let orders: Int
-    let collected: Set<String>
-    let selected: Int
-    let onSelect: (RoadMilestone) -> Void
-
-    private enum Stop: Identifiable {
-        case step(RoadMilestone)
-        case you
-        var id: String {
-            switch self {
-            case .step(let step): "step-\(step.orders)"
-            case .you: "you"
-            }
-        }
-    }
-
-    /// The steps, with the student's token after the last step reached.
-    private var stops: [Stop] {
-        var result: [Stop] = []
-        var placed = false
-        for step in RewardRoad.milestones {
-            if !placed && step.orders > orders {
-                result.append(.you)
-                placed = true
-            }
-            result.append(.step(step))
-        }
-        if !placed { result.append(.you) }
-        return result
-    }
-
-    var body: some View {
-        let allStops = stops
-        let youIndex = allStops.firstIndex { if case .you = $0 { return true } else { return false } } ?? 0
-
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(allStops.enumerated()), id: \.element.id) { index, stop in
-                        VStack(spacing: 8) {
-                            ZStack {
-                                // Two half segments so the road fills up to the token.
-                                HStack(spacing: 0) {
-                                    Rectangle()
-                                        .fill(index == 0 ? Color.clear : (index <= youIndex ? KnightTheme.green : KnightTheme.wash))
-                                    Rectangle()
-                                        .fill(index == allStops.count - 1 ? Color.clear : (index < youIndex ? KnightTheme.green : KnightTheme.wash))
-                                }
-                                .frame(height: 4)
-                                node(for: stop)
-                            }
-                            .frame(height: 56)
-                            label(for: stop)
-                        }
-                        .frame(width: stopWidth(stop))
-                        .id(stop.id)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            .scrollIndicators(.hidden)
-            .onAppear { proxy.scrollTo("you", anchor: .center) }
-        }
-        .padding(.vertical, 12)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
-        }
-    }
-
-    private func stopWidth(_ stop: Stop) -> CGFloat {
-        if case .you = stop { return 64 }
-        return 78
-    }
-
-    @ViewBuilder
-    private func node(for stop: Stop) -> some View {
-        switch stop {
-        case .you:
-            Image(systemName: "figure.fencing")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(KnightTheme.onAccent)
-                .frame(width: 40, height: 40)
-                .background(KnightTheme.gold, in: Circle())
-                .overlay { Circle().stroke(KnightTheme.surface, lineWidth: 3) }
-                .accessibilityLabel("You, \(orders) orders")
-        case .step(let step):
-            let reached = step.orders <= orders
-            let isToy = step.collectible != nil
-            let done = step.collectible.map { collected.contains($0.id) } ?? reached
-            Button {
-                onSelect(step)
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(reached ? (isToy && !done ? KnightTheme.gold : KnightTheme.green) : KnightTheme.wash)
-                    Image(systemName: step.icon)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(reached ? (isToy && !done ? KnightTheme.onAccent : Color.white) : KnightTheme.muted)
-                }
-                .frame(width: 48, height: 48)
-                .overlay {
-                    if step.orders == selected {
-                        Circle().stroke(KnightTheme.ink, lineWidth: 2).padding(-4)
-                    }
-                }
-                .overlay(alignment: .topTrailing) {
-                    if reached && done {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            .background(KnightTheme.ink, in: Circle())
-                            .offset(x: 4, y: -4)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(step.title), \(step.orders) orders, \(reached ? (done ? "unlocked" : "ready to collect") : "locked")")
-        }
-    }
-
-    @ViewBuilder
-    private func label(for stop: Stop) -> some View {
-        switch stop {
-        case .you:
-            VStack(spacing: 1) {
-                Text("You")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.goldDeep)
-                Text("\(orders)")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(KnightTheme.muted)
-            }
-        case .step(let step):
-            VStack(spacing: 1) {
-                Text(step.shortTitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(step.orders <= orders ? KnightTheme.ink : KnightTheme.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text("\(step.orders) order\(step.orders == 1 ? "" : "s")")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted)
-            }
-            .accessibilityHidden(true)
-        }
-    }
-}
-
-/// What the picked step gives and what to do about it.
-private struct RoadStepDetail: View {
-    let step: RoadMilestone
-    let orders: Int
-    let isCollected: Bool
-    let onShowQR: () -> Void
-
-    var body: some View {
-        let reached = step.orders <= orders
-        let toy = step.collectible
-
-        HStack(spacing: 12) {
-            Image(systemName: step.icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(toy?.brand?.primary ?? KnightTheme.green)
-                .frame(width: 42, height: 42)
-                .background(toy?.brand?.secondary.opacity(0.9) ?? KnightTheme.green.opacity(0.13),
-                            in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(step.title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(KnightTheme.ink)
-                Text(caption(reached: reached, toy: toy))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(KnightTheme.muted)
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 8)
-            if reached && !isCollected {
-                Button(action: onShowQR) {
-                    Label(toy == nil ? "Pay" : "Show QR", systemImage: "qrcode")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(KnightTheme.ink)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 36)
-                        .background(KnightTheme.wash, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(14)
-        .background(KnightTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(KnightTheme.ink.opacity(0.06), lineWidth: 1)
-        }
-    }
-
-    private func caption(reached: Bool, toy: Collectible?) -> String {
-        if !reached {
-            let toGo = step.orders - orders
-            return "Unlocks at \(step.orders) orders · \(toGo) to go"
-        }
-        if let toy {
-            return "\(isCollected ? "Collected" : "Ready") at \(toy.pickupPlace)"
-        }
-        return "Added to your Knight Cash"
     }
 }
 

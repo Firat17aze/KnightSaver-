@@ -23,7 +23,7 @@ KnightSaver is one shared app. Student accounts see four bottom-navigation desti
 |---|---|---|
 | 1 | **Explore** | Discover and reserve available Surprise Bags |
 | 2 | **Impact** | See UCF's weekly goal, open EcoKnight AI, and view verified impact |
-| 3 | **Rewards** | Knight Cash, the Reward Road, Rescue Crew toys, Knight of the Week, the Campus Rescue League and badges |
+| 3 | **Rewards** | Knight Cash, Rescue Crew toys, Knight of the Week, the Campus Rescue League and badges |
 | 4 | **Profile** | Open the reusable Knight Pass and manage account settings |
 
 Business accounts see **Kitchen** (the business dashboard and AI listing tools) and **Profile** instead.
@@ -34,7 +34,7 @@ Every feature lives inside these sections:
 
 - EcoKnight AI is opened from a verified rescue and from Impact.
 - Past Surprise Reveals appear in Surprise Bag details.
-- Knight Cash, the Reward Road, Rescue Crew toys, Campus Rescue League and Knight of the Week live inside Rewards.
+- Knight Cash, Rescue Crew toys, Campus Rescue League and Knight of the Week live inside Rewards.
 - The reusable Knight Pass lives in Profile and identifies the student at any participating business.
 
 ## Bottom-navigation visual direction
@@ -336,11 +336,11 @@ Rewards grow with how often a student orders. One staff-verified pickup is one o
 
 ### Knight Cash
 
-Money on the student's account, earned on the Reward Road. The student taps **Pay with QR** and staff scan it at any partner kitchen to take up to the balance off the bill.
+Money on the student's account, earned from verified orders. The wallet shows the balance, the student's tier and how many orders are left to the next reward. The student taps **Pay with QR** and staff scan it at any partner kitchen to take up to the balance off the bill.
 
-### Reward Road
+### Rewards by orders
 
-A road of steps by verified orders. Steps alternate between Knight Cash and a Rescue Crew toy:
+Rewards unlock by verified orders and alternate between Knight Cash and a Rescue Crew toy:
 
 | Orders | Reward |
 |---|---|
